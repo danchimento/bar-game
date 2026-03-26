@@ -13,9 +13,11 @@ if (screen.orientation && screen.orientation.lock) {
 }
 
 function resize() {
-  // Fill the entire viewport edge to edge
-  canvas.style.width = `${window.innerWidth}px`;
-  canvas.style.height = `${window.innerHeight}px`;
+  // Lock to top and bottom of screen, maintain aspect ratio
+  const vh = window.innerHeight;
+  const w = vh * (CANVAS_W / CANVAS_H);
+  canvas.style.height = `${vh}px`;
+  canvas.style.width = `${w}px`;
 }
 
 window.addEventListener('resize', resize);
