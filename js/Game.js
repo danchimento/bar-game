@@ -214,10 +214,35 @@ export class Game {
       this.handlePointerDown(x, y);
     });
 
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (this.radialMenu.visible && this.radialMenu.dragging) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        this.radialMenu.updateHover(x, y);
+      }
+    });
+
     this.canvas.addEventListener('pointerup', (e) => {
       if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0) {
         this.drinkModal.pouringIndex = -1;
         this.drinkModal.pourProgress = 0;
+      }
+
+      // Drag-release on radial menu
+      if (this.radialMenu.visible && this.radialMenu.dragging) {
+        this.radialMenu.dragging = false;
+        const idx = this.radialMenu.hoveredIndex;
+        if (idx >= 0) {
+          const option = this.radialMenu.options[idx];
+          if (option.action && !option.disabled) {
+            option.action();
+          }
+          this.radialMenu.close();
+        }
+        // If released outside any option, menu stays open for a regular tap
       }
     });
   }

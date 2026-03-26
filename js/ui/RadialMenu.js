@@ -8,6 +8,8 @@ export class RadialMenu {
     this.options = [];
     this.radius = 55;
     this.itemRadius = 24;
+    this.hoveredIndex = -1;  // for drag highlight
+    this.dragging = false;   // true after pointerdown opened the menu
   }
 
   open(x, y, options) {
@@ -17,11 +19,29 @@ export class RadialMenu {
     this.cy = Math.max(margin, Math.min(CANVAS_H - margin, y));
     this.options = options;
     this.visible = true;
+    this.hoveredIndex = -1;
+    this.dragging = true;  // opened via pointerdown, enable drag-release
   }
 
   close() {
     this.visible = false;
     this.options = [];
+    this.hoveredIndex = -1;
+    this.dragging = false;
+  }
+
+  updateHover(x, y) {
+    if (!this.visible) return;
+    this.hoveredIndex = -1;
+    for (let i = 0; i < this.options.length; i++) {
+      const pos = this.getOptionPos(i);
+      const dx = x - pos.x;
+      const dy = y - pos.y;
+      if (dx * dx + dy * dy < this.itemRadius * this.itemRadius) {
+        this.hoveredIndex = i;
+        return;
+      }
+    }
   }
 
   hitTest(x, y) {
@@ -69,13 +89,14 @@ export class RadialMenu {
       const pos = this.getOptionPos(i);
       const opt = this.options[i];
 
-      ctx.fillStyle = opt.disabled ? '#555' : '#e8c170';
+      const isHovered = i === this.hoveredIndex && !opt.disabled;
+      ctx.fillStyle = opt.disabled ? '#555' : isHovered ? '#ffd54f' : '#e8c170';
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, this.itemRadius, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, isHovered ? this.itemRadius + 3 : this.itemRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isHovered ? '#ff8f00' : '#333';
+      ctx.lineWidth = isHovered ? 3 : 2;
       ctx.stroke();
 
       ctx.fillStyle = opt.disabled ? '#888' : '#1a1a2e';
