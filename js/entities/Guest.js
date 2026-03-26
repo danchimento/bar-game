@@ -1,7 +1,7 @@
 import {
   GUEST_STATE, MOOD_MAX, MOOD_DECAY, MOOD_THRESHOLDS,
   SETTLE_TIME, ENJOY_TIME_MIN, ENJOY_TIME_MAX,
-  GUEST_Y, SEAT_Y, SEATS,
+  GUEST_Y, SEATS,
 } from '../constants.js';
 
 let nextGuestId = 1;
@@ -120,11 +120,17 @@ export class Guest {
     if (this.checkedIn) this.tipAmount *= 1.1;
   }
 
-  update(dt) {
-    // Mood decay
+  update(dt, levelTimer) {
+    // Mood decay — skip during grace period
     const decayRate = MOOD_DECAY[this.state] || 0;
-    if (decayRate !== 0) {
-      this.mood += decayRate * dt * (decayRate < 0 ? 1 : -this.patienceMultiplier);
+    if (decayRate > 0 && levelTimer !== undefined) {
+      // Scale decay: 0% at time 0, 100% at grace period end
+      const graceFactor = Math.min(1, levelTimer / 30);
+      this.mood -= decayRate * dt * this.patienceMultiplier * graceFactor;
+      this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
+    } else if (decayRate < 0) {
+      // Mood recovery always applies
+      this.mood -= decayRate * dt;
       this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
     }
 
@@ -174,7 +180,6 @@ export class Guest {
         this.stateTimer -= dt;
         if (this.stateTimer <= 0) {
           this.cashOnBar = true;
-          // wait for bartender to collect cash
         }
         break;
 

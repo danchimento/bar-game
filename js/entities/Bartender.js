@@ -8,6 +8,7 @@ export class Bartender {
     this.carrying = null; // null, 'CLEAN_GLASS', 'DIRTY_GLASS', 'DRINK_<type>', 'CHECK_<seatId>'
     this.busy = false;
     this.busyTimer = 0;
+    this.busyDuration = 0; // total duration of current action (for progress bar)
     this.busyLabel = '';
     this.onActionComplete = null;
     this.facingRight = true;
@@ -29,8 +30,16 @@ export class Bartender {
   startAction(duration, label, onComplete) {
     this.busy = true;
     this.busyTimer = duration;
+    this.busyDuration = duration;
     this.busyLabel = label;
     this.onActionComplete = onComplete;
+  }
+
+  putDown() {
+    // Returns whatever was being carried, sets carrying to null
+    const item = this.carrying;
+    this.carrying = null;
+    return item;
   }
 
   update(dt) {
@@ -53,7 +62,6 @@ export class Bartender {
     } else {
       this.facingRight = dx > 0;
       this.x += Math.sign(dx) * BARTENDER_SPEED * dt;
-      // Clamp to not overshoot
       if ((dx > 0 && this.x > this.targetX) || (dx < 0 && this.x < this.targetX)) {
         this.x = this.targetX;
       }

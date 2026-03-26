@@ -1,6 +1,6 @@
-// Canvas
-export const CANVAS_W = 800;
-export const CANVAS_H = 600;
+// Canvas - LANDSCAPE
+export const CANVAS_W = 960;
+export const CANVAS_H = 540;
 
 // Colors
 export const COLORS = {
@@ -19,44 +19,42 @@ export const COLORS = {
   SERVICE_MAT: '#333333',
 };
 
-// Layout Y positions
-export const GUEST_Y = 100;
-export const SEAT_Y = 145;
-export const BAR_TOP_Y = 180;
-export const SERVICE_MAT_Y = 220;
+// Layout Y positions (stretched to use full height)
+export const GUEST_Y = 90;
+export const SEAT_Y = 135;
+export const BAR_TOP_Y = 175;
+export const SERVICE_MAT_Y = 215;
 export const WALK_TRACK_Y = 290;
-export const STATION_Y = 370;
-export const STATION_LABEL_Y = 420;
+export const STATION_Y = 470;
+export const STATION_LABEL_Y = 520;
 
 // Bar edges
 export const BAR_LEFT = 30;
-export const BAR_RIGHT = 770;
+export const BAR_RIGHT = 930;
 
-// Seat positions (6 seats evenly spaced)
+// Seat positions (6 seats spread across landscape)
 export const SEATS = [
-  { id: 0, x: 100 },
-  { id: 1, x: 220 },
-  { id: 2, x: 340 },
-  { id: 3, x: 460 },
-  { id: 4, x: 580 },
-  { id: 5, x: 700 },
+  { id: 0, x: 110 },
+  { id: 1, x: 260 },
+  { id: 2, x: 410 },
+  { id: 3, x: 560 },
+  { id: 4, x: 710 },
+  { id: 5, x: 860 },
 ];
 
-// Station definitions
+// Station definitions — consolidated taps and wines into single stations
 export const STATIONS = [
-  { id: 'DISHWASHER',    x: 60,  label: 'Dish',  icon: '🫧' },
-  { id: 'GLASS_RACK',    x: 155, label: 'Glass', icon: '🥃' },
-  { id: 'TAP_LAGER',     x: 265, label: 'Lager', icon: '🍺' },
-  { id: 'TAP_IPA',       x: 345, label: 'IPA',   icon: '🍺' },
-  { id: 'TAP_STOUT',     x: 425, label: 'Stout', icon: '🍺' },
-  { id: 'WINE_RED',      x: 535, label: 'Red',   icon: '🍷' },
-  { id: 'WINE_WHITE',    x: 615, label: 'White', icon: '🍷' },
-  { id: 'POS',           x: 710, label: 'POS',   icon: '💻' },
+  { id: 'DISHWASHER',  x: 80,  label: 'Dish',  icon: '🫧' },
+  { id: 'GLASS_RACK',  x: 210, label: 'Glass', icon: '🥃' },
+  { id: 'TAPS',        x: 380, label: 'Taps',  icon: '🍺' },
+  { id: 'WINE',        x: 550, label: 'Wine',  icon: '🍷' },
+  { id: 'POS',         x: 720, label: 'POS',   icon: '💻' },
+  { id: 'CHECK_PRINTER', x: 870, label: 'Check', icon: '🖨️' },
 ];
 
 // Bartender
-export const BARTENDER_SPEED = 250; // pixels per second
-export const BARTENDER_START_X = 400;
+export const BARTENDER_SPEED = 280; // pixels per second (slightly faster for wider bar)
+export const BARTENDER_START_X = 480;
 
 // Guest states
 export const GUEST_STATE = {
@@ -84,27 +82,30 @@ export const MOOD_THRESHOLDS = {
   FRUSTRATED: 10,
 };
 
-// Mood decay rates (per second)
+// Mood decay rates (per second) — significantly slower so first 30s isn't stressful
 export const MOOD_DECAY = {
   ARRIVING: 0,
-  SEATED: 1,
-  READY_TO_ORDER: 4,
+  SEATED: 0.5,
+  READY_TO_ORDER: 2,
   ORDER_TAKEN: 0,
-  WAITING_FOR_DRINK: 5,
-  ENJOYING: -2, // mood recovers while enjoying
-  WANTS_ANOTHER: 3,
-  READY_TO_PAY: 3,
+  WAITING_FOR_DRINK: 2.5,
+  ENJOYING: -3, // mood recovers while enjoying
+  WANTS_ANOTHER: 1.5,
+  READY_TO_PAY: 1.5,
   PAYING: 0,
   LEAVING: 0,
   DONE: 0,
   ANGRY_LEAVING: 0,
 };
 
+// Grace period — mood doesn't decay for the first N seconds of the level
+export const MOOD_GRACE_PERIOD = 30;
+
 // Timers (seconds)
-export const SETTLE_TIME = 2;        // how long before guest is ready to order
-export const ORDER_TAKE_TIME = 1;    // animation time for taking order
-export const ENJOY_TIME_MIN = 10;
-export const ENJOY_TIME_MAX = 18;
+export const SETTLE_TIME = 2.5;
+export const ORDER_TAKE_TIME = 1;
+export const ENJOY_TIME_MIN = 12;
+export const ENJOY_TIME_MAX = 20;
 export const DRINK_PRICES = {
   LAGER: 7,
   IPA: 8,
@@ -117,11 +118,8 @@ export const DRINK_PRICES = {
 export const ACTION_DURATIONS = {
   GLASS_RACK: 0.4,
   DISHWASHER: 0.8,
-  TAP_LAGER: 1.8,
-  TAP_IPA: 1.8,
-  TAP_STOUT: 1.8,
-  WINE_RED: 1.2,
-  WINE_WHITE: 1.2,
+  POUR_BEER: 1.8,
+  POUR_WINE: 1.2,
   POS: 0.6,
   GREET: 0.5,
   TAKE_ORDER: 1.0,
@@ -131,17 +129,8 @@ export const ACTION_DURATIONS = {
   BUS: 0.5,
 };
 
-// Drink to station mapping
-export const DRINK_STATION = {
-  LAGER: 'TAP_LAGER',
-  IPA: 'TAP_IPA',
-  STOUT: 'TAP_STOUT',
-  RED_WINE: 'WINE_RED',
-  WHITE_WINE: 'WINE_WHITE',
-};
-
 // Hit detection radius
-export const HIT_RADIUS = 35;
+export const HIT_RADIUS = 40;
 
 // Game states
 export const GAME_STATE = {

@@ -29,7 +29,7 @@ export class Game {
     this.bartender = null;
     this.guests = [];
     this.dirtySeats = new Set();
-    this.serviceMat = []; // [{ drinkType, x, forGuestId }]
+    this.serviceMat = []; // drinks put down on bar via double-tap
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
@@ -42,6 +42,20 @@ export class Game {
       seatButtons: [],
       checkButtons: [],
     };
+
+    // Drink modal (taps / wine)
+    this.drinkModal = {
+      visible: false,
+      type: null, // 'beer' or 'wine'
+      items: [],  // drink keys
+      stationX: 0,
+      pouringIndex: -1,
+      pourProgress: 0,
+      pourDuration: 0,
+    };
+
+    // Double-tap tracking
+    this.lastTap = { x: 0, y: 0, time: 0 };
 
     this.setupInput();
     this.lastTime = performance.now();
@@ -64,10 +78,11 @@ export class Game {
     this.gameState = GAME_STATE.PLAYING;
     this.radialMenu.close();
     this.pos.visible = false;
+    this.drinkModal.visible = false;
   }
 
   loop(now) {
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05); // cap dt
+    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
     this.update(dt);
     this.render();
@@ -81,10 +96,15 @@ export class Game {
     this.hud.timeRemaining = Math.max(0, this.level.duration - this.levelTimer);
     this.hud.update(dt);
 
-    // Spawn guests
-    this.spawnGuests();
+    // Update pouring in drink modal
+    if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0) {
+      this.drinkModal.pourProgress += dt / this.drinkModal.pourDuration;
+      if (this.drinkModal.pourProgress >= 1) {
+        this.completePour();
+      }
+    }
 
-    // Update bartender
+    this.spawnGuests();
     this.bartender.update(dt);
 
     // Check pending walk-then-act
@@ -96,9 +116,9 @@ export class Game {
       }
     }
 
-    // Update guests
+    // Update guests — pass levelTimer for grace period
     for (const guest of this.guests) {
-      guest.update(dt);
+      guest.update(dt, this.levelTimer);
     }
 
     // Clean up done guests
@@ -121,17 +141,14 @@ export class Game {
     if (this.spawnIndex >= this.level.spawnSchedule.length) return;
     const next = this.level.spawnSchedule[this.spawnIndex];
     if (this.levelTimer >= next.time) {
-      // Find an available seat
       const occupiedSeats = new Set(this.guests.map(g => g.seatId));
-      const dirtySeatSet = this.dirtySeats;
-      const available = SEATS.filter(s => !occupiedSeats.has(s.id) && !dirtySeatSet.has(s.id));
+      const available = SEATS.filter(s => !occupiedSeats.has(s.id) && !this.dirtySeats.has(s.id));
       if (available.length > 0) {
         const seat = available[Math.floor(Math.random() * available.length)];
         const guest = new Guest(seat.id, next.type, next.drinkPrefs);
         this.guests.push(guest);
         this.spawnIndex++;
       }
-      // If no seat available, delay slightly (will retry next frame)
     }
   }
 
@@ -152,6 +169,7 @@ export class Game {
     this.hud.draw(this.ctx);
     this.notepad.draw(this.ctx);
     this.radialMenu.draw(this.ctx);
+    this.renderer.drawDrinkModal(this.drinkModal);
     this.renderer.drawPOSOverlay(this.pos);
 
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
@@ -168,14 +186,28 @@ export class Game {
       const scaleY = CANVAS_H / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
-      this.handleTap(x, y);
+      this.handlePointerDown(x, y);
+    });
+
+    this.canvas.addEventListener('pointerup', (e) => {
+      // Release pour on drink modal
+      if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0) {
+        // Pour cancelled — not held long enough
+        this.drinkModal.pouringIndex = -1;
+        this.drinkModal.pourProgress = 0;
+      }
     });
   }
 
-  handleTap(x, y) {
+  handlePointerDown(x, y) {
+    const now = performance.now();
+    const isDoubleTap = (now - this.lastTap.time < 350) &&
+      Math.abs(x - this.lastTap.x) < 30 && Math.abs(y - this.lastTap.y) < 30;
+    this.lastTap = { x, y, time: now };
+
     // Title screen
     if (this.gameState === GAME_STATE.TITLE) {
-      if (x > CANVAS_W / 2 - 80 && x < CANVAS_W / 2 + 80 && y > 300 && y < 345) {
+      if (x > CANVAS_W / 2 - 90 && x < CANVAS_W / 2 + 90 && y > 270 && y < 320) {
         this.startLevel();
       }
       return;
@@ -183,13 +215,19 @@ export class Game {
 
     // Level complete
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      if (x > CANVAS_W / 2 - 70 && x < CANVAS_W / 2 + 70 && y > 350 && y < 390) {
+      if (x > CANVAS_W / 2 - 80 && x < CANVAS_W / 2 + 80 && y > 340 && y < 385) {
         this.startLevel();
       }
       return;
     }
 
     if (this.gameState !== GAME_STATE.PLAYING) return;
+
+    // Drink modal
+    if (this.drinkModal.visible) {
+      this.handleDrinkModalTap(x, y);
+      return;
+    }
 
     // POS overlay
     if (this.pos.visible) {
@@ -212,6 +250,12 @@ export class Game {
       return;
     }
 
+    // Double-tap to put down carried item
+    if (isDoubleTap && this.bartender.carrying) {
+      this.putDownItem();
+      return;
+    }
+
     // Hit test guests
     const guest = this.hitTestGuest(x, y);
     if (guest) {
@@ -219,7 +263,7 @@ export class Game {
       return;
     }
 
-    // Hit test service mat drinks
+    // Hit test service mat drinks (pick up put-down drinks)
     const drink = this.hitTestServiceMat(x, y);
     if (drink) {
       this.pickUpDrink(drink);
@@ -240,8 +284,8 @@ export class Game {
       return;
     }
 
-    // Tap on walk track area to move
-    if (y > BAR_TOP_Y && y < STATION_Y + 30) {
+    // Tap on bar area to move
+    if (y > BAR_TOP_Y && y < STATION_Y + 40) {
       this.bartender.moveTo(x);
       this.pendingAction = null;
     }
@@ -262,7 +306,7 @@ export class Game {
     for (const st of STATIONS) {
       const dx = x - st.x;
       const dy = y - STATION_Y;
-      if (Math.abs(dx) < 32 && Math.abs(dy) < 28) return st;
+      if (Math.abs(dx) < 45 && Math.abs(dy) < 34) return st;
     }
     return null;
   }
@@ -270,8 +314,8 @@ export class Game {
   hitTestServiceMat(x, y) {
     for (const drink of this.serviceMat) {
       const dx = x - drink.x;
-      const dy = y - (SERVICE_MAT_Y + 10);
-      if (Math.abs(dx) < 16 && Math.abs(dy) < 14) return drink;
+      const dy = y - (SERVICE_MAT_Y + 12);
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 16) return drink;
     }
     return null;
   }
@@ -279,9 +323,30 @@ export class Game {
   hitTestDirtySeat(x, y) {
     for (const seatId of this.dirtySeats) {
       const seat = SEATS[seatId];
-      if (Math.abs(x - seat.x) < 24 && Math.abs(y - SEAT_Y - 15) < 20) return seatId;
+      if (Math.abs(x - seat.x) < 26 && Math.abs(y - SEAT_Y - 16) < 22) return seatId;
     }
     return null;
+  }
+
+  // ─── PUT DOWN ───────────────────────────────────────
+
+  putDownItem() {
+    const bt = this.bartender;
+    if (!bt.carrying) return;
+
+    if (bt.carrying.startsWith('DRINK_')) {
+      // Put drink on service mat at bartender's current X
+      const drinkType = bt.carrying.replace('DRINK_', '');
+      this.serviceMat.push({ drinkType, x: bt.x });
+      bt.carrying = null;
+      this.hud.showMessage('Put down drink', 1);
+    } else if (bt.carrying === 'CLEAN_GLASS') {
+      bt.carrying = null;
+      this.hud.showMessage('Put down glass', 1);
+    } else if (bt.carrying.startsWith('CHECK_')) {
+      // Can't really put down a check meaningfully, ignore
+      this.hud.showMessage("Can't put that down here", 1);
+    }
   }
 
   // ─── GUEST INTERACTIONS ─────────────────────────────
@@ -302,9 +367,7 @@ export class Game {
         break;
 
       case GUEST_STATE.WAITING_FOR_DRINK:
-        if (bt.carrying && bt.carrying === `DRINK_${guest.currentDrink}`) {
-          options.push({ label: 'Serve', action: () => this.serveDrink(guest) });
-        } else if (bt.carrying && bt.carrying.startsWith('DRINK_')) {
+        if (bt.carrying && bt.carrying.startsWith('DRINK_')) {
           options.push({ label: 'Serve', action: () => this.serveDrink(guest) });
         }
         break;
@@ -318,7 +381,7 @@ export class Game {
         break;
 
       case GUEST_STATE.READY_TO_PAY:
-        if (bt.carrying === `CHECK_${guest.seatId}`) {
+        if (bt.carrying && bt.carrying === `CHECK_${guest.seatId}`) {
           options.push({ label: 'Give Check', action: () => this.giveCheck(guest) });
         }
         break;
@@ -380,7 +443,6 @@ export class Game {
         this.bartender.carrying = null;
 
         if (drinkType === guest.currentDrink) {
-          // Correct drink
           guest.transitionTo(GUEST_STATE.ENJOYING);
           const price = DRINKS[drinkType]?.price || 7;
           this.hud.revenue += price;
@@ -388,7 +450,6 @@ export class Game {
           this.notepad.markFulfilled(guest.id);
           this.hud.showMessage('Served!', 1);
         } else {
-          // Wrong drink
           guest.mood -= 20;
           this.hud.showMessage('Wrong drink!', 1.5);
         }
@@ -463,52 +524,105 @@ export class Game {
         });
         break;
 
-      case 'TAP_LAGER':
-      case 'TAP_IPA':
-      case 'TAP_STOUT':
-      case 'WINE_RED':
-      case 'WINE_WHITE':
-        this.handleDrinkStation(station);
+      case 'TAPS':
+        if (bt.carrying !== 'CLEAN_GLASS') {
+          this.hud.showMessage('Need a clean glass first', 1);
+          return;
+        }
+        this.walkThenAct(station.x, () => {
+          this.openDrinkModal('beer', station.x);
+        });
+        break;
+
+      case 'WINE':
+        if (bt.carrying !== 'CLEAN_GLASS') {
+          this.hud.showMessage('Need a clean glass first', 1);
+          return;
+        }
+        this.walkThenAct(station.x, () => {
+          this.openDrinkModal('wine', station.x);
+        });
         break;
 
       case 'POS':
         this.openPOS();
         break;
+
+      case 'CHECK_PRINTER':
+        this.openPOS();
+        break;
     }
   }
 
-  handleDrinkStation(station) {
-    const bt = this.bartender;
-    if (bt.carrying !== 'CLEAN_GLASS') {
-      this.hud.showMessage('Need a clean glass', 1);
+  // ─── DRINK MODAL ────────────────────────────────────
+
+  openDrinkModal(type, stationX) {
+    this.drinkModal.visible = true;
+    this.drinkModal.type = type;
+    this.drinkModal.stationX = stationX;
+    this.drinkModal.pouringIndex = -1;
+    this.drinkModal.pourProgress = 0;
+
+    if (type === 'beer') {
+      this.drinkModal.items = ['LAGER', 'IPA', 'STOUT'];
+      this.drinkModal.pourDuration = ACTION_DURATIONS.POUR_BEER;
+    } else {
+      this.drinkModal.items = ['RED_WINE', 'WHITE_WINE'];
+      this.drinkModal.pourDuration = ACTION_DURATIONS.POUR_WINE;
+    }
+  }
+
+  handleDrinkModalTap(x, y) {
+    const modal = this.drinkModal;
+    const items = modal.items;
+    const pw = Math.min(400, 100 + items.length * 120);
+    const ph = 200;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    // Close button
+    if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
+      modal.visible = false;
       return;
     }
 
-    // Map station to drink type
-    const stationToDrink = {
-      'TAP_LAGER': 'LAGER',
-      'TAP_IPA': 'IPA',
-      'TAP_STOUT': 'STOUT',
-      'WINE_RED': 'RED_WINE',
-      'WINE_WHITE': 'WHITE_WINE',
-    };
-    const drinkType = stationToDrink[station.id];
-    if (!drinkType) return;
+    // Hit test drink buttons
+    const btnW = 90;
+    const btnH = 90;
+    const totalW = items.length * (btnW + 15) - 15;
+    const startX = px + (pw - totalW) / 2;
+    const btnY = py + 70;
 
-    this.walkThenAct(station.x, () => {
-      const dur = ACTION_DURATIONS[station.id] || 1.5;
-      bt.startAction(dur, `Pouring ${DRINKS[drinkType]?.name}...`, () => {
-        bt.carrying = null;
-        // Place on service mat near station
-        this.serviceMat.push({
-          drinkType,
-          x: station.x,
-          forGuestId: null,
-        });
-        this.hud.showMessage(`${DRINKS[drinkType]?.name} ready!`, 1);
-      });
-    });
+    for (let i = 0; i < items.length; i++) {
+      const bx = startX + i * (btnW + 15);
+      if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
+        // Start pouring
+        modal.pouringIndex = i;
+        modal.pourProgress = 0;
+        return;
+      }
+    }
+
+    // Tapped outside buttons — close
+    if (x < px || x > px + pw || y < py || y > py + ph) {
+      modal.visible = false;
+    }
   }
+
+  completePour() {
+    const modal = this.drinkModal;
+    const drinkType = modal.items[modal.pouringIndex];
+
+    // Drink goes directly into bartender's hands (replaces clean glass)
+    this.bartender.carrying = `DRINK_${drinkType}`;
+    this.hud.showMessage(`${DRINKS[drinkType]?.name} poured!`, 1);
+
+    modal.visible = false;
+    modal.pouringIndex = -1;
+    modal.pourProgress = 0;
+  }
+
+  // ─── SERVICE MAT (put-down drinks) ──────────────────
 
   pickUpDrink(drink) {
     const bt = this.bartender;
@@ -541,15 +655,9 @@ export class Game {
   // ─── POS ────────────────────────────────────────────
 
   openPOS() {
-    // Walk to POS first
     const posStation = STATIONS.find(s => s.id === 'POS');
     this.walkThenAct(posStation.x, () => {
-      // Determine mode: if guests are READY_TO_PAY, show print check option
-      // Otherwise show ring-in option
       const readyToPay = this.guests.filter(g => g.state === GUEST_STATE.READY_TO_PAY);
-      const waitingForRingIn = this.guests.filter(g =>
-        g.state === GUEST_STATE.ORDER_TAKEN || g.state === GUEST_STATE.WAITING_FOR_DRINK
-      );
 
       if (readyToPay.length > 0) {
         this.pos.visible = true;
@@ -566,13 +674,13 @@ export class Game {
   }
 
   handlePOSTap(x, y) {
-    const pw = 300;
-    const ph = 280;
+    const pw = 320;
+    const ph = 260;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
     // Close button
-    if (x > px + pw - 40 && x < px + pw - 10 && y > py + 5 && y < py + 25) {
+    if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
       this.pos.visible = false;
       return;
     }
@@ -580,9 +688,8 @@ export class Game {
     if (this.pos.mode === 'PRINT_CHECK') {
       this.pos.checkButtons.forEach((btn, i) => {
         const bx = px + 30 + (i % 3) * 90;
-        const by = py + 70 + Math.floor(i / 3) * 40;
-        if (x > bx && x < bx + 80 && y > by && y < by + 30 && btn.active) {
-          // Print check
+        const by = py + 75 + Math.floor(i / 3) * 45;
+        if (x > bx && x < bx + 80 && y > by && y < by + 35 && btn.active) {
           this.bartender.carrying = `CHECK_${btn.seatId}`;
           this.pos.visible = false;
           this.hud.showMessage(`Check for Seat ${btn.seatId + 1}`, 1.5);

@@ -22,7 +22,6 @@ export class HUD {
       this.messageTimer -= dt;
       if (this.messageTimer <= 0) this.message = '';
     }
-    // Calculate stars
     const total = this.tips + this.revenue;
     this.stars = 0;
     if (total >= this.starThresholds[1]) this.stars = 1;
@@ -40,39 +39,37 @@ export class HUD {
 
     // Tips + Revenue
     ctx.fillStyle = '#4caf50';
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'left';
     const total = Math.floor(this.tips + this.revenue);
-    ctx.fillText(`$${total}`, 12, y);
+    ctx.fillText(`$${total}`, 14, y);
 
     // Stars
-    ctx.font = '14px monospace';
+    ctx.font = '15px monospace';
     ctx.textAlign = 'center';
     const starStr = '⭐'.repeat(this.stars) + '☆'.repeat(3 - this.stars);
     ctx.fillStyle = '#ffc107';
     ctx.fillText(starStr, CANVAS_W / 2, y);
 
-    // Level name
-    ctx.fillStyle = '#aaa';
-    ctx.font = '11px monospace';
-    ctx.fillText(this.levelName, CANVAS_W / 2, y + 0);
-
     // Timer
     ctx.fillStyle = this.timeRemaining < 30 ? '#f44336' : '#e0e0e0';
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'right';
     const min = Math.floor(this.timeRemaining / 60);
     const sec = Math.floor(this.timeRemaining % 60).toString().padStart(2, '0');
-    ctx.fillText(`${min}:${sec}`, CANVAS_W - 12, y);
+    ctx.fillText(`${min}:${sec}`, CANVAS_W - 14, y);
 
     // Floating message
     if (this.message) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(CANVAS_W / 2 - 120, 45, 240, 28);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      const tw = ctx.measureText(this.message).width + 30;
+      ctx.beginPath();
+      ctx.roundRect(CANVAS_W / 2 - tw / 2, 44, tw, 26, 4);
+      ctx.fill();
       ctx.fillStyle = '#ffc107';
       ctx.font = 'bold 13px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(this.message, CANVAS_W / 2, 59);
+      ctx.fillText(this.message, CANVAS_W / 2, 57);
     }
   }
 }
