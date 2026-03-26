@@ -1,7 +1,7 @@
 import {
   GUEST_STATE, MOOD_MAX, MOOD_DECAY, MOOD_THRESHOLDS,
   SETTLE_TIME, ENJOY_TIME_MIN, ENJOY_TIME_MAX,
-  CHECK_REVIEW_TIME, GUEST_Y, SEATS,
+  CHECK_REVIEW_TIME, ORDER_REVEAL_TIME, GUEST_Y, SEATS,
 } from '../constants.js';
 
 let nextGuestId = 1;
@@ -26,6 +26,8 @@ export class Guest {
     this.stateTimer = 0;
     this.greeted = false;
     this.orderOnNotepad = false;
+    this.orderWrittenDown = false; // true if player wrote the order on notepad
+    this.orderRevealTimer = 0;    // countdown for showing order above head
     this.cashOnBar = false;  // cash left on the bar after reviewing check
     this.tipAmount = 0;
     this.totalSpent = 0;
@@ -82,6 +84,7 @@ export class Guest {
         break;
       case GUEST_STATE.ORDER_TAKEN:
         this.stateTimer = 0.5;
+        this.orderRevealTimer = ORDER_REVEAL_TIME;
         break;
       case GUEST_STATE.WAITING_FOR_DRINK:
         break;
@@ -121,6 +124,8 @@ export class Guest {
     const baseTip = this.totalSpent * 0.20;
     this.tipAmount = Math.round(baseTip * moodFraction * this.tipMultiplier * 100) / 100;
     if (this.checkedIn) this.tipAmount *= 1.1;
+    // Memory bonus — didn't need to write the order down
+    if (!this.orderWrittenDown) this.tipAmount *= 1.15;
   }
 
   update(dt, levelTimer) {
@@ -133,6 +138,11 @@ export class Guest {
     } else if (decayRate < 0) {
       this.mood -= decayRate * dt;
       this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
+    }
+
+    // Order reveal countdown
+    if (this.orderRevealTimer > 0) {
+      this.orderRevealTimer -= dt;
     }
 
     // Check for angry leaving

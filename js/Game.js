@@ -292,10 +292,12 @@ export class Game {
       return;
     }
 
-    // Hit test cash on bar
+    // Hit test dirty seats & cash — combined so tapping the seat area handles both
+    const dirtySeat = this.hitTestDirtySeat(x, y);
     const cashSeat = this.hitTestCash(x, y);
-    if (cashSeat !== null) {
-      this.collectCash(cashSeat);
+    if (dirtySeat !== null || cashSeat !== null) {
+      const seatId = dirtySeat !== null ? dirtySeat : cashSeat;
+      this.handleSeatCleanup(seatId);
       return;
     }
 
@@ -310,13 +312,6 @@ export class Game {
     const station = this.hitTestStation(x, y);
     if (station) {
       this.handleStationTap(station);
-      return;
-    }
-
-    // Hit test dirty seats
-    const dirtySeat = this.hitTestDirtySeat(x, y);
-    if (dirtySeat !== null) {
-      this.handleBusSeat(dirtySeat);
       return;
     }
 
@@ -359,7 +354,7 @@ export class Game {
   hitTestDirtySeat(x, y) {
     for (const seatId of this.dirtySeats) {
       const seat = SEATS[seatId];
-      if (Math.abs(x - seat.x) < 26 && Math.abs(y - SEAT_Y - 16) < 22) return seatId;
+      if (Math.abs(x - seat.x) < 35 && Math.abs(y - SEAT_Y - 16) < 30) return seatId;
     }
     return null;
   }
@@ -414,6 +409,9 @@ export class Game {
         if (bt.carrying && bt.carrying.startsWith('DRINK_')) {
           options.push({ label: 'Serve', action: () => this.serveDrink(guest) });
         }
+        if (!guest.orderOnNotepad) {
+          options.push({ label: '📝 Write Down', action: () => this.writeDownOrder(guest) });
+        }
         break;
 
       case GUEST_STATE.ENJOYING:
@@ -462,8 +460,6 @@ export class Game {
         guest.greeted = true;
         guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
         guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
-        this.notepad.addOrder(guest.id, guest.seatId, guest.currentDrink);
-        guest.orderOnNotepad = true;
         guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
         this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
       });
@@ -474,10 +470,20 @@ export class Game {
     const seatX = SEATS[guest.seatId].x;
     this.walkThenAct(seatX, () => {
       this.bartender.startAction(ACTION_DURATIONS.TAKE_ORDER, 'Taking order...', () => {
-        this.notepad.addOrder(guest.id, guest.seatId, guest.currentDrink);
-        guest.orderOnNotepad = true;
         guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
         this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
+      });
+    });
+  }
+
+  writeDownOrder(guest) {
+    const seatX = SEATS[guest.seatId].x;
+    this.walkThenAct(seatX, () => {
+      this.bartender.startAction(ACTION_DURATIONS.TAKE_ORDER, 'Writing...', () => {
+        this.notepad.addOrder(guest.id, guest.seatId, guest.currentDrink);
+        guest.orderOnNotepad = true;
+        guest.orderWrittenDown = true;
+        this.hud.showMessage('Order noted', 1);
       });
     });
   }
@@ -541,24 +547,7 @@ export class Game {
     });
   }
 
-  collectCash(seatId) {
-    const bt = this.bartender;
-    if (bt.carrying) {
-      this.hud.showMessage('Hands full!', 1);
-      return;
-    }
-    const seatX = SEATS[seatId].x;
-    this.walkThenAct(seatX, () => {
-      bt.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {
-        const cash = this.cashOnBar.get(seatId);
-        if (cash) {
-          this.hud.tips += cash.tipAmount;
-          this.cashOnBar.delete(seatId);
-          this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
-        }
-      });
-    });
-  }
+  // Cash collection is now handled by handleSeatCleanup
 
   // ─── STATION INTERACTIONS ───────────────────────────
 
@@ -737,19 +726,44 @@ export class Game {
     });
   }
 
-  handleBusSeat(seatId) {
+  handleSeatCleanup(seatId) {
     const bt = this.bartender;
+    const hasCash = this.cashOnBar.has(seatId);
+    const hasDirty = this.dirtySeats.has(seatId);
+
+    if (!hasCash && !hasDirty) return;
+
     if (bt.carrying && bt.carrying !== 'DIRTY_GLASS') {
       this.hud.showMessage('Hands full!', 1);
       return;
     }
+
     const seatX = SEATS[seatId].x;
     this.walkThenAct(seatX, () => {
-      bt.startAction(ACTION_DURATIONS.BUS, 'Bussing...', () => {
-        bt.carrying = 'DIRTY_GLASS';
-        this.dirtySeats.delete(seatId);
-        this.hud.showMessage('Cleared!', 1);
-      });
+      if (hasCash) {
+        // Collect cash first, then bus if dirty
+        bt.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {
+          const cash = this.cashOnBar.get(seatId);
+          if (cash) {
+            this.hud.tips += cash.tipAmount;
+            this.cashOnBar.delete(seatId);
+            this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
+          }
+          if (hasDirty) {
+            bt.startAction(ACTION_DURATIONS.BUS, 'Bussing...', () => {
+              bt.carrying = 'DIRTY_GLASS';
+              this.dirtySeats.delete(seatId);
+            });
+          }
+        });
+      } else {
+        // Just bus
+        bt.startAction(ACTION_DURATIONS.BUS, 'Bussing...', () => {
+          bt.carrying = 'DIRTY_GLASS';
+          this.dirtySeats.delete(seatId);
+          this.hud.showMessage('Cleared!', 1);
+        });
+      }
     });
   }
 

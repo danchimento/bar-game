@@ -107,6 +107,7 @@ export const ORDER_TAKE_TIME = 1;
 export const ENJOY_TIME_MIN = 12;
 export const ENJOY_TIME_MAX = 20;
 export const CHECK_REVIEW_TIME = 4; // time guest spends reviewing check before leaving cash
+export const ORDER_REVEAL_TIME = 5; // seconds order shows above guest's head
 
 // Station action durations
 export const ACTION_DURATIONS = {

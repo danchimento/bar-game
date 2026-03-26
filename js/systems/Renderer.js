@@ -133,19 +133,23 @@ export class Renderer {
         ctx.fillText(indicator, x, y - 24);
       }
 
-      // Drink order label — ONLY show after order is taken
-      if (guest.currentDrink && guest.state === 'WAITING_FOR_DRINK') {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      // Drink order label — shows temporarily after order is taken, fades out
+      if (guest.currentDrink && guest.orderRevealTimer > 0) {
+        const alpha = Math.min(1, guest.orderRevealTimer / 1.0); // fade over last 1s
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = '10px monospace';
         const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
         const tw = ctx.measureText(drinkName).width + 12;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.beginPath();
         ctx.roundRect(x - tw / 2, y - 46, tw, 16, 3);
         ctx.fill();
         ctx.fillStyle = '#fff';
-        ctx.font = '10px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(drinkName, x, y - 38);
+        ctx.restore();
       }
 
       // Mood bar
