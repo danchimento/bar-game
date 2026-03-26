@@ -53,7 +53,7 @@ export const STATIONS = [
 ];
 
 // Bartender
-export const BARTENDER_SPEED = 280; // pixels per second (slightly faster for wider bar)
+export const BARTENDER_SPEED = 280;
 export const BARTENDER_START_X = 480;
 
 // Guest states
@@ -66,7 +66,7 @@ export const GUEST_STATE = {
   ENJOYING: 'ENJOYING',
   WANTS_ANOTHER: 'WANTS_ANOTHER',
   READY_TO_PAY: 'READY_TO_PAY',
-  PAYING: 'PAYING',
+  REVIEWING_CHECK: 'REVIEWING_CHECK',
   LEAVING: 'LEAVING',
   DONE: 'DONE',
   ANGRY_LEAVING: 'ANGRY_LEAVING',
@@ -82,23 +82,23 @@ export const MOOD_THRESHOLDS = {
   FRUSTRATED: 10,
 };
 
-// Mood decay rates (per second) — significantly slower so first 30s isn't stressful
+// Mood decay rates (per second) — slow enough to handle glass picking + POS + pouring
 export const MOOD_DECAY = {
   ARRIVING: 0,
-  SEATED: 0.5,
-  READY_TO_ORDER: 2,
+  SEATED: 0.3,
+  READY_TO_ORDER: 1.2,
   ORDER_TAKEN: 0,
-  WAITING_FOR_DRINK: 2.5,
-  ENJOYING: -3, // mood recovers while enjoying
-  WANTS_ANOTHER: 1.5,
-  READY_TO_PAY: 1.5,
-  PAYING: 0,
+  WAITING_FOR_DRINK: 1.5,
+  ENJOYING: -3,
+  WANTS_ANOTHER: 1.0,
+  READY_TO_PAY: 1.0,
+  REVIEWING_CHECK: 0,
   LEAVING: 0,
   DONE: 0,
   ANGRY_LEAVING: 0,
 };
 
-// Grace period — mood doesn't decay for the first N seconds of the level
+// Grace period — mood decay scales from 0% to 100% over this many seconds
 export const MOOD_GRACE_PERIOD = 30;
 
 // Timers (seconds)
@@ -106,13 +106,7 @@ export const SETTLE_TIME = 2.5;
 export const ORDER_TAKE_TIME = 1;
 export const ENJOY_TIME_MIN = 12;
 export const ENJOY_TIME_MAX = 20;
-export const DRINK_PRICES = {
-  LAGER: 7,
-  IPA: 8,
-  STOUT: 8,
-  RED_WINE: 10,
-  WHITE_WINE: 10,
-};
+export const CHECK_REVIEW_TIME = 4; // time guest spends reviewing check before leaving cash
 
 // Station action durations
 export const ACTION_DURATIONS = {

@@ -1,7 +1,7 @@
 import {
   GUEST_STATE, MOOD_MAX, MOOD_DECAY, MOOD_THRESHOLDS,
   SETTLE_TIME, ENJOY_TIME_MIN, ENJOY_TIME_MAX,
-  GUEST_Y, SEATS,
+  CHECK_REVIEW_TIME, GUEST_Y, SEATS,
 } from '../constants.js';
 
 let nextGuestId = 1;
@@ -12,13 +12,13 @@ export class Guest {
     this.seatId = seatId;
     this.seat = SEATS[seatId];
     this.x = this.seat.x;
-    this.y = -30; // starts off screen
+    this.y = -30;
     this.targetY = GUEST_Y;
     this.state = GUEST_STATE.ARRIVING;
     this.mood = MOOD_MAX;
-    this.guestType = guestType; // 'regular', 'quick'
+    this.guestType = guestType;
     this.drinkPrefs = drinkPrefs;
-    this.currentDrink = null; // what they want now
+    this.currentDrink = null;
     this.drinksHad = 0;
     this.maxDrinks = guestType === 'quick' ? 1 : Math.floor(Math.random() * 2) + 2;
     this.patienceMultiplier = guestType === 'quick' ? 0.8 : 1.0;
@@ -26,7 +26,7 @@ export class Guest {
     this.stateTimer = 0;
     this.greeted = false;
     this.orderOnNotepad = false;
-    this.cashOnBar = false;
+    this.cashOnBar = false;  // cash left on the bar after reviewing check
     this.tipAmount = 0;
     this.totalSpent = 0;
     this.checkedIn = false;
@@ -65,7 +65,7 @@ export class Guest {
       case GUEST_STATE.ENJOYING: return '😊';
       case GUEST_STATE.WANTS_ANOTHER: return '🍺?';
       case GUEST_STATE.READY_TO_PAY: return '💵';
-      case GUEST_STATE.PAYING: return '💰';
+      case GUEST_STATE.REVIEWING_CHECK: return '🧾';
       case GUEST_STATE.ANGRY_LEAVING: return '😡';
       default: return null;
     }
@@ -94,12 +94,15 @@ export class Guest {
         break;
       case GUEST_STATE.READY_TO_PAY:
         break;
-      case GUEST_STATE.PAYING:
-        this.stateTimer = 0.5;
+      case GUEST_STATE.REVIEWING_CHECK:
+        // Guest reviews the check, then leaves cash and walks out
+        this.stateTimer = CHECK_REVIEW_TIME;
         break;
       case GUEST_STATE.LEAVING:
         this.targetY = -50;
         this.calculateTip();
+        // Leave cash on the bar
+        this.cashOnBar = true;
         break;
       case GUEST_STATE.ANGRY_LEAVING:
         this.targetY = -50;
@@ -124,19 +127,18 @@ export class Guest {
     // Mood decay — skip during grace period
     const decayRate = MOOD_DECAY[this.state] || 0;
     if (decayRate > 0 && levelTimer !== undefined) {
-      // Scale decay: 0% at time 0, 100% at grace period end
       const graceFactor = Math.min(1, levelTimer / 30);
       this.mood -= decayRate * dt * this.patienceMultiplier * graceFactor;
       this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
     } else if (decayRate < 0) {
-      // Mood recovery always applies
       this.mood -= decayRate * dt;
       this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
     }
 
     // Check for angry leaving
     if (this.mood <= 0 && this.state !== GUEST_STATE.LEAVING &&
-        this.state !== GUEST_STATE.ANGRY_LEAVING && this.state !== GUEST_STATE.DONE) {
+        this.state !== GUEST_STATE.ANGRY_LEAVING && this.state !== GUEST_STATE.DONE &&
+        this.state !== GUEST_STATE.REVIEWING_CHECK) {
       this.transitionTo(GUEST_STATE.ANGRY_LEAVING);
       return;
     }
@@ -176,10 +178,11 @@ export class Guest {
         }
         break;
 
-      case GUEST_STATE.PAYING:
+      case GUEST_STATE.REVIEWING_CHECK:
         this.stateTimer -= dt;
         if (this.stateTimer <= 0) {
-          this.cashOnBar = true;
+          // Guest leaves cash and walks out
+          this.transitionTo(GUEST_STATE.LEAVING);
         }
         break;
 
