@@ -292,22 +292,26 @@ export class Renderer {
       const bx = startX + i * (btnW + gap);
       const drinkDef = DRINKS[item];
 
-      // Button
-      ctx.fillStyle = drinkDef.color || '#555';
-      ctx.globalAlpha = 0.3;
+      // Button background — consistent visible style
+      ctx.fillStyle = '#3a3025';
       ctx.beginPath();
       ctx.roundRect(bx, btnY, btnW, btnH, 8);
       ctx.fill();
-      ctx.globalAlpha = 1;
 
-      ctx.strokeStyle = '#888';
+      ctx.strokeStyle = '#8a7a6a';
       ctx.lineWidth = 2;
       ctx.stroke();
+
+      // Drink color accent strip at bottom
+      ctx.fillStyle = drinkDef.color || '#555';
+      ctx.beginPath();
+      ctx.roundRect(bx + 4, btnY + btnH - 14, btnW - 8, 10, 4);
+      ctx.fill();
 
       // Pour progress if active
       if (modal.pouringIndex === i && modal.pourProgress > 0) {
         ctx.fillStyle = drinkDef.color || '#555';
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.6;
         const fillH = btnH * modal.pourProgress;
         ctx.beginPath();
         ctx.roundRect(bx, btnY + btnH - fillH, btnW, fillH, 8);
