@@ -30,6 +30,7 @@ export class Game {
     this.guests = [];
     this.dirtySeats = new Set();
     this.cashOnBar = new Map(); // seatId → { amount, tipAmount }
+    this.posTab = new Map();    // seatId → [{ drink, price, fulfilled }]
     this.serviceMat = [];
     this.pendingAction = null;
     this.levelTimer = 0;
@@ -73,6 +74,7 @@ export class Game {
     this.guests = [];
     this.dirtySeats = new Set();
     this.cashOnBar = new Map();
+    this.posTab = new Map();
     this.serviceMat = [];
     this.pendingAction = null;
     this.levelTimer = 0;
@@ -141,6 +143,7 @@ export class Game {
           });
         }
         this.notepad.removeGuest(g.id);
+        this.posTab.delete(g.seatId);
         return false;
       }
       return true;
@@ -190,7 +193,7 @@ export class Game {
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
     this.renderer.drawDrinkModal(this.drinkModal);
-    this.renderer.drawPOSOverlay(this.pos, this.guests, this.notepad);
+    this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab);
 
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
       this.renderer.drawLevelComplete(this.hud);
@@ -444,7 +447,7 @@ export class Game {
         break;
 
       case GUEST_STATE.WANTS_ANOTHER:
-        options.push({ label: 'Take Order', action: () => this.takeOrder(guest) });
+        options.push({ label: 'Another One', action: () => this.takeOrder(guest) });
         break;
 
       case GUEST_STATE.READY_TO_PAY:
@@ -845,10 +848,13 @@ export class Game {
       }
 
       // Print Check button
+      const tab = this.posTab.get(seatId) || [];
       const printBx = px + pw - 160;
       const printBy = py + ph - 55;
       if (x > printBx && x < printBx + 140 && y > printBy && y < printBy + 40) {
-        if (guest && guest.state === GUEST_STATE.READY_TO_PAY) {
+        if (tab.length === 0) {
+          this.hud.showMessage('No drinks on tab', 1);
+        } else if (guest && guest.state === GUEST_STATE.READY_TO_PAY) {
           this.bartender.carrying = `CHECK_${seatId}`;
           this.pos.visible = false;
           this.hud.showMessage(`Check for Seat ${seatId + 1}`, 1.5);
@@ -858,7 +864,7 @@ export class Game {
         return;
       }
 
-      // Drink buttons — add to order
+      // Drink buttons — add to POS tab
       const drinks = Object.keys(DRINKS);
       const btnW = 85;
       const btnH = 55;
@@ -868,7 +874,8 @@ export class Game {
         const bx = px + 20 + i * (btnW + gap);
         if (x > bx && x < bx + btnW && y > drinksY && y < drinksY + btnH) {
           if (guest) {
-            this.notepad.addOrder(guest.id, seatId, drinks[i]);
+            if (!this.posTab.has(seatId)) this.posTab.set(seatId, []);
+            this.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
             this.hud.showMessage(`Added ${DRINKS[drinks[i]].name}`, 1);
           }
           return;

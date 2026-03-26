@@ -422,7 +422,7 @@ export class Renderer {
 
   // ─── POS OVERLAY ──────────────────────────────────
 
-  drawPOSOverlay(posState, guests, notepad) {
+  drawPOSOverlay(posState, guests, posTab) {
     if (!posState.visible) return;
     const ctx = this.ctx;
 
@@ -530,23 +530,22 @@ export class Renderer {
       ctx.textAlign = 'left';
       ctx.fillText('Tab:', px + 20, py + 85);
 
-      const orders = notepad.orders.filter(o => o.seatId === seatId);
+      const tab = posTab.get(seatId) || [];
       let total = 0;
-      orders.forEach((order, i) => {
-        const drinkDef = DRINKS[order.drink];
-        const price = drinkDef?.price || 0;
-        total += price;
-        ctx.fillStyle = order.fulfilled ? '#6a6' : '#ccc';
+      tab.forEach((entry, i) => {
+        const drinkDef = DRINKS[entry.drink];
+        total += entry.price;
+        ctx.fillStyle = '#ccc';
         ctx.font = '11px monospace';
         ctx.fillText(
-          `${drinkDef?.name || order.drink}  $${price} ${order.fulfilled ? '✓' : ''}`,
+          `${drinkDef?.name || entry.drink}  $${entry.price}`,
           px + 30, py + 105 + i * 18
         );
       });
 
       // Total
-      if (orders.length > 0) {
-        const totalY = py + 110 + orders.length * 18;
+      if (tab.length > 0) {
+        const totalY = py + 110 + tab.length * 18;
         ctx.fillStyle = '#4caf50';
         ctx.font = 'bold 12px monospace';
         ctx.fillText(`Total: $${total}`, px + 30, totalY);
@@ -589,7 +588,7 @@ export class Renderer {
       });
 
       // Print Check button
-      const canPrint = guest && guest.state === GUEST_STATE.READY_TO_PAY;
+      const canPrint = guest && guest.state === GUEST_STATE.READY_TO_PAY && tab.length > 0;
       ctx.fillStyle = canPrint ? '#ffc107' : '#333';
       ctx.beginPath();
       ctx.roundRect(px + pw - 160, py + ph - 55, 140, 40, 6);

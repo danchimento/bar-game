@@ -32,14 +32,11 @@ export const STATION_LABEL_Y = 520;
 export const BAR_LEFT = 30;
 export const BAR_RIGHT = 930;
 
-// Seat positions (6 seats spread across landscape)
+// Seat positions (3 seats)
 export const SEATS = [
-  { id: 0, x: 110 },
-  { id: 1, x: 260 },
-  { id: 2, x: 410 },
-  { id: 3, x: 560 },
-  { id: 4, x: 710 },
-  { id: 5, x: 860 },
+  { id: 0, x: 200 },
+  { id: 1, x: 480 },
+  { id: 2, x: 760 },
 ];
 
 // Station definitions — consolidated taps and wines into single stations

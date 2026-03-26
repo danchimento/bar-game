@@ -93,7 +93,7 @@ export class Guest {
         this.mood = Math.min(MOOD_MAX, this.mood + 15);
         break;
       case GUEST_STATE.WANTS_ANOTHER:
-        this.chooseDrink();
+        // Keep same drink — "another one"
         break;
       case GUEST_STATE.READY_TO_PAY:
         break;
