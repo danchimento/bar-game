@@ -365,6 +365,7 @@ export class Game {
       case GUEST_STATE.SEATED:
         if (!guest.greeted) {
           options.push({ label: 'Greet', action: () => this.greetGuest(guest) });
+          options.push({ label: 'Greet & Order', action: () => this.greetAndOrder(guest) });
         }
         break;
 
@@ -419,6 +420,22 @@ export class Game {
           guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
         }
         this.hud.showMessage('Greeted!', 1);
+      });
+    });
+  }
+
+  greetAndOrder(guest) {
+    const seatX = SEATS[guest.seatId].x;
+    this.walkThenAct(seatX, () => {
+      this.bartender.startAction(ACTION_DURATIONS.GREET + ACTION_DURATIONS.TAKE_ORDER, 'Greet & order...', () => {
+        guest.greeted = true;
+        guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
+        // Force ready-to-order so chooseDrink runs, then immediately take order
+        guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
+        this.notepad.addOrder(guest.id, guest.seatId, guest.currentDrink);
+        guest.orderOnNotepad = true;
+        guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
+        this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
       });
     });
   }
@@ -581,10 +598,26 @@ export class Game {
   handleDrinkModalTap(x, y) {
     const modal = this.drinkModal;
     const items = modal.items;
-    const pw = Math.min(400, 100 + items.length * 120);
-    const ph = 200;
+    const btnW = 110;
+    const btnH = 100;
+    const gap = 20;
+    const totalW = items.length * btnW + (items.length - 1) * gap;
+    const pw = totalW + 60;
+    const ph = 210;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
+    const startX = px + (pw - totalW) / 2;
+    const btnY = py + 70;
+
+    // Hit test drink buttons FIRST (before close button)
+    for (let i = 0; i < items.length; i++) {
+      const bx = startX + i * (btnW + gap);
+      if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
+        modal.pouringIndex = i;
+        modal.pourProgress = 0;
+        return;
+      }
+    }
 
     // Close button
     if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
@@ -592,24 +625,7 @@ export class Game {
       return;
     }
 
-    // Hit test drink buttons
-    const btnW = 90;
-    const btnH = 90;
-    const totalW = items.length * (btnW + 15) - 15;
-    const startX = px + (pw - totalW) / 2;
-    const btnY = py + 70;
-
-    for (let i = 0; i < items.length; i++) {
-      const bx = startX + i * (btnW + 15);
-      if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
-        // Start pouring
-        modal.pouringIndex = i;
-        modal.pourProgress = 0;
-        return;
-      }
-    }
-
-    // Tapped outside buttons — close
+    // Tapped outside modal — close
     if (x < px || x > px + pw || y < py || y > py + ph) {
       modal.visible = false;
     }

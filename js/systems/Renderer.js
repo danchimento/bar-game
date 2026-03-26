@@ -256,8 +256,12 @@ export class Renderer {
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     const items = modal.items;
-    const pw = Math.min(400, 100 + items.length * 120);
-    const ph = 200;
+    const btnW = 110;
+    const btnH = 100;
+    const gap = 20;
+    const totalW = items.length * btnW + (items.length - 1) * gap;
+    const pw = totalW + 60;
+    const ph = 210;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -281,14 +285,11 @@ export class Renderer {
     ctx.fillText('Tap & hold to pour', px + pw / 2, py + 50);
 
     // Drink buttons
-    const btnW = 90;
-    const btnH = 90;
-    const totalW = items.length * (btnW + 15) - 15;
     const startX = px + (pw - totalW) / 2;
     const btnY = py + 70;
 
     items.forEach((item, i) => {
-      const bx = startX + i * (btnW + 15);
+      const bx = startX + i * (btnW + gap);
       const drinkDef = DRINKS[item];
 
       // Button
