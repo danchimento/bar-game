@@ -533,6 +533,7 @@ export class Game {
 
         if (drinkType === guest.currentDrink) {
           // Correct drink
+          guest.drinksServed.push(drinkType);
           guest.transitionTo(GUEST_STATE.ENJOYING);
           this.hud.revenue += drinkDef.price;
           guest.totalSpent += drinkDef.price;
@@ -568,9 +569,27 @@ export class Game {
       if (this.bartender.carrying !== `CHECK_${guest.seatId}`) return;
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
         this.bartender.carrying = null;
-        // Guest reviews check, then leaves cash and walks out
+
+        // Compare POS tab vs what guest actually received
+        const tab = this.posTab.get(guest.seatId) || [];
+        const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
+        const servedTotal = guest.totalSpent;
+
+        if (tabTotal > servedTotal) {
+          // Overcharged — guest notices, tip is gone
+          guest.overcharged = true;
+          this.hud.showMessage('Overcharged!', 2);
+        } else if (tabTotal < servedTotal) {
+          // Undercharged — guest says nothing, you lose the difference
+          const lost = servedTotal - tabTotal;
+          this.hud.revenue -= lost;
+          guest.totalSpent = tabTotal;
+          this.hud.showMessage('Check delivered', 1);
+        } else {
+          this.hud.showMessage('Check delivered', 1);
+        }
+
         guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
-        this.hud.showMessage('Check delivered', 1);
       });
     });
   }

@@ -28,7 +28,9 @@ export class Guest {
     this.orderOnNotepad = false;
     this.orderWrittenDown = false; // true if player wrote the order on notepad
     this.orderRevealTimer = 0;    // countdown for showing order above head
-    this.cashOnBar = false;  // cash left on the bar after reviewing check
+    this.drinksServed = [];   // record of drinks actually served (drink keys)
+    this.overcharged = false; // true if POS tab was higher than what was served
+    this.cashOnBar = false;   // cash left on the bar after reviewing check
     this.tipAmount = 0;
     this.totalSpent = 0;
     this.checkedIn = false;
@@ -120,6 +122,11 @@ export class Guest {
   }
 
   calculateTip() {
+    // Overcharged — no tip
+    if (this.overcharged) {
+      this.tipAmount = 0;
+      return;
+    }
     const moodFraction = Math.max(0, this.mood / MOOD_MAX);
     const baseTip = this.totalSpent * 0.20;
     this.tipAmount = Math.round(baseTip * moodFraction * this.tipMultiplier * 100) / 100;
