@@ -505,12 +505,12 @@ export class Game {
           this.notepad.markFulfilled(guest.id);
           this.hud.showMessage('Served!', 1);
         } else if (drinkDef && wantedDef && drinkDef.glass !== wantedDef.glass) {
-          // Wrong glass type — bigger penalty
-          guest.mood -= 25;
+          // Wrong glass type
+          guest.mood -= 15;
           this.hud.showMessage('Wrong glass!', 1.5);
         } else {
-          // Right glass, wrong drink
-          guest.mood -= 15;
+          // Wrong drink entirely
+          guest.mood -= 25;
           this.hud.showMessage('Wrong drink!', 1.5);
         }
       });
