@@ -180,7 +180,13 @@ export class Game {
   // ─── INPUT ──────────────────────────────────────────
 
   setupInput() {
+    // Prevent all default touch behaviors (highlighting, scrolling, zoom)
+    for (const evt of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+      this.canvas.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
+    }
+
     this.canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
       const rect = this.canvas.getBoundingClientRect();
       const scaleX = CANVAS_W / rect.width;
       const scaleY = CANVAS_H / rect.height;

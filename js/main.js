@@ -3,20 +3,23 @@ import { CANVAS_W, CANVAS_H } from './constants.js';
 
 const canvas = document.getElementById('game');
 
+// Prevent all context menus and selection on long-press
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
+
+// Lock to landscape if API available
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('landscape').catch(() => {});
+}
+
 function resize() {
-  const aspect = CANVAS_W / CANVAS_H;
-  let w = window.innerWidth;
-  let h = window.innerHeight;
-  if (w / h > aspect) {
-    w = h * aspect;
-  } else {
-    h = w / aspect;
-  }
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
+  // Fill the entire viewport edge to edge
+  canvas.style.width = `${window.innerWidth}px`;
+  canvas.style.height = `${window.innerHeight}px`;
 }
 
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 100));
 resize();
 
 new Game(canvas);

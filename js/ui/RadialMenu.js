@@ -1,16 +1,20 @@
+import { CANVAS_W, CANVAS_H } from '../constants.js';
+
 export class RadialMenu {
   constructor() {
     this.visible = false;
     this.cx = 0;
     this.cy = 0;
-    this.options = []; // [{ label, action }]
+    this.options = [];
     this.radius = 55;
-    this.itemRadius = 22;
+    this.itemRadius = 24;
   }
 
   open(x, y, options) {
-    this.cx = x;
-    this.cy = y;
+    // Clamp so the menu + items stay on screen
+    const margin = this.radius + this.itemRadius + 4;
+    this.cx = Math.max(margin, Math.min(CANVAS_W - margin, x));
+    this.cy = Math.max(margin, Math.min(CANVAS_H - margin, y));
     this.options = options;
     this.visible = true;
   }
@@ -30,11 +34,10 @@ export class RadialMenu {
         return i;
       }
     }
-    // Check if click is far from menu center (dismiss)
     const dx = x - this.cx;
     const dy = y - this.cy;
     if (dx * dx + dy * dy > (this.radius + 50) * (this.radius + 50)) {
-      return -2; // dismiss signal
+      return -2;
     }
     return -1;
   }
@@ -66,7 +69,6 @@ export class RadialMenu {
       const pos = this.getOptionPos(i);
       const opt = this.options[i];
 
-      // Circle background
       ctx.fillStyle = opt.disabled ? '#555' : '#e8c170';
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, this.itemRadius, 0, Math.PI * 2);
@@ -76,16 +78,14 @@ export class RadialMenu {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Label
       ctx.fillStyle = opt.disabled ? '#888' : '#1a1a2e';
-      ctx.font = 'bold 10px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Multi-line support
       const words = opt.label.split(' ');
       if (words.length > 1) {
-        ctx.fillText(words[0], pos.x, pos.y - 5);
+        ctx.fillText(words[0], pos.x, pos.y - 6);
         ctx.fillText(words.slice(1).join(' '), pos.x, pos.y + 6);
       } else {
         ctx.fillText(opt.label, pos.x, pos.y);

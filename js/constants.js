@@ -19,12 +19,12 @@ export const COLORS = {
   SERVICE_MAT: '#333333',
 };
 
-// Layout Y positions (stretched to use full height)
-export const GUEST_Y = 90;
-export const SEAT_Y = 135;
-export const BAR_TOP_Y = 175;
-export const SERVICE_MAT_Y = 215;
-export const WALK_TRACK_Y = 290;
+// Layout Y positions — more room above guests for radial menus
+export const GUEST_Y = 140;
+export const SEAT_Y = 185;
+export const BAR_TOP_Y = 225;
+export const SERVICE_MAT_Y = 265;
+export const WALK_TRACK_Y = 330;
 export const STATION_Y = 470;
 export const STATION_LABEL_Y = 520;
 
