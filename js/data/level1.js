@@ -1,17 +1,17 @@
 export const LEVEL_1 = {
   name: 'Opening Night',
-  duration: 180, // 3 minutes
+  duration: 300, // 5 minutes
   spawnSchedule: [
-    { time: 3,   type: 'regular',    drinkPrefs: ['LAGER', 'IPA'] },
-    { time: 20,  type: 'quick',      drinkPrefs: ['STOUT'] },
-    { time: 40,  type: 'regular',    drinkPrefs: ['RED_WINE', 'WHITE_WINE'] },
-    { time: 55,  type: 'quick',      drinkPrefs: ['LAGER'] },
-    { time: 75,  type: 'regular',    drinkPrefs: ['IPA', 'STOUT'] },
-    { time: 90,  type: 'quick',      drinkPrefs: ['WHITE_WINE'] },
-    { time: 110, type: 'regular',    drinkPrefs: ['RED_WINE'] },
-    { time: 125, type: 'quick',      drinkPrefs: ['LAGER'] },
-    { time: 140, type: 'regular',    drinkPrefs: ['IPA', 'RED_WINE'] },
-    { time: 160, type: 'quick',      drinkPrefs: ['STOUT'] },
+    { time: 5,   type: 'regular',    drinkPrefs: ['LAGER', 'IPA'] },
+    { time: 35,  type: 'quick',      drinkPrefs: ['STOUT'] },
+    { time: 65,  type: 'regular',    drinkPrefs: ['RED_WINE', 'WHITE_WINE'] },
+    { time: 95,  type: 'quick',      drinkPrefs: ['LAGER'] },
+    { time: 120, type: 'regular',    drinkPrefs: ['IPA', 'STOUT'] },
+    { time: 145, type: 'quick',      drinkPrefs: ['WHITE_WINE'] },
+    { time: 170, type: 'regular',    drinkPrefs: ['RED_WINE'] },
+    { time: 200, type: 'quick',      drinkPrefs: ['LAGER'] },
+    { time: 235, type: 'regular',    drinkPrefs: ['IPA', 'RED_WINE'] },
+    { time: 265, type: 'quick',      drinkPrefs: ['STOUT'] },
   ],
   starThresholds: {
     1: 40,

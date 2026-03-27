@@ -3,6 +3,8 @@ import {
   STATION_Y, SERVICE_MAT_Y, SEAT_Y,
   ACTION_DURATIONS, HIT_RADIUS,
   GAME_STATE, MOOD_MAX, BAR_TOP_Y,
+  MOOD_DECAY, MOOD_GRACE_PERIOD, SETTLE_TIME,
+  ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from './constants.js';
 import { DRINKS, GLASSES } from './data/menu.js';
 import { LEVEL_1 } from './data/level1.js';
@@ -61,6 +63,21 @@ export class Game {
       pourDuration: 0,
     };
 
+    // Tunable settings — these override constants at runtime
+    this.settings = {
+      moodDecayMultiplier: 1.0,
+      gracePeriod: MOOD_GRACE_PERIOD,
+      settleTime: SETTLE_TIME,
+      enjoyTimeMin: ENJOY_TIME_MIN,
+      enjoyTimeMax: ENJOY_TIME_MAX,
+      orderRevealTime: ORDER_REVEAL_TIME,
+      spawnInterval: 1.0, // multiplier on spawn times
+      levelDuration: 300,
+    };
+
+    // Settings screen scroll
+    this.settingsScroll = 0;
+
     // Double-tap tracking
     this.lastTap = { x: 0, y: 0, time: 0 };
 
@@ -70,6 +87,13 @@ export class Game {
   }
 
   startLevel() {
+    // Apply spawn spacing to schedule
+    this.activeSchedule = this.level.spawnSchedule.map(s => ({
+      ...s,
+      time: s.time * this.settings.spawnInterval,
+    }));
+    this.activeDuration = this.settings.levelDuration;
+
     this.bartender = new Bartender();
     this.guests = [];
     this.dirtySeats = new Set();
@@ -82,7 +106,7 @@ export class Game {
     this.notepad = new Notepad();
     this.hud = new HUD();
     this.hud.levelName = this.level.name;
-    this.hud.timeRemaining = this.level.duration;
+    this.hud.timeRemaining = this.activeDuration;
     this.hud.starThresholds = this.level.starThresholds;
     this.gameState = GAME_STATE.PLAYING;
     this.radialMenu.close();
@@ -103,7 +127,7 @@ export class Game {
     if (this.gameState !== GAME_STATE.PLAYING) return;
 
     this.levelTimer += dt;
-    this.hud.timeRemaining = Math.max(0, this.level.duration - this.levelTimer);
+    this.hud.timeRemaining = Math.max(0, this.activeDuration - this.levelTimer);
     this.hud.update(dt);
 
     // Update pouring in drink modal
@@ -128,7 +152,7 @@ export class Game {
 
     // Update guests
     for (const guest of this.guests) {
-      guest.update(dt, this.levelTimer);
+      guest.update(dt, this.levelTimer, this.settings);
     }
 
     // Clean up done guests — cash stays on bar
@@ -150,7 +174,7 @@ export class Game {
     });
 
     // Check level end — also need cash to be collected and seats cleared
-    if (this.levelTimer >= this.level.duration && this.guests.length === 0 &&
+    if (this.levelTimer >= this.activeDuration && this.guests.length === 0 &&
         this.cashOnBar.size === 0 && this.dirtySeats.size === 0) {
       this.gameState = GAME_STATE.LEVEL_COMPLETE;
     }
@@ -167,17 +191,19 @@ export class Game {
 
   spawnGuests() {
     // Spawn new guests from schedule (always spawn, even if no seat)
-    if (this.spawnIndex < this.level.spawnSchedule.length) {
-      const next = this.level.spawnSchedule[this.spawnIndex];
+    if (this.spawnIndex < this.activeSchedule.length) {
+      const next = this.activeSchedule[this.spawnIndex];
       if (this.levelTimer >= next.time) {
         const available = this.getAvailableSeats();
         if (available.length > 0) {
           const seat = available[Math.floor(Math.random() * available.length)];
           const guest = new Guest(seat.id, next.type, next.drinkPrefs);
+          guest.settings = this.settings;
           this.guests.push(guest);
         } else {
           // No seat — guest waits behind the bar
           const guest = new Guest(null, next.type, next.drinkPrefs);
+          guest.settings = this.settings;
           this.guests.push(guest);
           this.positionWaitingGuests();
         }
@@ -206,11 +232,69 @@ export class Game {
     });
   }
 
+  // ─── SETTINGS SCREEN ─────────────────────────────────
+
+  handleSettingsTap(x, y) {
+    const pw = 700;
+    const ph = 460;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    // Start button
+    if (x > px + pw / 2 - 80 && x < px + pw / 2 + 80 &&
+        y > py + ph - 55 && y < py + ph - 15) {
+      this.startLevel();
+      return;
+    }
+
+    // Settings rows
+    const settings = [
+      { key: 'moodDecayMultiplier', min: 0.1, max: 3.0, step: 0.1 },
+      { key: 'gracePeriod',         min: 10,  max: 120, step: 5 },
+      { key: 'settleTime',          min: 1,   max: 10,  step: 0.5 },
+      { key: 'enjoyTimeMin',        min: 5,   max: 60,  step: 5 },
+      { key: 'enjoyTimeMax',        min: 10,  max: 90,  step: 5 },
+      { key: 'orderRevealTime',     min: 2,   max: 20,  step: 1 },
+      { key: 'spawnInterval',       min: 0.3, max: 3.0, step: 0.1 },
+      { key: 'levelDuration',       min: 60,  max: 600, step: 30 },
+    ];
+
+    const rowH = 36;
+    const startY = py + 60;
+    const btnSize = 32;
+
+    for (let i = 0; i < settings.length; i++) {
+      const s = settings[i];
+      const ry = startY + i * rowH;
+
+      // Minus button
+      const minusBx = px + pw - 180;
+      if (x > minusBx && x < minusBx + btnSize && y > ry && y < ry + btnSize) {
+        this.settings[s.key] = Math.max(s.min,
+          Math.round((this.settings[s.key] - s.step) * 100) / 100);
+        return;
+      }
+
+      // Plus button
+      const plusBx = px + pw - 60;
+      if (x > plusBx && x < plusBx + btnSize && y > ry && y < ry + btnSize) {
+        this.settings[s.key] = Math.min(s.max,
+          Math.round((this.settings[s.key] + s.step) * 100) / 100);
+        return;
+      }
+    }
+  }
+
   render() {
     this.renderer.clear();
 
     if (this.gameState === GAME_STATE.TITLE) {
       this.renderer.drawTitleScreen();
+      return;
+    }
+
+    if (this.gameState === GAME_STATE.SETTINGS) {
+      this.renderer.drawSettingsScreen(this.settings);
       return;
     }
 
@@ -292,8 +376,14 @@ export class Game {
     // Title screen
     if (this.gameState === GAME_STATE.TITLE) {
       if (x > CANVAS_W / 2 - 90 && x < CANVAS_W / 2 + 90 && y > 270 && y < 320) {
-        this.startLevel();
+        this.gameState = GAME_STATE.SETTINGS;
       }
+      return;
+    }
+
+    // Settings screen
+    if (this.gameState === GAME_STATE.SETTINGS) {
+      this.handleSettingsTap(x, y);
       return;
     }
 

@@ -82,17 +82,17 @@ export const MOOD_THRESHOLDS = {
   FRUSTRATED: 10,
 };
 
-// Mood decay rates (per second) — slow enough to handle glass picking + POS + pouring
+// Mood decay rates (per second) — halved for early levels, stress comes later
 export const MOOD_DECAY = {
-  WAITING_FOR_SEAT: 0.5,
+  WAITING_FOR_SEAT: 0.25,
   ARRIVING: 0,
-  SEATED: 0.3,
-  READY_TO_ORDER: 1.2,
+  SEATED: 0.15,
+  READY_TO_ORDER: 0.6,
   ORDER_TAKEN: 0,
-  WAITING_FOR_DRINK: 1.5,
+  WAITING_FOR_DRINK: 0.75,
   ENJOYING: -3,
-  WANTS_ANOTHER: 1.0,
-  READY_TO_PAY: 1.0,
+  WANTS_ANOTHER: 0.5,
+  READY_TO_PAY: 0.5,
   REVIEWING_CHECK: 0,
   LEAVING: 0,
   DONE: 0,
@@ -100,15 +100,15 @@ export const MOOD_DECAY = {
 };
 
 // Grace period — mood decay scales from 0% to 100% over this many seconds
-export const MOOD_GRACE_PERIOD = 30;
+export const MOOD_GRACE_PERIOD = 60;
 
 // Timers (seconds)
-export const SETTLE_TIME = 2.5;
+export const SETTLE_TIME = 4;
 export const ORDER_TAKE_TIME = 1;
-export const ENJOY_TIME_MIN = 12;
-export const ENJOY_TIME_MAX = 20;
-export const CHECK_REVIEW_TIME = 4; // time guest spends reviewing check before leaving cash
-export const ORDER_REVEAL_TIME = 5; // seconds order shows above guest's head
+export const ENJOY_TIME_MIN = 20;
+export const ENJOY_TIME_MAX = 35;
+export const CHECK_REVIEW_TIME = 6;
+export const ORDER_REVEAL_TIME = 8;
 
 // Station action durations
 export const ACTION_DURATIONS = {
@@ -132,6 +132,7 @@ export const HIT_RADIUS = 40;
 // Game states
 export const GAME_STATE = {
   TITLE: 'TITLE',
+  SETTINGS: 'SETTINGS',
   PLAYING: 'PLAYING',
   PAUSED: 'PAUSED',
   LEVEL_COMPLETE: 'LEVEL_COMPLETE',

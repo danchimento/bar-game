@@ -653,6 +653,106 @@ export class Renderer {
     ctx.fillText('Play Again', CANVAS_W / 2, 363);
   }
 
+  drawSettingsScreen(settings) {
+    const ctx = this.ctx;
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    const pw = 700;
+    const ph = 460;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    // Panel
+    ctx.fillStyle = '#252540';
+    ctx.strokeStyle = '#e8c170';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Title
+    ctx.fillStyle = '#e8c170';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Settings', px + pw / 2, py + 28);
+
+    const rows = [
+      { key: 'moodDecayMultiplier', label: 'Mood Decay Speed',   fmt: v => `${v.toFixed(1)}x` },
+      { key: 'gracePeriod',         label: 'Grace Period',        fmt: v => `${v}s` },
+      { key: 'settleTime',          label: 'Settle Time',         fmt: v => `${v.toFixed(1)}s` },
+      { key: 'enjoyTimeMin',        label: 'Enjoy Time (min)',    fmt: v => `${v}s` },
+      { key: 'enjoyTimeMax',        label: 'Enjoy Time (max)',    fmt: v => `${v}s` },
+      { key: 'orderRevealTime',     label: 'Order Reveal Time',   fmt: v => `${v}s` },
+      { key: 'spawnInterval',       label: 'Spawn Spacing',       fmt: v => `${v.toFixed(1)}x` },
+      { key: 'levelDuration',       label: 'Level Duration',      fmt: v => `${Math.floor(v / 60)}m ${v % 60}s` },
+    ];
+
+    const rowH = 36;
+    const startY = py + 60;
+    const btnSize = 32;
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const ry = startY + i * rowH;
+      const val = settings[r.key];
+
+      // Label
+      ctx.fillStyle = '#ccc';
+      ctx.font = '13px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(r.label, px + 25, ry + btnSize / 2);
+
+      // Minus button
+      const minusBx = px + pw - 180;
+      ctx.fillStyle = '#3a2a1a';
+      ctx.beginPath();
+      ctx.roundRect(minusBx, ry, btnSize, btnSize, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#e8c170';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('−', minusBx + btnSize / 2, ry + btnSize / 2);
+
+      // Value
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(r.fmt(val), minusBx + btnSize + 42, ry + btnSize / 2);
+
+      // Plus button
+      const plusBx = px + pw - 60;
+      ctx.fillStyle = '#3a2a1a';
+      ctx.beginPath();
+      ctx.roundRect(plusBx, ry, btnSize, btnSize, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#e8c170';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('+', plusBx + btnSize / 2, ry + btnSize / 2);
+    }
+
+    // Start button
+    ctx.fillStyle = '#e8c170';
+    ctx.beginPath();
+    ctx.roundRect(px + pw / 2 - 80, py + ph - 55, 160, 40, 8);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Start Shift', px + pw / 2, py + ph - 35);
+  }
+
   drawTitleScreen() {
     const ctx = this.ctx;
 

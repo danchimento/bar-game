@@ -21,6 +21,7 @@ export class Guest {
       : 0.8 + Math.random() * 0.6;
     this.patienceMultiplier = 1 / this.patience; // inverse — patient guests decay slower
     this.tipMultiplier = guestType === 'quick' ? 1.0 : 1.2;
+    this.settings = null; // set by game after creation
     this.mood = MOOD_MAX;
 
     // Seat assignment — null if waiting for seat
@@ -96,19 +97,21 @@ export class Guest {
     this.state = newState;
     switch (newState) {
       case GUEST_STATE.SEATED:
-        this.stateTimer = SETTLE_TIME * this.patience;
+        this.stateTimer = (this.settings?.settleTime ?? SETTLE_TIME) * this.patience;
         break;
       case GUEST_STATE.READY_TO_ORDER:
         this.chooseDrink();
         break;
       case GUEST_STATE.ORDER_TAKEN:
         this.stateTimer = 0.5;
-        this.orderRevealTimer = ORDER_REVEAL_TIME;
+        this.orderRevealTimer = this.settings?.orderRevealTime ?? ORDER_REVEAL_TIME;
         break;
       case GUEST_STATE.WAITING_FOR_DRINK:
         break;
       case GUEST_STATE.ENJOYING: {
-        const baseTime = ENJOY_TIME_MIN + Math.random() * (ENJOY_TIME_MAX - ENJOY_TIME_MIN);
+        const eMin = this.settings?.enjoyTimeMin ?? ENJOY_TIME_MIN;
+        const eMax = this.settings?.enjoyTimeMax ?? ENJOY_TIME_MAX;
+        const baseTime = eMin + Math.random() * (eMax - eMin);
         this.stateTimer = baseTime * this.patience;
         this.enjoyTotal = this.stateTimer; // for drink progress indicator
         this.mood = Math.min(MOOD_MAX, this.mood + 15);
@@ -164,12 +167,14 @@ export class Guest {
     if (!this.orderWrittenDown) this.tipAmount *= 1.15;
   }
 
-  update(dt, levelTimer) {
+  update(dt, levelTimer, settings) {
     // Mood decay — skip during grace period
     const decayRate = MOOD_DECAY[this.state] || 0;
+    const decayMult = settings?.moodDecayMultiplier ?? 1;
+    const grace = settings?.gracePeriod ?? 30;
     if (decayRate > 0 && levelTimer !== undefined) {
-      const graceFactor = Math.min(1, levelTimer / 30);
-      this.mood -= decayRate * dt * this.patienceMultiplier * graceFactor;
+      const graceFactor = Math.min(1, levelTimer / grace);
+      this.mood -= decayRate * dt * this.patienceMultiplier * decayMult * graceFactor;
       this.mood = Math.max(0, Math.min(MOOD_MAX, this.mood));
     } else if (decayRate < 0) {
       this.mood -= decayRate * dt;
