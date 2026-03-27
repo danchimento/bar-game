@@ -2,16 +2,16 @@ export const LEVEL_1 = {
   name: 'Opening Night',
   duration: 300, // 5 minutes
   spawnSchedule: [
-    { time: 5,   type: 'regular',    drinkPrefs: ['LAGER', 'IPA'] },
-    { time: 35,  type: 'quick',      drinkPrefs: ['STOUT'] },
+    { time: 5,   type: 'regular',    drinkPrefs: ['GOLD_LAGER', 'HAZY_IPA'] },
+    { time: 35,  type: 'quick',      drinkPrefs: ['DARK_PORTER'] },
     { time: 65,  type: 'regular',    drinkPrefs: ['RED_WINE', 'WHITE_WINE'] },
-    { time: 95,  type: 'quick',      drinkPrefs: ['LAGER'] },
-    { time: 120, type: 'regular',    drinkPrefs: ['IPA', 'STOUT'] },
+    { time: 95,  type: 'quick',      drinkPrefs: ['GOLD_LAGER'] },
+    { time: 120, type: 'regular',    drinkPrefs: ['HAZY_IPA', 'HARVEST_MOON'] },
     { time: 145, type: 'quick',      drinkPrefs: ['WHITE_WINE'] },
     { time: 170, type: 'regular',    drinkPrefs: ['RED_WINE'] },
-    { time: 200, type: 'quick',      drinkPrefs: ['LAGER'] },
-    { time: 235, type: 'regular',    drinkPrefs: ['IPA', 'RED_WINE'] },
-    { time: 265, type: 'quick',      drinkPrefs: ['STOUT'] },
+    { time: 200, type: 'quick',      drinkPrefs: ['GOLD_LAGER'] },
+    { time: 235, type: 'regular',    drinkPrefs: ['HARVEST_MOON', 'RED_WINE'] },
+    { time: 265, type: 'quick',      drinkPrefs: ['DARK_PORTER'] },
   ],
   starThresholds: {
     1: 40,

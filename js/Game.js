@@ -6,7 +6,7 @@ import {
   MOOD_DECAY, MOOD_GRACE_PERIOD, SETTLE_TIME,
   ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from './constants.js';
-import { DRINKS, GLASSES } from './data/menu.js';
+import { DRINKS, GLASSES, GARNISHES } from './data/menu.js';
 import { LEVEL_1 } from './data/level1.js';
 import { Bartender } from './entities/Bartender.js';
 import { Guest } from './entities/Guest.js';
@@ -63,6 +63,14 @@ export class Game {
       pourDuration: 0,
     };
 
+    // Prep/Garnish modal
+    this.prepModal = {
+      visible: false,
+    };
+
+    // Garnishes on the currently carried drink
+    this.carriedGarnishes = [];
+
     // Tunable settings — these override constants at runtime
     this.settings = {
       moodDecayMultiplier: 1.0,
@@ -80,6 +88,10 @@ export class Game {
 
     // Double-tap tracking
     this.lastTap = { x: 0, y: 0, time: 0 };
+
+    // Long-press tracking for prep station radial
+    this.longPressTimer = null;
+    this.longPressThreshold = 400; // ms
 
     this.setupInput();
     this.lastTime = performance.now();
@@ -113,6 +125,8 @@ export class Game {
     this.pos.visible = false;
     this.drinkModal.visible = false;
     this.glassModal.visible = false;
+    this.prepModal.visible = false;
+    this.carriedGarnishes = [];
   }
 
   loop(now) {
@@ -304,13 +318,14 @@ export class Game {
     this.renderer.drawCashOnBar(this.cashOnBar);
     this.renderer.drawServiceMat(this.serviceMat);
     this.renderer.drawGuests(this.guests);
-    if (this.bartender) this.renderer.drawBartender(this.bartender);
+    if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGarnishes);
     this.hud.draw(this.ctx);
     this.notepad.draw(this.ctx);
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
     this.renderer.drawDrinkModal(this.drinkModal);
     this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab);
+    this.renderer.drawPrepModal(this.prepModal, this.carriedGarnishes);
 
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
       this.renderer.drawLevelComplete(this.hud);
@@ -331,6 +346,14 @@ export class Game {
       const scaleY = CANVAS_H / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
+
+      // Start long-press timer for prep station
+      this.clearLongPress();
+      this.longPressTimer = setTimeout(() => {
+        this.longPressTimer = null;
+        this.handleLongPress(x, y);
+      }, this.longPressThreshold);
+
       this.handlePointerDown(x, y);
     });
 
@@ -346,6 +369,8 @@ export class Game {
     });
 
     this.canvas.addEventListener('pointerup', (e) => {
+      this.clearLongPress();
+
       if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0) {
         this.drinkModal.pouringIndex = -1;
         this.drinkModal.pourProgress = 0;
@@ -406,6 +431,12 @@ export class Game {
     // Drink modal
     if (this.drinkModal.visible) {
       this.handleDrinkModalTap(x, y);
+      return;
+    }
+
+    // Prep/Garnish modal
+    if (this.prepModal.visible) {
+      this.handlePrepModalTap(x, y);
       return;
     }
 
@@ -473,6 +504,42 @@ export class Game {
     }
   }
 
+  clearLongPress() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
+  handleLongPress(x, y) {
+    if (this.gameState !== GAME_STATE.PLAYING) return;
+    if (this.radialMenu.visible || this.prepModal.visible || this.pos.visible ||
+        this.glassModal.visible || this.drinkModal.visible) return;
+
+    // Check if long-press is on the prep station
+    const prepStation = STATIONS.find(s => s.id === 'PREP');
+    if (!prepStation) return;
+    const dx = x - prepStation.x;
+    const dy = y - STATION_Y;
+    if (Math.abs(dx) > 45 || Math.abs(dy) > 34) return;
+
+    // Must be carrying a drink
+    if (!this.bartender.carrying || !this.bartender.carrying.startsWith('DRINK_')) return;
+
+    // Open radial menu with garnish options at the station
+    const garnishKeys = Object.keys(GARNISHES);
+    const options = garnishKeys.map(key => ({
+      label: GARNISHES[key].name,
+      disabled: this.carriedGarnishes.includes(key),
+      action: () => {
+        this.walkThenAct(prepStation.x, () => {
+          this.addGarnish(key);
+        });
+      },
+    }));
+    this.radialMenu.open(prepStation.x, STATION_Y - 40, options);
+  }
+
   hitTestGuest(x, y) {
     for (const g of this.guests) {
       if (g.state === GUEST_STATE.DONE || g.state === GUEST_STATE.LEAVING ||
@@ -527,8 +594,9 @@ export class Game {
 
     if (bt.carrying.startsWith('DRINK_')) {
       const drinkType = bt.carrying.replace('DRINK_', '');
-      this.serviceMat.push({ drinkType, x: bt.x });
+      this.serviceMat.push({ drinkType, x: bt.x, garnishes: [...this.carriedGarnishes] });
       bt.carrying = null;
+      this.carriedGarnishes = [];
       this.hud.showMessage('Put down drink', 1);
     } else if (bt.carrying.startsWith('GLASS_')) {
       bt.carrying = null;
@@ -653,15 +721,26 @@ export class Game {
 
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
         this.bartender.carrying = null;
+        const garnishes = [...this.carriedGarnishes];
+        this.carriedGarnishes = [];
 
         if (drinkType === guest.currentDrink) {
-          // Correct drink
+          // Correct drink — check garnish
+          const requiredGarnish = drinkDef.garnish;
+          const hasRequired = !requiredGarnish || garnishes.includes(requiredGarnish);
+
           guest.drinksServed.push(drinkType);
           guest.transitionTo(GUEST_STATE.ENJOYING);
           this.hud.revenue += drinkDef.price;
           guest.totalSpent += drinkDef.price;
           this.notepad.markFulfilled(guest.id);
-          this.hud.showMessage('Served!', 1);
+
+          if (!hasRequired) {
+            guest.mood -= 10;
+            this.hud.showMessage('Missing garnish!', 1.5);
+          } else {
+            this.hud.showMessage('Served!', 1);
+          }
         } else if (drinkDef && wantedDef && drinkDef.glass !== wantedDef.glass) {
           // Wrong glass type
           guest.mood -= 15;
@@ -768,6 +847,16 @@ export class Game {
         });
         break;
 
+      case 'PREP':
+        if (!bt.carrying || !bt.carrying.startsWith('DRINK_')) {
+          this.hud.showMessage('Need a drink first', 1);
+          return;
+        }
+        this.walkThenAct(station.x, () => {
+          this.prepModal.visible = true;
+        });
+        break;
+
       case 'POS':
         this.openPOS();
         break;
@@ -828,7 +917,7 @@ export class Game {
     this.drinkModal.pourProgress = 0;
 
     if (type === 'beer') {
-      this.drinkModal.items = ['LAGER', 'IPA', 'STOUT'];
+      this.drinkModal.items = ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'];
       this.drinkModal.pourDuration = ACTION_DURATIONS.POUR_BEER;
     } else {
       this.drinkModal.items = ['RED_WINE', 'WHITE_WINE'];
@@ -874,11 +963,61 @@ export class Game {
     const drinkType = modal.items[modal.pouringIndex];
 
     this.bartender.carrying = `DRINK_${drinkType}`;
+    this.carriedGarnishes = []; // fresh drink, no garnishes yet
     this.hud.showMessage(`${DRINKS[drinkType]?.name} poured!`, 1);
 
     modal.visible = false;
     modal.pouringIndex = -1;
     modal.pourProgress = 0;
+  }
+
+  // ─── PREP / GARNISH MODAL ──────────────────────────
+
+  handlePrepModalTap(x, y) {
+    const garnishKeys = Object.keys(GARNISHES);
+    const btnW = 90;
+    const btnH = 90;
+    const gap = 15;
+    const totalW = garnishKeys.length * btnW + (garnishKeys.length - 1) * gap;
+    const pw = totalW + 60;
+    const ph = 220;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+    const startX = px + (pw - totalW) / 2;
+    const btnY = py + 75;
+
+    // Hit test garnish buttons
+    for (let i = 0; i < garnishKeys.length; i++) {
+      const bx = startX + i * (btnW + gap);
+      if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
+        const key = garnishKeys[i];
+        this.addGarnish(key);
+        return;
+      }
+    }
+
+    // Close button
+    if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
+      this.prepModal.visible = false;
+      return;
+    }
+
+    // Outside modal
+    if (x < px || x > px + pw || y < py || y > py + ph) {
+      this.prepModal.visible = false;
+    }
+  }
+
+  addGarnish(garnishKey) {
+    if (this.carriedGarnishes.includes(garnishKey)) {
+      this.hud.showMessage('Already added!', 1);
+      return;
+    }
+    this.bartender.startAction(ACTION_DURATIONS.GARNISH, 'Garnishing...', () => {
+      this.carriedGarnishes.push(garnishKey);
+      this.hud.showMessage(`Added ${GARNISHES[garnishKey].name}`, 1);
+    });
+    this.prepModal.visible = false;
   }
 
   // ─── SERVICE MAT (put-down drinks) ──────────────────
@@ -891,6 +1030,7 @@ export class Game {
     }
     this.walkThenAct(drink.x, () => {
       bt.carrying = `DRINK_${drink.drinkType}`;
+      this.carriedGarnishes = drink.garnishes || [];
       this.serviceMat = this.serviceMat.filter(d => d !== drink);
     });
   }

@@ -4,7 +4,7 @@ import {
   GUEST_Y, SEAT_Y, SEATS, STATIONS, BAR_LEFT, BAR_RIGHT,
   MOOD_MAX, GUEST_STATE,
 } from '../constants.js';
-import { DRINKS, GLASSES } from '../data/menu.js';
+import { DRINKS, GLASSES, GARNISHES } from '../data/menu.js';
 
 export class Renderer {
   constructor(ctx) {
@@ -182,7 +182,7 @@ export class Renderer {
     }
   }
 
-  drawBartender(bartender) {
+  drawBartender(bartender, carriedGarnishes) {
     const ctx = this.ctx;
     const x = bartender.x;
     const y = bartender.y;
@@ -209,7 +209,7 @@ export class Renderer {
     ctx.fill();
 
     if (bartender.carrying) {
-      const label = this.getCarryLabel(bartender.carrying);
+      const label = this.getCarryLabel(bartender.carrying, carriedGarnishes);
       ctx.font = '18px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -233,13 +233,17 @@ export class Renderer {
     }
   }
 
-  getCarryLabel(carrying) {
+  getCarryLabel(carrying, garnishes) {
     if (carrying === 'GLASS_PINT') return '🍺';
     if (carrying === 'GLASS_WINE_GLASS') return '🍷';
     if (carrying === 'DIRTY_GLASS') return '🫧';
     if (carrying.startsWith('DRINK_')) {
       const drinkKey = carrying.replace('DRINK_', '');
-      return DRINKS[drinkKey]?.icon || '🍺';
+      let label = DRINKS[drinkKey]?.icon || '🍺';
+      if (garnishes && garnishes.length > 0) {
+        label += garnishes.map(g => GARNISHES[g]?.icon || '').join('');
+      }
+      return label;
     }
     if (carrying.startsWith('CHECK_')) return '🧾';
     return '?';
@@ -265,6 +269,13 @@ export class Renderer {
       ctx.font = '16px serif';
       ctx.textAlign = 'center';
       ctx.fillText(drinkDef.icon, drink.x, SERVICE_MAT_Y + 16);
+
+      // Show garnish icons on service mat drinks
+      if (drink.garnishes && drink.garnishes.length > 0) {
+        ctx.font = '10px serif';
+        const icons = drink.garnishes.map(g => GARNISHES[g]?.icon || '').join('');
+        ctx.fillText(icons, drink.x, SERVICE_MAT_Y - 4);
+      }
     }
   }
 
@@ -617,6 +628,95 @@ export class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('Print Check', px + pw - 90, py + ph - 35);
     }
+  }
+
+  // ─── PREP / GARNISH MODAL ─────────────────────────
+
+  drawPrepModal(modal, carriedGarnishes) {
+    if (!modal.visible) return;
+    const ctx = this.ctx;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    const garnishKeys = Object.keys(GARNISHES);
+    const btnW = 90;
+    const btnH = 90;
+    const gap = 15;
+    const totalW = garnishKeys.length * btnW + (garnishKeys.length - 1) * gap;
+    const pw = totalW + 60;
+    const ph = 220;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    ctx.fillStyle = '#1a2a1a';
+    ctx.strokeStyle = '#6b8a5a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#8ac870';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Prep Station', px + pw / 2, py + 30);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.fillText('Add a garnish to your drink', px + pw / 2, py + 50);
+
+    // Show what's already on the drink
+    if (carriedGarnishes && carriedGarnishes.length > 0) {
+      const icons = carriedGarnishes.map(g => GARNISHES[g]?.icon || '').join(' ');
+      ctx.fillStyle = '#aaa';
+      ctx.font = '12px monospace';
+      ctx.fillText(`On drink: ${icons}`, px + pw / 2, py + 66);
+    }
+
+    const startX = px + (pw - totalW) / 2;
+    const btnY = py + 75;
+
+    garnishKeys.forEach((key, i) => {
+      const garnish = GARNISHES[key];
+      const bx = startX + i * (btnW + gap);
+      const alreadyAdded = carriedGarnishes && carriedGarnishes.includes(key);
+
+      ctx.fillStyle = alreadyAdded ? '#2a4a2a' : '#3a3025';
+      ctx.beginPath();
+      ctx.roundRect(bx, btnY, btnW, btnH, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = alreadyAdded ? '#4caf50' : '#8a7a6a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.font = '32px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(garnish.icon, bx + btnW / 2, btnY + 36);
+
+      ctx.fillStyle = alreadyAdded ? '#4caf50' : '#eee';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(garnish.name, bx + btnW / 2, btnY + 70);
+
+      if (alreadyAdded) {
+        ctx.fillStyle = '#4caf50';
+        ctx.font = '9px monospace';
+        ctx.fillText('✓ Added', bx + btnW / 2, btnY + 83);
+      }
+    });
+
+    // Close button
+    ctx.fillStyle = '#f44336';
+    ctx.beginPath();
+    ctx.roundRect(px + pw - 40, py + 8, 30, 24, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('X', px + pw - 25, py + 20);
   }
 
   drawLevelComplete(hud) {

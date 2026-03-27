@@ -41,11 +41,12 @@ export const SEATS = [
 
 // Station definitions
 export const STATIONS = [
-  { id: 'DISHWASHER',  x: 80,  label: 'Dish',  icon: '🫧' },
-  { id: 'GLASS_RACK',  x: 230, label: 'Glass', icon: '🥃' },
-  { id: 'TAPS',        x: 420, label: 'Taps',  icon: '🍺' },
-  { id: 'WINE',        x: 610, label: 'Wine',  icon: '🍷' },
-  { id: 'POS',         x: 820, label: 'POS',   icon: '💻' },
+  { id: 'DISHWASHER',  x: 70,  label: 'Dish',  icon: '🫧' },
+  { id: 'GLASS_RACK',  x: 200, label: 'Glass', icon: '🥃' },
+  { id: 'TAPS',        x: 360, label: 'Taps',  icon: '🍺' },
+  { id: 'WINE',        x: 510, label: 'Wine',  icon: '🍷' },
+  { id: 'PREP',        x: 660, label: 'Prep',  icon: '🔪' },
+  { id: 'POS',         x: 850, label: 'POS',   icon: '💻' },
 ];
 
 // Bartender
@@ -124,6 +125,7 @@ export const ACTION_DURATIONS = {
   COLLECT_CASH: 0.4,
   BUS: 0.5,
   PRINT_CHECK: 1.5,
+  GARNISH: 0.6,
 };
 
 // Hit detection radius
