@@ -1,7 +1,7 @@
 import {
   GUEST_STATE, MOOD_MAX, MOOD_DECAY, MOOD_THRESHOLDS,
   SETTLE_TIME, ENJOY_TIME_MIN, ENJOY_TIME_MAX,
-  CHECK_REVIEW_TIME, ORDER_REVEAL_TIME, GUEST_Y, SEATS,
+  CHECK_REVIEW_TIME, ORDER_REVEAL_TIME, GUEST_Y, WAITING_Y, SEATS,
 } from '../constants.js';
 
 let nextGuestId = 1;
@@ -9,21 +9,37 @@ let nextGuestId = 1;
 export class Guest {
   constructor(seatId, guestType, drinkPrefs) {
     this.id = nextGuestId++;
-    this.seatId = seatId;
-    this.seat = SEATS[seatId];
-    this.x = this.seat.x;
-    this.y = -30;
-    this.targetY = GUEST_Y;
-    this.state = GUEST_STATE.ARRIVING;
-    this.mood = MOOD_MAX;
     this.guestType = guestType;
     this.drinkPrefs = drinkPrefs;
     this.currentDrink = null;
     this.drinksHad = 0;
     this.maxDrinks = guestType === 'quick' ? 1 : Math.floor(Math.random() * 2) + 2;
-    this.patienceMultiplier = guestType === 'quick' ? 0.8 : 1.0;
+    // Patience: higher = more patient (waits longer, decays slower)
+    // quick guests: 0.6-0.9, regular guests: 0.8-1.4
+    this.patience = guestType === 'quick'
+      ? 0.6 + Math.random() * 0.3
+      : 0.8 + Math.random() * 0.6;
+    this.patienceMultiplier = 1 / this.patience; // inverse — patient guests decay slower
     this.tipMultiplier = guestType === 'quick' ? 1.0 : 1.2;
+    this.mood = MOOD_MAX;
+
+    // Seat assignment — null if waiting for seat
+    this.seatId = seatId;
+    if (seatId !== null) {
+      this.seat = SEATS[seatId];
+      this.x = this.seat.x;
+      this.y = -30;
+      this.targetY = GUEST_Y;
+      this.state = GUEST_STATE.ARRIVING;
+    } else {
+      this.seat = null;
+      this.x = 0;  // set by game when positioned in wait line
+      this.y = WAITING_Y;
+      this.targetY = WAITING_Y;
+      this.state = GUEST_STATE.WAITING_FOR_SEAT;
+    }
     this.stateTimer = 0;
+    this.enjoyTotal = 0;  // total enjoy time for drink progress display
     this.greeted = false;
     this.orderOnNotepad = false;
     this.orderWrittenDown = false; // true if player wrote the order on notepad
@@ -61,6 +77,7 @@ export class Guest {
 
   getIndicator() {
     switch (this.state) {
+      case GUEST_STATE.WAITING_FOR_SEAT: return '⏳';
       case GUEST_STATE.ARRIVING: return null;
       case GUEST_STATE.SEATED: return this.greeted ? '...' : '👋';
       case GUEST_STATE.READY_TO_ORDER: return '✋';
@@ -79,7 +96,7 @@ export class Guest {
     this.state = newState;
     switch (newState) {
       case GUEST_STATE.SEATED:
-        this.stateTimer = SETTLE_TIME;
+        this.stateTimer = SETTLE_TIME * this.patience;
         break;
       case GUEST_STATE.READY_TO_ORDER:
         this.chooseDrink();
@@ -90,10 +107,13 @@ export class Guest {
         break;
       case GUEST_STATE.WAITING_FOR_DRINK:
         break;
-      case GUEST_STATE.ENJOYING:
-        this.stateTimer = ENJOY_TIME_MIN + Math.random() * (ENJOY_TIME_MAX - ENJOY_TIME_MIN);
+      case GUEST_STATE.ENJOYING: {
+        const baseTime = ENJOY_TIME_MIN + Math.random() * (ENJOY_TIME_MAX - ENJOY_TIME_MIN);
+        this.stateTimer = baseTime * this.patience;
+        this.enjoyTotal = this.stateTimer; // for drink progress indicator
         this.mood = Math.min(MOOD_MAX, this.mood + 15);
         break;
+      }
       case GUEST_STATE.WANTS_ANOTHER:
         // Keep same drink — "another one"
         break;
@@ -114,6 +134,15 @@ export class Guest {
         this.tipAmount = 0;
         break;
     }
+  }
+
+  assignSeat(seatId) {
+    this.seatId = seatId;
+    this.seat = SEATS[seatId];
+    this.x = this.seat.x;
+    this.y = -30;
+    this.targetY = GUEST_Y;
+    this.state = GUEST_STATE.ARRIVING;
   }
 
   chooseDrink() {

@@ -39,14 +39,13 @@ export const SEATS = [
   { id: 2, x: 760 },
 ];
 
-// Station definitions — consolidated taps and wines into single stations
+// Station definitions
 export const STATIONS = [
   { id: 'DISHWASHER',  x: 80,  label: 'Dish',  icon: '🫧' },
-  { id: 'GLASS_RACK',  x: 210, label: 'Glass', icon: '🥃' },
-  { id: 'TAPS',        x: 380, label: 'Taps',  icon: '🍺' },
-  { id: 'WINE',        x: 550, label: 'Wine',  icon: '🍷' },
-  { id: 'POS',         x: 720, label: 'POS',   icon: '💻' },
-  { id: 'CHECK_PRINTER', x: 870, label: 'Check', icon: '🖨️' },
+  { id: 'GLASS_RACK',  x: 230, label: 'Glass', icon: '🥃' },
+  { id: 'TAPS',        x: 420, label: 'Taps',  icon: '🍺' },
+  { id: 'WINE',        x: 610, label: 'Wine',  icon: '🍷' },
+  { id: 'POS',         x: 820, label: 'POS',   icon: '💻' },
 ];
 
 // Bartender
@@ -54,7 +53,11 @@ export const BARTENDER_SPEED = 280;
 export const BARTENDER_START_X = 480;
 
 // Guest states
+// Y position for waiting guests (behind seats)
+export const WAITING_Y = 70;
+
 export const GUEST_STATE = {
+  WAITING_FOR_SEAT: 'WAITING_FOR_SEAT',
   ARRIVING: 'ARRIVING',
   SEATED: 'SEATED',
   READY_TO_ORDER: 'READY_TO_ORDER',
@@ -81,6 +84,7 @@ export const MOOD_THRESHOLDS = {
 
 // Mood decay rates (per second) — slow enough to handle glass picking + POS + pouring
 export const MOOD_DECAY = {
+  WAITING_FOR_SEAT: 0.5,
   ARRIVING: 0,
   SEATED: 0.3,
   READY_TO_ORDER: 1.2,
@@ -119,6 +123,7 @@ export const ACTION_DURATIONS = {
   CHECK_IN: 0.5,
   COLLECT_CASH: 0.4,
   BUS: 0.5,
+  PRINT_CHECK: 1.5,
 };
 
 // Hit detection radius

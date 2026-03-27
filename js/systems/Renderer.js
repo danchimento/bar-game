@@ -152,6 +152,24 @@ export class Renderer {
         ctx.restore();
       }
 
+      // Drink progress — small glass that empties during ENJOYING
+      if (guest.state === 'ENJOYING' && guest.enjoyTotal > 0) {
+        const progress = guest.stateTimer / guest.enjoyTotal; // 1 = full, 0 = empty
+        const gx = x + 20;
+        const gy = y - 8;
+        const gw = 8;
+        const gh = 14;
+        // Glass outline
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(gx, gy, gw, gh);
+        // Fill level
+        const drinkDef = DRINKS[guest.currentDrink];
+        const fillH = gh * Math.max(0, progress);
+        ctx.fillStyle = drinkDef?.color || '#d4a020';
+        ctx.fillRect(gx, gy + gh - fillH, gw, fillH);
+      }
+
       // Mood bar
       const barW = 32;
       const barH = 4;

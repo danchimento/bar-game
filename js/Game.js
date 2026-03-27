@@ -134,7 +134,7 @@ export class Game {
     // Clean up done guests — cash stays on bar
     this.guests = this.guests.filter(g => {
       if (g.state === GUEST_STATE.DONE) {
-        if (g.seatDirty) this.dirtySeats.add(g.seatId);
+        if (g.seatDirty && g.seatId !== null) this.dirtySeats.add(g.seatId);
         // If guest left cash, put it on bar
         if (g.cashOnBar && g.totalSpent > 0) {
           this.cashOnBar.set(g.seatId, {
@@ -156,21 +156,54 @@ export class Game {
     }
   }
 
+  getAvailableSeats() {
+    const occupiedSeats = new Set(
+      this.guests.filter(g => g.seatId !== null).map(g => g.seatId)
+    );
+    return SEATS.filter(s =>
+      !occupiedSeats.has(s.id) && !this.dirtySeats.has(s.id) && !this.cashOnBar.has(s.id)
+    );
+  }
+
   spawnGuests() {
-    if (this.spawnIndex >= this.level.spawnSchedule.length) return;
-    const next = this.level.spawnSchedule[this.spawnIndex];
-    if (this.levelTimer >= next.time) {
-      const occupiedSeats = new Set(this.guests.map(g => g.seatId));
-      const available = SEATS.filter(s =>
-        !occupiedSeats.has(s.id) && !this.dirtySeats.has(s.id) && !this.cashOnBar.has(s.id)
-      );
-      if (available.length > 0) {
-        const seat = available[Math.floor(Math.random() * available.length)];
-        const guest = new Guest(seat.id, next.type, next.drinkPrefs);
-        this.guests.push(guest);
+    // Spawn new guests from schedule (always spawn, even if no seat)
+    if (this.spawnIndex < this.level.spawnSchedule.length) {
+      const next = this.level.spawnSchedule[this.spawnIndex];
+      if (this.levelTimer >= next.time) {
+        const available = this.getAvailableSeats();
+        if (available.length > 0) {
+          const seat = available[Math.floor(Math.random() * available.length)];
+          const guest = new Guest(seat.id, next.type, next.drinkPrefs);
+          this.guests.push(guest);
+        } else {
+          // No seat — guest waits behind the bar
+          const guest = new Guest(null, next.type, next.drinkPrefs);
+          this.guests.push(guest);
+          this.positionWaitingGuests();
+        }
         this.spawnIndex++;
       }
     }
+
+    // Try to seat waiting guests
+    const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
+    if (waiting.length > 0) {
+      const available = this.getAvailableSeats();
+      for (const guest of waiting) {
+        if (available.length === 0) break;
+        const seat = available.shift();
+        guest.assignSeat(seat.id);
+      }
+      this.positionWaitingGuests();
+    }
+  }
+
+  positionWaitingGuests() {
+    const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
+    const startX = 480 - (waiting.length - 1) * 40 / 2;
+    waiting.forEach((g, i) => {
+      g.x = startX + i * 40;
+    });
   }
 
   render() {
@@ -646,7 +679,6 @@ export class Game {
         break;
 
       case 'POS':
-      case 'CHECK_PRINTER':
         this.openPOS();
         break;
     }
@@ -788,7 +820,7 @@ export class Game {
     const seatX = SEATS[seatId].x;
     this.walkThenAct(seatX, () => {
       if (hasCash) {
-        // Collect cash first, then bus if dirty
+        // Collect cash first
         bt.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {
           const cash = this.cashOnBar.get(seatId);
           if (cash) {
@@ -796,16 +828,16 @@ export class Game {
             this.cashOnBar.delete(seatId);
             this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
           }
-          if (hasDirty) {
-            bt.startAction(ACTION_DURATIONS.BUS, 'Bussing...', () => {
+          // Then bus if dirty — chain automatically
+          if (this.dirtySeats.has(seatId)) {
+            bt.startAction(ACTION_DURATIONS.BUS, 'Clearing...', () => {
               bt.carrying = 'DIRTY_GLASS';
               this.dirtySeats.delete(seatId);
             });
           }
         });
-      } else {
-        // Just bus
-        bt.startAction(ACTION_DURATIONS.BUS, 'Bussing...', () => {
+      } else if (hasDirty) {
+        bt.startAction(ACTION_DURATIONS.BUS, 'Clearing...', () => {
           bt.carrying = 'DIRTY_GLASS';
           this.dirtySeats.delete(seatId);
           this.hud.showMessage('Cleared!', 1);
@@ -873,14 +905,24 @@ export class Game {
       if (x > printBx && x < printBx + 140 && y > printBy && y < printBy + 40) {
         if (tab.length === 0) {
           this.hud.showMessage('No drinks on tab', 1);
-        } else if (guest && guest.state === GUEST_STATE.READY_TO_PAY) {
-          this.bartender.carrying = `CHECK_${seatId}`;
-          this.pos.visible = false;
-          this.hud.showMessage(`Check for Seat ${seatId + 1}`, 1.5);
         } else {
-          this.hud.showMessage('Not ready to pay yet', 1);
+          this.pos.visible = false;
+          this.bartender.startAction(ACTION_DURATIONS.PRINT_CHECK, 'Printing...', () => {
+            this.bartender.carrying = `CHECK_${seatId}`;
+            this.hud.showMessage(`Check for Seat ${seatId + 1}`, 1.5);
+          });
         }
         return;
+      }
+
+      // Tap tab item to remove
+      for (let i = 0; i < tab.length; i++) {
+        const itemY = py + 105 + i * 18;
+        if (x > px + 20 && x < px + 250 && y > itemY - 10 && y < itemY + 8) {
+          const removed = tab.splice(i, 1)[0];
+          this.hud.showMessage(`Removed ${DRINKS[removed.drink]?.name}`, 1);
+          return;
+        }
       }
 
       // Drink buttons — add to POS tab
