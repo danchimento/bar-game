@@ -133,9 +133,36 @@ export class Renderer {
         ctx.fillText(indicator, x, y - 24);
       }
 
-      // Drink order label — shows temporarily after order is taken, fades out
-      if (guest.currentDrink && guest.orderRevealTimer > 0) {
-        const alpha = Math.min(1, guest.orderRevealTimer / 1.0); // fade over last 1s
+      // Order label — shows temporarily after order is taken, fades out
+      if (guest.currentOrder && guest.orderRevealTimer > 0) {
+        const alpha = Math.min(1, guest.orderRevealTimer / 1.0);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = '10px monospace';
+
+        // Build order display with icons: "🍺 Gold Lager + 💧 Water"
+        const orderParts = guest.currentOrder.map((drinkKey, idx) => {
+          const d = DRINKS[drinkKey];
+          const fulfilled = guest.fulfilledItems && guest.fulfilledItems.includes(drinkKey);
+          const icon = d?.icon || '?';
+          const name = d?.name || drinkKey;
+          return fulfilled ? `✓${icon}` : `${icon} ${name}`;
+        });
+        const orderText = orderParts.join(' + ');
+        const tw = ctx.measureText(orderText).width + 16;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.beginPath();
+        ctx.roundRect(x - tw / 2, y - 48, tw, 18, 3);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(orderText, x, y - 39);
+        ctx.restore();
+      } else if (guest.currentDrink && guest.orderRevealTimer > 0) {
+        // Fallback for single-drink display
+        const alpha = Math.min(1, guest.orderRevealTimer / 1.0);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.font = '10px monospace';
@@ -182,7 +209,7 @@ export class Renderer {
     }
   }
 
-  drawBartender(bartender, carriedGarnishes) {
+  drawBartender(bartender, carriedGlass) {
     const ctx = this.ctx;
     const x = bartender.x;
     const y = bartender.y;
@@ -209,11 +236,16 @@ export class Renderer {
     ctx.fill();
 
     if (bartender.carrying) {
-      const label = this.getCarryLabel(bartender.carrying, carriedGarnishes);
-      ctx.font = '18px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, x, y - 26);
+      if (carriedGlass) {
+        this.drawMiniGlass(x, y - 34, 14, 20, carriedGlass);
+      } else {
+        // Non-glass carry (dirty glass, check)
+        const label = this.getCarryLabel(bartender.carrying);
+        ctx.font = '18px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y - 26);
+      }
     }
 
     if (bartender.busy) {
@@ -233,20 +265,53 @@ export class Renderer {
     }
   }
 
-  getCarryLabel(carrying, garnishes) {
-    if (carrying === 'GLASS_PINT') return '🍺';
-    if (carrying === 'GLASS_WINE_GLASS') return '🍷';
+  getCarryLabel(carrying) {
     if (carrying === 'DIRTY_GLASS') return '🫧';
-    if (carrying.startsWith('DRINK_')) {
-      const drinkKey = carrying.replace('DRINK_', '');
-      let label = DRINKS[drinkKey]?.icon || '🍺';
-      if (garnishes && garnishes.length > 0) {
-        label += garnishes.map(g => GARNISHES[g]?.icon || '').join('');
-      }
-      return label;
-    }
     if (carrying.startsWith('CHECK_')) return '🧾';
     return '?';
+  }
+
+  /** Draw a small glass showing fill state — used above bartender and on service mat */
+  drawMiniGlass(cx, cy, w, h, glass) {
+    const ctx = this.ctx;
+    const gx = cx - w / 2;
+    const gy = cy - h / 2;
+
+    // Glass outline
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(gx, gy, w, h);
+
+    // Ice layer at bottom
+    if (glass.ice > 0) {
+      const iceH = h * glass.ice;
+      ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+      ctx.fillRect(gx, gy + h - iceH, w, iceH);
+      // Ice cubes
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.9)';
+      const cubeSize = Math.min(w / 3, iceH * 0.6);
+      ctx.fillRect(gx + 1, gy + h - iceH + 1, cubeSize, cubeSize);
+      ctx.fillRect(gx + w - cubeSize - 1, gy + h - iceH + 1, cubeSize, cubeSize);
+    }
+
+    // Liquid layers (drawn above ice)
+    let fillBottom = h * (1 - glass.ice);
+    for (const layer of glass.layers) {
+      const layerH = h * layer.amount;
+      ctx.fillStyle = layer.color;
+      ctx.fillRect(gx, gy + fillBottom - layerH, w, layerH);
+      fillBottom -= layerH;
+    }
+
+    // Garnish icons on top
+    if (glass.garnishes.length > 0) {
+      ctx.font = '8px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        glass.garnishes.map(g => GARNISHES[g]?.icon || '').join(''),
+        cx, gy - 2
+      );
+    }
   }
 
   drawServiceMat(drinks) {
@@ -254,27 +319,20 @@ export class Renderer {
     if (drinks.length === 0) return;
 
     for (const drink of drinks) {
-      const drinkDef = DRINKS[drink.drinkType];
-      if (!drinkDef) continue;
-
-      ctx.fillStyle = drinkDef.color || '#ccc';
-      ctx.beginPath();
-      ctx.roundRect(drink.x - 16, SERVICE_MAT_Y + 1, 32, 24, 4);
-      ctx.fill();
-
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.font = '16px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(drinkDef.icon, drink.x, SERVICE_MAT_Y + 16);
-
-      // Show garnish icons on service mat drinks
-      if (drink.garnishes && drink.garnishes.length > 0) {
-        ctx.font = '10px serif';
-        const icons = drink.garnishes.map(g => GARNISHES[g]?.icon || '').join('');
-        ctx.fillText(icons, drink.x, SERVICE_MAT_Y - 4);
+      if (drink.glass) {
+        // Draw mini glass on service mat
+        this.drawMiniGlass(drink.x, SERVICE_MAT_Y + 13, 20, 26, drink.glass);
+      } else {
+        // Fallback for old-style entries
+        const drinkDef = DRINKS[drink.drinkType];
+        if (!drinkDef) continue;
+        ctx.fillStyle = drinkDef.color || '#ccc';
+        ctx.beginPath();
+        ctx.roundRect(drink.x - 16, SERVICE_MAT_Y + 1, 32, 24, 4);
+        ctx.fill();
+        ctx.font = '16px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(drinkDef.icon, drink.x, SERVICE_MAT_Y + 16);
       }
     }
   }
@@ -359,7 +417,7 @@ export class Renderer {
 
   // ─── DRINK MODAL ──────────────────────────────────
 
-  drawDrinkModal(modal) {
+  drawDrinkModal(modal, carriedGlass) {
     if (!modal.visible) return;
     const ctx = this.ctx;
 
@@ -370,59 +428,70 @@ export class Renderer {
     const btnW = 110;
     const btnH = 100;
     const gap = 20;
-    const totalW = items.length * btnW + (items.length - 1) * gap;
-    const pw = totalW + 60;
-    const ph = 210;
+    const glassAreaW = 100; // space for glass visual on left
+    const totalBtnsW = items.length * btnW + (items.length - 1) * gap;
+    const pw = glassAreaW + totalBtnsW + 80;
+    const ph = 230;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
-    ctx.fillStyle = modal.type === 'beer' ? '#2a1a0a' : '#2a1020';
-    ctx.strokeStyle = modal.type === 'beer' ? '#d4a020' : '#8b1a4a';
+    const typeColors = {
+      beer:  { bg: '#2a1a0a', border: '#d4a020', title: '#d4a020' },
+      wine:  { bg: '#2a1020', border: '#8b1a4a', title: '#d4708a' },
+      mixer: { bg: '#0a1a2a', border: '#4a9ad4', title: '#6ab4e8' },
+    };
+    const colors = typeColors[modal.type] || typeColors.beer;
+    const titles = { beer: 'Draft Beers', wine: 'Wines', mixer: 'Soda Gun' };
+
+    ctx.fillStyle = colors.bg;
+    ctx.strokeStyle = colors.border;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.roundRect(px, py, pw, ph, 12);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = modal.type === 'beer' ? '#d4a020' : '#d4708a';
+    ctx.fillStyle = colors.title;
     ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(modal.type === 'beer' ? 'Draft Beers' : 'Wines', px + pw / 2, py + 30);
+    ctx.fillText(titles[modal.type] || 'Pour', px + pw / 2, py + 30);
 
     ctx.fillStyle = '#888';
     ctx.font = '11px monospace';
-    ctx.fillText('Tap & hold to pour', px + pw / 2, py + 50);
+    ctx.fillText('Hold to pour, release to stop', px + pw / 2, py + 50);
 
-    const startX = px + (pw - totalW) / 2;
+    // ─── Glass visual on the left ───
+    if (carriedGlass) {
+      const glassX = px + 50;
+      const glassY = py + 80;
+      const gw = 50;
+      const gh = 120;
+      this.drawGlassVisual(glassX, glassY, gw, gh, carriedGlass, modal.pouringIndex >= 0);
+    }
+
+    // ─── Drink buttons on the right ───
+    const startX = px + glassAreaW + 20;
     const btnY = py + 70;
 
     items.forEach((item, i) => {
       const bx = startX + i * (btnW + gap);
       const drinkDef = DRINKS[item];
+      const isPouring = modal.pouringIndex === i;
 
-      ctx.fillStyle = '#3a3025';
+      ctx.fillStyle = isPouring ? '#4a4035' : '#3a3025';
       ctx.beginPath();
       ctx.roundRect(bx, btnY, btnW, btnH, 8);
       ctx.fill();
 
-      ctx.strokeStyle = '#8a7a6a';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isPouring ? '#ffd54f' : '#8a7a6a';
+      ctx.lineWidth = isPouring ? 3 : 2;
       ctx.stroke();
 
+      // Color swatch
       ctx.fillStyle = drinkDef.color || '#555';
       ctx.beginPath();
       ctx.roundRect(bx + 4, btnY + btnH - 14, btnW - 8, 10, 4);
       ctx.fill();
-
-      if (modal.pouringIndex === i && modal.pourProgress > 0) {
-        ctx.fillStyle = drinkDef.color || '#555';
-        ctx.globalAlpha = 0.6;
-        const fillH = btnH * modal.pourProgress;
-        ctx.beginPath();
-        ctx.roundRect(bx, btnY + btnH - fillH, btnW, fillH, 8);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
 
       ctx.font = '28px serif';
       ctx.textAlign = 'center';
@@ -435,9 +504,10 @@ export class Renderer {
 
       ctx.fillStyle = '#aaa';
       ctx.font = '10px monospace';
-      ctx.fillText(`$${drinkDef.price}`, bx + btnW / 2, btnY + 84);
+      ctx.fillText(drinkDef.price > 0 ? `$${drinkDef.price}` : 'Free', bx + btnW / 2, btnY + 84);
     });
 
+    // Close button
     ctx.fillStyle = '#f44336';
     ctx.beginPath();
     ctx.roundRect(px + pw - 40, py + 8, 30, 24, 4);
@@ -447,6 +517,77 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('X', px + pw - 25, py + 20);
+  }
+
+  /** Draw a larger glass visual for pour modals */
+  drawGlassVisual(cx, cy, w, h, glass, isPouring) {
+    const ctx = this.ctx;
+    const gx = cx - w / 2;
+    const gy = cy;
+
+    // Glass shape
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.08)';
+    ctx.fillRect(gx, gy, w, h);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(gx, gy, w, h);
+
+    // Ice at bottom
+    if (glass.ice > 0) {
+      const iceH = h * glass.ice;
+      const iceY = gy + h - iceH;
+      ctx.fillStyle = 'rgba(200, 230, 255, 0.5)';
+      ctx.fillRect(gx + 1, iceY, w - 2, iceH);
+      // Ice cubes
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.8)';
+      const cs = Math.min(w / 3 - 2, iceH * 0.5);
+      if (cs > 2) {
+        ctx.fillRect(gx + 3, iceY + 2, cs, cs);
+        ctx.fillRect(gx + w - cs - 3, iceY + 2, cs, cs);
+        if (w > 30) ctx.fillRect(gx + w / 2 - cs / 2, iceY + cs + 3, cs, cs);
+      }
+    }
+
+    // Liquid layers
+    let fillBottom = h * (1 - glass.ice);
+    for (const layer of glass.layers) {
+      const layerH = h * layer.amount;
+      ctx.fillStyle = layer.color;
+      ctx.fillRect(gx + 1, gy + fillBottom - layerH, w - 2, layerH);
+      fillBottom -= layerH;
+    }
+
+    // Pour stream animation
+    if (isPouring && glass.totalFill < 1.0) {
+      const streamX = cx;
+      ctx.strokeStyle = glass.layers.length > 0
+        ? glass.layers[glass.layers.length - 1].color
+        : '#a0d4e8';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(streamX, gy - 20);
+      const fillY = gy + h * (1 - glass.totalFill);
+      ctx.lineTo(streamX, fillY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Garnish icons
+    if (glass.garnishes.length > 0) {
+      ctx.font = '12px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        glass.garnishes.map(g => GARNISHES[g]?.icon || '').join(''),
+        cx, gy - 4
+      );
+    }
+
+    // Fill percentage text
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.round(glass.totalFill * 100)}%`, cx, gy + h + 14);
   }
 
   // ─── POS OVERLAY ──────────────────────────────────
@@ -459,7 +600,7 @@ export class Renderer {
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     const pw = 500;
-    const ph = 380;
+    const ph = 440;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -580,40 +721,44 @@ export class Renderer {
         ctx.fillText(`Total: $${total}`, px + 30, totalY);
       }
 
-      // Add drink section
+      // Add drink section (2-row grid)
       ctx.fillStyle = '#888';
       ctx.font = '11px monospace';
       ctx.textAlign = 'left';
       ctx.fillText('Add drink:', px + 20, py + 168);
 
       const drinks = Object.keys(DRINKS);
-      const btnW = 85;
-      const btnH = 55;
-      const drinksGap = 8;
+      const btnW = 65;
+      const btnH = 50;
+      const drinksGap = 6;
+      const cols = 4;
       const drinksY = py + 180;
 
       drinks.forEach((key, i) => {
         const drinkDef = DRINKS[key];
-        const bx = px + 20 + i * (btnW + drinksGap);
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const bx = px + 20 + col * (btnW + drinksGap);
+        const by = drinksY + row * (btnH + drinksGap);
 
         ctx.fillStyle = '#2a2a1a';
         ctx.beginPath();
-        ctx.roundRect(bx, drinksY, btnW, btnH, 4);
+        ctx.roundRect(bx, by, btnW, btnH, 4);
         ctx.fill();
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.font = '16px serif';
+        ctx.font = '14px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(drinkDef.icon, bx + btnW / 2, drinksY + 18);
+        ctx.fillText(drinkDef.icon, bx + btnW / 2, by + 16);
 
         ctx.fillStyle = '#ccc';
-        ctx.font = '9px monospace';
-        ctx.fillText(drinkDef.name, bx + btnW / 2, drinksY + 38);
+        ctx.font = '8px monospace';
+        ctx.fillText(drinkDef.name, bx + btnW / 2, by + 33);
         ctx.fillStyle = '#888';
-        ctx.fillText(`$${drinkDef.price}`, bx + btnW / 2, drinksY + 49);
+        ctx.fillText(drinkDef.price > 0 ? `$${drinkDef.price}` : 'Free', bx + btnW / 2, by + 43);
       });
 
       // Print Check button
@@ -632,20 +777,15 @@ export class Renderer {
 
   // ─── PREP / GARNISH MODAL ─────────────────────────
 
-  drawPrepModal(modal, carriedGarnishes) {
+  drawPrepModal(modal, carriedGlass) {
     if (!modal.visible) return;
     const ctx = this.ctx;
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    const garnishKeys = Object.keys(GARNISHES);
-    const btnW = 90;
-    const btnH = 90;
-    const gap = 15;
-    const totalW = garnishKeys.length * btnW + (garnishKeys.length - 1) * gap;
-    const pw = totalW + 60;
-    const ph = 220;
+    const pw = 520;
+    const ph = 340;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -660,52 +800,91 @@ export class Renderer {
     ctx.fillStyle = '#8ac870';
     ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Prep Station', px + pw / 2, py + 30);
+    ctx.fillText('Prep Station', px + pw / 2, py + 28);
 
+    // ─── Row 1: Ice ───
+    const iceY = py + 55;
     ctx.fillStyle = '#888';
     ctx.font = '11px monospace';
-    ctx.fillText('Add a garnish to your drink', px + pw / 2, py + 50);
+    ctx.textAlign = 'left';
+    ctx.fillText('Ice:', px + 20, iceY - 2);
 
-    // Show what's already on the drink
-    if (carriedGarnishes && carriedGarnishes.length > 0) {
-      const icons = carriedGarnishes.map(g => GARNISHES[g]?.icon || '').join(' ');
-      ctx.fillStyle = '#aaa';
-      ctx.font = '12px monospace';
-      ctx.fillText(`On drink: ${icons}`, px + pw / 2, py + 66);
+    const hasIce = carriedGlass && carriedGlass.ice > 0;
+    ctx.fillStyle = hasIce ? '#2a4a4a' : '#3a3025';
+    ctx.beginPath();
+    ctx.roundRect(px + 20, iceY + 6, 90, 50, 8);
+    ctx.fill();
+    ctx.strokeStyle = hasIce ? '#4caf50' : '#8a7a6a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '24px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🧊', px + 65, iceY + 24);
+    ctx.fillStyle = hasIce ? '#4caf50' : '#eee';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(hasIce ? '✓ Ice' : 'Ice', px + 65, iceY + 44);
+
+    // Show current glass state
+    if (carriedGlass) {
+      this.drawMiniGlass(px + pw - 50, iceY + 30, 30, 50, carriedGlass);
     }
 
-    const startX = px + (pw - totalW) / 2;
-    const btnY = py + 75;
+    // ─── Row 2: Garnishes ───
+    const garnishKeys = Object.keys(GARNISHES);
+    const gBtnW = 80;
+    const gBtnH = 70;
+    const gGap = 10;
+    const garnishY = py + 130;
+    ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Garnishes:', px + 20, garnishY - 2);
 
     garnishKeys.forEach((key, i) => {
       const garnish = GARNISHES[key];
-      const bx = startX + i * (btnW + gap);
-      const alreadyAdded = carriedGarnishes && carriedGarnishes.includes(key);
+      const bx = px + 20 + i * (gBtnW + gGap);
+      const alreadyAdded = carriedGlass && carriedGlass.garnishes.includes(key);
 
       ctx.fillStyle = alreadyAdded ? '#2a4a2a' : '#3a3025';
       ctx.beginPath();
-      ctx.roundRect(bx, btnY, btnW, btnH, 8);
+      ctx.roundRect(bx, garnishY + 6, gBtnW, gBtnH, 8);
       ctx.fill();
-
       ctx.strokeStyle = alreadyAdded ? '#4caf50' : '#8a7a6a';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      ctx.font = '32px serif';
+      ctx.font = '24px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(garnish.icon, bx + btnW / 2, btnY + 36);
-
+      ctx.fillText(garnish.icon, bx + gBtnW / 2, garnishY + 30);
       ctx.fillStyle = alreadyAdded ? '#4caf50' : '#eee';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(garnish.name, bx + btnW / 2, btnY + 70);
-
-      if (alreadyAdded) {
-        ctx.fillStyle = '#4caf50';
-        ctx.font = '9px monospace';
-        ctx.fillText('✓ Added', bx + btnW / 2, btnY + 83);
-      }
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(garnish.name, bx + gBtnW / 2, garnishY + 58);
     });
+
+    // ─── Row 3: Mixer / Soda Gun ───
+    const mixerY = py + 225;
+    ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Soda Gun:', px + 20, mixerY - 2);
+
+    const mixerBtnW = 90;
+    ctx.fillStyle = '#1a2a3a';
+    ctx.beginPath();
+    ctx.roundRect(px + 20, mixerY + 6, mixerBtnW, 60, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#4a9ad4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '24px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💧', px + 20 + mixerBtnW / 2, mixerY + 28);
+    ctx.fillStyle = '#6ab4e8';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('Water', px + 20 + mixerBtnW / 2, mixerY + 52);
 
     // Close button
     ctx.fillStyle = '#f44336';

@@ -9,7 +9,7 @@ export const LEVEL_1 = {
     { time: 120, type: 'regular',    drinkPrefs: ['HAZY_IPA', 'HARVEST_MOON'] },
     { time: 145, type: 'quick',      drinkPrefs: ['WHITE_WINE'] },
     { time: 170, type: 'regular',    drinkPrefs: ['RED_WINE'] },
-    { time: 200, type: 'quick',      drinkPrefs: ['GOLD_LAGER'] },
+    { time: 200, type: 'quick',      drinkPrefs: ['GOLD_LAGER', 'WATER'] },
     { time: 235, type: 'regular',    drinkPrefs: ['HARVEST_MOON', 'RED_WINE'] },
     { time: 265, type: 'quick',      drinkPrefs: ['DARK_PORTER'] },
   ],

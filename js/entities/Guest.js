@@ -21,6 +21,7 @@ export class Guest {
       : 0.8 + Math.random() * 0.6;
     this.patienceMultiplier = 1 / this.patience; // inverse — patient guests decay slower
     this.tipMultiplier = guestType === 'quick' ? 1.0 : 1.2;
+    this.wantsWater = drinkPrefs.includes('WATER') || (guestType === 'regular' && Math.random() < 0.25);
     this.settings = null; // set by game after creation
     this.mood = MOOD_MAX;
 
@@ -45,9 +46,11 @@ export class Guest {
     this.orderOnNotepad = false;
     this.orderWrittenDown = false; // true if player wrote the order on notepad
     this.orderRevealTimer = 0;    // countdown for showing order above head
-    this.drinksServed = [];   // record of drinks actually served (drink keys)
-    this.overcharged = false; // true if POS tab was higher than what was served
-    this.cashOnBar = false;   // cash left on the bar after reviewing check
+    this.currentOrder = null;    // array of drink keys for multi-item orders, or null for single
+    this.fulfilledItems = [];    // tracks which items from currentOrder have been served
+    this.drinksServed = [];      // record of drinks actually served (drink keys)
+    this.overcharged = false;    // true if POS tab was higher than what was served
+    this.cashOnBar = false;      // cash left on the bar after reviewing check
     this.tipAmount = 0;
     this.totalSpent = 0;
     this.checkedIn = false;
@@ -119,6 +122,8 @@ export class Guest {
       }
       case GUEST_STATE.WANTS_ANOTHER:
         // Keep same drink — "another one"
+        this.currentOrder = [this.currentDrink];
+        this.fulfilledItems = [];
         break;
       case GUEST_STATE.READY_TO_PAY:
         break;
@@ -151,6 +156,14 @@ export class Guest {
   chooseDrink() {
     const idx = Math.floor(Math.random() * this.drinkPrefs.length);
     this.currentDrink = this.drinkPrefs[idx];
+
+    // Build current order — may include extra items like water
+    if (this.wantsWater && this.drinksHad === 0) {
+      this.currentOrder = [this.currentDrink, 'WATER'];
+    } else {
+      this.currentOrder = [this.currentDrink];
+    }
+    this.fulfilledItems = [];
   }
 
   calculateTip() {
