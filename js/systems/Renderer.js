@@ -83,14 +83,22 @@ export class Renderer {
     }
   }
 
+  drawDrinksAtSeats(drinksMap) {
+    for (const [seatId, glass] of drinksMap) {
+      const seat = SEATS[seatId];
+      this.drawMiniGlass(seat.x + 20, BAR_TOP_Y + 5, 16, 22, glass);
+    }
+  }
+
   drawCashOnBar(cashMap) {
     const ctx = this.ctx;
     for (const [seatId] of cashMap) {
       const seat = SEATS[seatId];
-      // Cash on the bar top
+      // Cash on the bar in front of seat
+      const cashX = seat.x - 20;
       ctx.fillStyle = '#2d6b2e';
       ctx.beginPath();
-      ctx.roundRect(seat.x - 14, BAR_TOP_Y + 4, 28, 18, 3);
+      ctx.roundRect(cashX - 14, BAR_TOP_Y + 4, 28, 18, 3);
       ctx.fill();
       ctx.strokeStyle = '#1a4a1a';
       ctx.lineWidth = 1;
@@ -99,7 +107,7 @@ export class Renderer {
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('$', seat.x, BAR_TOP_Y + 13);
+      ctx.fillText('$', cashX, BAR_TOP_Y + 13);
     }
   }
 

@@ -19,8 +19,8 @@ export const COLORS = {
   SERVICE_MAT: '#333333',
 };
 
-// Layout Y positions — more room above guests for radial menus
-export const GUEST_Y = 140;
+// Layout Y positions — guests sit right at the bar
+export const GUEST_Y = 200;
 export const SEAT_Y = 185;
 export const BAR_TOP_Y = 225;
 export const SERVICE_MAT_Y = 265;

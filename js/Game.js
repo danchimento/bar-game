@@ -97,6 +97,7 @@ export class Game {
     this.longPressThreshold = 250; // ms
     this.longPressFired = false;   // suppress tap when long-press fires
     this.pendingStationTap = null; // deferred station tap for tap-vs-longpress
+    this._radialPouring = false;   // true when pouring via radial hover
     this.pointerDownPos = { x: 0, y: 0 };
 
     this.setupInput();
@@ -118,6 +119,7 @@ export class Game {
     this.cashOnBar = new Map();
     this.posTab = new Map();
     this.serviceMat = [];
+    this.drinksAtSeats = new Map(); // seatId → GlassState
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
@@ -184,6 +186,8 @@ export class Game {
     this.guests = this.guests.filter(g => {
       if (g.state === GUEST_STATE.DONE) {
         if (g.seatDirty && g.seatId !== null) this.dirtySeats.add(g.seatId);
+        // Clear drink from bar when guest leaves
+        this.drinksAtSeats.delete(g.seatId);
         // If guest left cash, put it on bar
         if (g.cashOnBar && g.totalSpent > 0) {
           this.cashOnBar.set(g.seatId, {
@@ -326,6 +330,7 @@ export class Game {
     this.renderer.drawBar();
     this.renderer.drawStations();
     this.renderer.drawDirtySeats(this.dirtySeats);
+    this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
     this.renderer.drawCashOnBar(this.cashOnBar);
     this.renderer.drawServiceMat(this.serviceMat);
     const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
@@ -388,6 +393,19 @@ export class Game {
 
       if (this.radialMenu.visible && this.radialMenu.dragging) {
         this.radialMenu.updateHover(x, y);
+        // Hover-pour: start/stop pouring based on hovered radial option
+        const idx = this.radialMenu.hoveredIndex;
+        const opt = idx >= 0 ? this.radialMenu.options[idx] : null;
+        if (opt && opt.pourKey && !opt.disabled) {
+          if (!this.activePour || this.activePour.drinkKey !== opt.pourKey) {
+            this.bartender.moveTo(opt.stationX);
+            this.startPour(opt.pourKey, opt.pourRate);
+            this._radialPouring = true;
+          }
+        } else if (this._radialPouring) {
+          this.activePour = null;
+          this._radialPouring = false;
+        }
       }
 
       // Cancel long-press if finger moves too far
@@ -414,10 +432,12 @@ export class Game {
       // Drag-release on radial menu
       if (this.radialMenu.visible && this.radialMenu.dragging) {
         this.radialMenu.dragging = false;
+        this._radialPouring = false;
         const idx = this.radialMenu.hoveredIndex;
         if (idx >= 0) {
           const option = this.radialMenu.options[idx];
-          if (option.action && !option.disabled) {
+          // Pour options are handled via hover — don't fire action on release
+          if (option.action && !option.disabled && !option.pourKey) {
             option.action();
           }
           this.radialMenu.close();
@@ -605,11 +625,9 @@ export class Game {
         for (const key of beers) {
           options.push({
             label: DRINKS[key].name,
-            action: () => {
-              this.walkThenAct(station.x, () => {
-                this.startPour(key, pourRate);
-              });
-            },
+            pourKey: key,
+            pourRate,
+            stationX: station.x,
           });
         }
         break;
@@ -621,11 +639,9 @@ export class Game {
         for (const key of wines) {
           options.push({
             label: DRINKS[key].name,
-            action: () => {
-              this.walkThenAct(station.x, () => {
-                this.startPour(key, pourRate);
-              });
-            },
+            pourKey: key,
+            pourRate,
+            stationX: station.x,
           });
         }
         break;
@@ -745,8 +761,9 @@ export class Game {
   hitTestCash(x, y) {
     for (const [seatId] of this.cashOnBar) {
       const seat = SEATS[seatId];
-      // Cash appears on the bar top near the seat
-      if (Math.abs(x - seat.x) < 26 && Math.abs(y - (BAR_TOP_Y + 10)) < 18) return seatId;
+      // Cash appears on the bar in front of seat (offset left)
+      const cashX = seat.x - 20;
+      if (Math.abs(x - cashX) < 26 && Math.abs(y - (BAR_TOP_Y + 10)) < 18) return seatId;
     }
     return null;
   }
@@ -893,6 +910,8 @@ export class Game {
       const result = glass.validate(wantedKey);
 
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
+        // Place drink on bar in front of guest
+        this.drinksAtSeats.set(guest.seatId, glass);
         this.bartender.carrying = null;
         this.carriedGlass = null;
 
@@ -1370,19 +1389,20 @@ export class Game {
       return;
     }
 
+    // Outside modal
+    if (x < px || x > px + pw || y < py || y > py + ph) {
+      this.pos.visible = false;
+      return;
+    }
+
     if (this.pos.mode === 'SELECT_SEAT') {
       // Seat buttons
       for (let i = 0; i < SEATS.length; i++) {
         const bx = px + 20 + (i % 3) * 155;
         const by = py + 70 + Math.floor(i / 3) * 55;
         if (x > bx && x < bx + 140 && y > by && y < by + 42) {
-          const guest = this.guests.find(g => g.seatId === i &&
-            g.state !== GUEST_STATE.DONE && g.state !== GUEST_STATE.LEAVING &&
-            g.state !== GUEST_STATE.ANGRY_LEAVING);
-          if (guest) {
-            this.pos.mode = 'SEAT_VIEW';
-            this.pos.selectedSeat = i;
-          }
+          this.pos.mode = 'SEAT_VIEW';
+          this.pos.selectedSeat = i;
         }
       }
     } else if (this.pos.mode === 'SEAT_VIEW') {
