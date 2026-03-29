@@ -4,7 +4,7 @@ import {
   GUEST_Y, SEAT_Y, SEATS, STATIONS, BAR_LEFT, BAR_RIGHT,
   MOOD_MAX, GUEST_STATE,
 } from '../constants.js';
-import { DRINKS, GLASSES, GARNISHES } from '../data/menu.js';
+import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
 
 export class Renderer {
   constructor(ctx) {
@@ -103,10 +103,28 @@ export class Renderer {
     }
   }
 
-  drawGuests(guests) {
+  drawGuests(guests, waitingCount) {
     const ctx = this.ctx;
+
+    // Show waiting queue as a count badge instead of individual guests
+    if (waitingCount > 0) {
+      const badgeX = CANVAS_W / 2;
+      const badgeY = 82;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX - 50, badgeY - 12, 100, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffc107';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`⏳ ${waitingCount} waiting`, badgeX, badgeY);
+    }
+
     for (const guest of guests) {
       if (guest.state === 'DONE') continue;
+      // Skip rendering individual waiting guests — shown as count above
+      if (guest.state === GUEST_STATE.WAITING_FOR_SEAT) continue;
 
       const x = guest.x;
       const y = guest.y;
@@ -417,7 +435,7 @@ export class Renderer {
 
   // ─── DRINK MODAL ──────────────────────────────────
 
-  drawDrinkModal(modal, carriedGlass) {
+  drawDrinkModal(modal, carriedGlass, activePour) {
     if (!modal.visible) return;
     const ctx = this.ctx;
 
@@ -466,7 +484,7 @@ export class Renderer {
       const glassY = py + 80;
       const gw = 50;
       const gh = 120;
-      this.drawGlassVisual(glassX, glassY, gw, gh, carriedGlass, modal.pouringIndex >= 0);
+      this.drawGlassVisual(glassX, glassY, gw, gh, carriedGlass, !!activePour, true);
     }
 
     // ─── Drink buttons on the right ───
@@ -476,7 +494,7 @@ export class Renderer {
     items.forEach((item, i) => {
       const bx = startX + i * (btnW + gap);
       const drinkDef = DRINKS[item];
-      const isPouring = modal.pouringIndex === i;
+      const isPouring = activePour && activePour.drinkKey === item;
 
       ctx.fillStyle = isPouring ? '#4a4035' : '#3a3025';
       ctx.beginPath();
@@ -519,8 +537,8 @@ export class Renderer {
     ctx.fillText('X', px + pw - 25, py + 20);
   }
 
-  /** Draw a larger glass visual for pour modals */
-  drawGlassVisual(cx, cy, w, h, glass, isPouring) {
+  /** Draw a larger glass visual for pour modals and overlay */
+  drawGlassVisual(cx, cy, w, h, glass, isPouring, showTarget) {
     const ctx = this.ctx;
     const gx = cx - w / 2;
     const gy = cy;
@@ -531,6 +549,30 @@ export class Renderer {
     ctx.strokeStyle = '#888';
     ctx.lineWidth = 2;
     ctx.strokeRect(gx, gy, w, h);
+
+    // Fill target range indicators
+    if (showTarget && glass.primaryDrink) {
+      const drinkDef = DRINKS[glass.primaryDrink];
+      if (drinkDef && drinkDef.fillRange) {
+        const [minFill, maxFill] = drinkDef.fillRange;
+        const minY = gy + h * (1 - minFill);
+        const maxY = gy + h * (1 - maxFill);
+        // Target zone highlight
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.12)';
+        ctx.fillRect(gx + 1, maxY, w - 2, minY - maxY);
+        // Target lines
+        ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(gx, minY);
+        ctx.lineTo(gx + w, minY);
+        ctx.moveTo(gx, maxY);
+        ctx.lineTo(gx + w, maxY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
 
     // Ice at bottom
     if (glass.ice > 0) {
@@ -559,16 +601,14 @@ export class Renderer {
 
     // Pour stream animation
     if (isPouring && glass.totalFill < 1.0) {
-      const streamX = cx;
       ctx.strokeStyle = glass.layers.length > 0
         ? glass.layers[glass.layers.length - 1].color
         : '#a0d4e8';
       ctx.lineWidth = 3;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      ctx.moveTo(streamX, gy - 20);
-      const fillY = gy + h * (1 - glass.totalFill);
-      ctx.lineTo(streamX, fillY);
+      ctx.moveTo(cx, gy - 20);
+      ctx.lineTo(cx, gy + h * (1 - glass.totalFill));
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -583,11 +623,29 @@ export class Renderer {
       );
     }
 
-    // Fill percentage text
+    // Fill percentage
     ctx.fillStyle = '#aaa';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.round(glass.totalFill * 100)}%`, cx, gy + h + 14);
+  }
+
+  /** Persistent glass fill overlay — shown above bar when carrying a glass */
+  drawGlassFillOverlay(glass, activePour) {
+    const ctx = this.ctx;
+    // Position in top-right area, below HUD
+    const cx = CANVAS_W - 60;
+    const cy = 50;
+    const w = 36;
+    const h = 80;
+
+    // Background panel
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2 - 8, cy - 6, w + 16, h + 30, 6);
+    ctx.fill();
+
+    this.drawGlassVisual(cx, cy, w, h, glass, !!activePour, true);
   }
 
   // ─── POS OVERLAY ──────────────────────────────────
@@ -777,7 +835,7 @@ export class Renderer {
 
   // ─── PREP / GARNISH MODAL ─────────────────────────
 
-  drawPrepModal(modal, carriedGlass) {
+  drawPrepModal(modal, carriedGlass, activePour) {
     if (!modal.visible) return;
     const ctx = this.ctx;
 
@@ -827,7 +885,7 @@ export class Renderer {
 
     // Show current glass state
     if (carriedGlass) {
-      this.drawMiniGlass(px + pw - 50, iceY + 30, 30, 50, carriedGlass);
+      this.drawGlassVisual(px + pw - 50, iceY + 10, 40, 80, carriedGlass, !!activePour, true);
     }
 
     // ─── Row 2: Garnishes ───
@@ -871,12 +929,13 @@ export class Renderer {
     ctx.fillText('Soda Gun:', px + 20, mixerY - 2);
 
     const mixerBtnW = 90;
-    ctx.fillStyle = '#1a2a3a';
+    const waterPouring = activePour && activePour.drinkKey === 'WATER';
+    ctx.fillStyle = waterPouring ? '#1a3a4a' : '#1a2a3a';
     ctx.beginPath();
     ctx.roundRect(px + 20, mixerY + 6, mixerBtnW, 60, 8);
     ctx.fill();
-    ctx.strokeStyle = '#4a9ad4';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = waterPouring ? '#6dd5ff' : '#4a9ad4';
+    ctx.lineWidth = waterPouring ? 3 : 2;
     ctx.stroke();
     ctx.font = '24px serif';
     ctx.textAlign = 'center';

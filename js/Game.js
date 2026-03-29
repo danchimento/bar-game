@@ -71,6 +71,9 @@ export class Game {
     // Glass state for the currently carried glass/drink
     this.carriedGlass = null; // GlassState instance or null
 
+    // Active pour state — separate from modals so radial pour works too
+    this.activePour = null; // { drinkKey, pourRate } or null
+
     // Tunable settings — these override constants at runtime
     this.settings = {
       moodDecayMultiplier: 1.0,
@@ -89,9 +92,12 @@ export class Game {
     // Double-tap tracking
     this.lastTap = { x: 0, y: 0, time: 0 };
 
-    // Long-press tracking for prep station radial
+    // Long-press tracking — works for ALL stations
     this.longPressTimer = null;
     this.longPressThreshold = 400; // ms
+    this.longPressFired = false;   // suppress tap when long-press fires
+    this.pendingStationTap = null; // deferred station tap for tap-vs-longpress
+    this.pointerDownPos = { x: 0, y: 0 };
 
     this.setupInput();
     this.lastTime = performance.now();
@@ -127,6 +133,7 @@ export class Game {
     this.glassModal.visible = false;
     this.prepModal.visible = false;
     this.carriedGlass = null;
+    this.activePour = null;
   }
 
   loop(now) {
@@ -144,12 +151,14 @@ export class Game {
     this.hud.timeRemaining = Math.max(0, this.activeDuration - this.levelTimer);
     this.hud.update(dt);
 
-    // Update pouring in drink modal — fill the carried glass
-    if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0 && this.carriedGlass) {
-      const drinkKey = this.drinkModal.items[this.drinkModal.pouringIndex];
-      const added = this.carriedGlass.pour(drinkKey, this.drinkModal.pourRate * dt);
+    // Update active pour — works for modals AND radial-initiated pours
+    if (this.activePour && this.carriedGlass) {
+      const added = this.carriedGlass.pour(this.activePour.drinkKey, this.activePour.pourRate * dt);
       if (added <= 0) {
-        // Glass is full, stop pouring
+        this.activePour = null; // glass full
+      }
+      // Keep drinkModal in sync if open
+      if (this.drinkModal.visible && added <= 0) {
         this.drinkModal.pouringIndex = -1;
       }
     }
@@ -319,15 +328,20 @@ export class Game {
     this.renderer.drawDirtySeats(this.dirtySeats);
     this.renderer.drawCashOnBar(this.cashOnBar);
     this.renderer.drawServiceMat(this.serviceMat);
-    this.renderer.drawGuests(this.guests);
+    const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
+    this.renderer.drawGuests(this.guests, waitingCount);
     if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGlass);
-    this.hud.draw(this.ctx);
+    // Glass fill overlay — always visible when carrying a glass with contents or pouring
+    if (this.carriedGlass && (!this.carriedGlass.isEmpty || this.activePour)) {
+      this.renderer.drawGlassFillOverlay(this.carriedGlass, this.activePour);
+    }
+    this.hud.draw(this.ctx, this.levelTimer, this.activeDuration);
     this.notepad.draw(this.ctx);
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
-    this.renderer.drawDrinkModal(this.drinkModal, this.carriedGlass);
+    this.renderer.drawDrinkModal(this.drinkModal, this.carriedGlass, this.activePour);
     this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab);
-    this.renderer.drawPrepModal(this.prepModal, this.carriedGlass);
+    this.renderer.drawPrepModal(this.prepModal, this.carriedGlass, this.activePour);
 
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
       this.renderer.drawLevelComplete(this.hud);
@@ -348,34 +362,53 @@ export class Game {
       const scaleY = CANVAS_H / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
+      this.pointerDownPos = { x, y };
+      this.longPressFired = false;
 
-      // Start long-press timer for prep station
+      // Start long-press timer for stations
       this.clearLongPress();
       this.longPressTimer = setTimeout(() => {
         this.longPressTimer = null;
-        this.handleLongPress(x, y);
+        if (this.handleLongPress(x, y)) {
+          this.longPressFired = true;
+        }
       }, this.longPressThreshold);
 
+      // Handle immediate interactions (modals, radial, guests, etc.)
+      // but NOT stations — those wait for tap-vs-longpress resolution
       this.handlePointerDown(x, y);
     });
 
     this.canvas.addEventListener('pointermove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = CANVAS_W / rect.width;
+      const scaleY = CANVAS_H / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
       if (this.radialMenu.visible && this.radialMenu.dragging) {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = CANVAS_W / rect.width;
-        const scaleY = CANVAS_H / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
         this.radialMenu.updateHover(x, y);
+      }
+
+      // Cancel long-press if finger moves too far
+      if (this.longPressTimer) {
+        const dx = x - this.pointerDownPos.x;
+        const dy = y - this.pointerDownPos.y;
+        if (dx * dx + dy * dy > 20 * 20) {
+          this.clearLongPress();
+        }
       }
     });
 
     this.canvas.addEventListener('pointerup', (e) => {
       this.clearLongPress();
 
-      // Release stops pouring — glass keeps its fill level
-      if (this.drinkModal.visible && this.drinkModal.pouringIndex >= 0) {
-        this.drinkModal.pouringIndex = -1;
+      // Stop any active pour
+      if (this.activePour) {
+        this.activePour = null;
+        if (this.drinkModal.visible) {
+          this.drinkModal.pouringIndex = -1;
+        }
       }
 
       // Drag-release on radial menu
@@ -389,8 +422,14 @@ export class Game {
           }
           this.radialMenu.close();
         }
-        // If released outside any option, menu stays open for a regular tap
       }
+
+      // Deferred station tap — only fire if long-press didn't activate
+      if (this.pendingStationTap && !this.longPressFired) {
+        this.handleStationTap(this.pendingStationTap);
+      }
+      this.pendingStationTap = null;
+      this.longPressFired = false;
     });
   }
 
@@ -430,13 +469,13 @@ export class Game {
       return;
     }
 
-    // Drink modal
+    // Drink modal — hold to pour
     if (this.drinkModal.visible) {
       this.handleDrinkModalTap(x, y);
       return;
     }
 
-    // Prep/Garnish modal
+    // Prep/Garnish modal — soda gun buttons start pouring directly
     if (this.prepModal.visible) {
       this.handlePrepModalTap(x, y);
       return;
@@ -472,14 +511,16 @@ export class Game {
     // Hit test guests
     const guest = this.hitTestGuest(x, y);
     if (guest) {
+      this.clearLongPress(); // guest tap is immediate
       this.openGuestMenu(guest);
       return;
     }
 
-    // Hit test dirty seats & cash — combined so tapping the seat area handles both
+    // Hit test dirty seats & cash
     const dirtySeat = this.hitTestDirtySeat(x, y);
     const cashSeat = this.hitTestCash(x, y);
     if (dirtySeat !== null || cashSeat !== null) {
+      this.clearLongPress();
       const seatId = dirtySeat !== null ? dirtySeat : cashSeat;
       this.handleSeatCleanup(seatId);
       return;
@@ -488,19 +529,22 @@ export class Game {
     // Hit test service mat drinks
     const drink = this.hitTestServiceMat(x, y);
     if (drink) {
+      this.clearLongPress();
       this.pickUpDrink(drink);
       return;
     }
 
-    // Hit test stations
+    // Hit test stations — defer to pointerup for tap vs long-press
+    // (long-press will open radial via handleLongPress)
     const station = this.hitTestStation(x, y);
     if (station) {
-      this.handleStationTap(station);
+      this.pendingStationTap = station;
       return;
     }
 
     // Tap on bar area to move
     if (y > BAR_TOP_Y && y < STATION_Y + 40) {
+      this.clearLongPress();
       this.bartender.moveTo(x);
       this.pendingAction = null;
     }
@@ -514,45 +558,152 @@ export class Game {
   }
 
   handleLongPress(x, y) {
-    if (this.gameState !== GAME_STATE.PLAYING) return;
+    if (this.gameState !== GAME_STATE.PLAYING) return false;
     if (this.radialMenu.visible || this.prepModal.visible || this.pos.visible ||
-        this.glassModal.visible || this.drinkModal.visible) return;
+        this.glassModal.visible || this.drinkModal.visible) return false;
 
-    // Check if long-press is on the prep station
-    const prepStation = STATIONS.find(s => s.id === 'PREP');
-    if (!prepStation) return;
-    const dx = x - prepStation.x;
-    const dy = y - STATION_Y;
-    if (Math.abs(dx) > 45 || Math.abs(dy) > 34) return;
+    // Check if long-press is on any station
+    const station = this.hitTestStation(x, y);
+    if (!station) return false;
 
-    // Must be carrying a glass or drink
-    if (!this.carriedGlass) return;
+    const options = this.getStationRadialOptions(station);
+    if (options.length === 0) return false;
 
-    // Open radial menu with ice + garnish options at the station
+    this.radialMenu.open(station.x, STATION_Y - 40, options);
+    return true;
+  }
+
+  getStationRadialOptions(station) {
+    const bt = this.bartender;
     const options = [];
 
-    // Ice option
-    options.push({
-      label: '🧊 Ice',
-      disabled: !this.carriedGlass || this.carriedGlass.ice > 0,
-      action: () => {
-        this.walkThenAct(prepStation.x, () => { this.addIce(); });
-      },
-    });
+    switch (station.id) {
+      case 'GLASS_RACK': {
+        if (bt.carrying) return [];
+        const glassTypes = Object.keys(GLASSES);
+        for (const key of glassTypes) {
+          options.push({
+            label: GLASSES[key].name,
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                bt.startAction(ACTION_DURATIONS.GLASS_RACK, 'Grabbing glass...', () => {
+                  bt.carrying = `GLASS_${key}`;
+                  this.carriedGlass = new GlassState(key);
+                });
+              });
+            },
+          });
+        }
+        break;
+      }
 
-    // Garnish options
-    const garnishKeys = Object.keys(GARNISHES);
-    for (const key of garnishKeys) {
-      options.push({
-        label: GARNISHES[key].name,
-        disabled: !this.carriedGlass || this.carriedGlass.garnishes.includes(key),
-        action: () => {
-          this.walkThenAct(prepStation.x, () => { this.addGarnish(key); });
-        },
-      });
+      case 'TAPS': {
+        if (!this.carriedGlass) return [];
+        const beers = ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'];
+        const pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
+        for (const key of beers) {
+          options.push({
+            label: DRINKS[key].name,
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                this.startPour(key, pourRate);
+              });
+            },
+          });
+        }
+        break;
+      }
+
+      case 'WINE': {
+        if (!this.carriedGlass) return [];
+        const wines = ['RED_WINE', 'WHITE_WINE'];
+        const pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
+        for (const key of wines) {
+          options.push({
+            label: DRINKS[key].name,
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                this.startPour(key, pourRate);
+              });
+            },
+          });
+        }
+        break;
+      }
+
+      case 'PREP': {
+        if (!this.carriedGlass) return [];
+        // Ice option
+        options.push({
+          label: '🧊 Ice',
+          disabled: this.carriedGlass.ice > 0,
+          action: () => {
+            this.walkThenAct(station.x, () => { this.addIce(); });
+          },
+        });
+        // Garnish options
+        for (const key of Object.keys(GARNISHES)) {
+          options.push({
+            label: GARNISHES[key].name,
+            disabled: this.carriedGlass.garnishes.includes(key),
+            action: () => {
+              this.walkThenAct(station.x, () => { this.addGarnish(key); });
+            },
+          });
+        }
+        // Soda gun - water pour
+        for (const key of MIXER_DRINKS) {
+          options.push({
+            label: DRINKS[key].name,
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                this.startPour(key, 1.0 / ACTION_DURATIONS.POUR_BEER);
+              });
+            },
+          });
+        }
+        break;
+      }
+
+      case 'DISHWASHER': {
+        if (bt.carrying === 'DIRTY_GLASS') {
+          options.push({
+            label: 'Clean',
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                bt.startAction(ACTION_DURATIONS.DISHWASHER, 'Loading...', () => {
+                  bt.carrying = null;
+                  this.hud.showMessage('Glasses cleaned', 1);
+                });
+              });
+            },
+          });
+        } else if (this.carriedGlass && !this.carriedGlass.isEmpty) {
+          options.push({
+            label: 'Dump',
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                bt.startAction(0.4, 'Dumping...', () => {
+                  this.carriedGlass.dump();
+                  bt.carrying = `GLASS_${this.carriedGlass.glassType}`;
+                  this.hud.showMessage('Glass emptied', 1);
+                });
+              });
+            },
+          });
+        }
+        break;
+      }
     }
 
-    this.radialMenu.open(prepStation.x, STATION_Y - 40, options);
+    return options;
+  }
+
+  startPour(drinkKey, pourRate) {
+    if (!this.carriedGlass) return;
+    this.activePour = { drinkKey, pourRate };
+    // Update carrying label
+    this.bartender.carrying = `DRINK_${drinkKey}`;
   }
 
   hitTestGuest(x, y) {
@@ -1040,11 +1191,12 @@ export class Game {
       const bx = startX + i * (btnW + gap);
       if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
         modal.pouringIndex = i;
+        this.startPour(items[i], modal.pourRate);
         return;
       }
     }
 
-    // Close button — close modal, keep glass state as-is
+    // Close button
     if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
       this.closeDrinkModal();
       return;
@@ -1057,15 +1209,15 @@ export class Game {
   }
 
   closeDrinkModal() {
-    const modal = this.drinkModal;
-    modal.pouringIndex = -1;
+    this.drinkModal.pouringIndex = -1;
+    this.activePour = null;
 
     // Update carrying label based on glass contents
     if (this.carriedGlass && this.carriedGlass.primaryDrink) {
       this.bartender.carrying = `DRINK_${this.carriedGlass.primaryDrink}`;
     }
 
-    modal.visible = false;
+    this.drinkModal.visible = false;
   }
 
   // ─── PREP / GARNISH MODAL ──────────────────────────
@@ -1112,16 +1264,14 @@ export class Game {
       }
     }
 
-    // Mixer/Soda gun buttons — row 3
+    // Mixer/Soda gun buttons — row 3 — pour directly while held
     const mixerY = py + 220;
     const mixerBtnW = 90;
     const mixerStartX = px + 20;
     for (let i = 0; i < MIXER_DRINKS.length; i++) {
       const bx = mixerStartX + i * (mixerBtnW + gap);
       if (x > bx && x < bx + mixerBtnW && y > mixerY && y < mixerY + 70) {
-        // Open the drink modal in mixer mode for pouring
-        this.prepModal.visible = false;
-        this.openDrinkModal('mixer', STATIONS.find(s => s.id === 'PREP').x);
+        this.startPour(MIXER_DRINKS[i], 1.0 / ACTION_DURATIONS.POUR_BEER);
         return;
       }
     }

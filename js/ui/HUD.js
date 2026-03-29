@@ -29,7 +29,19 @@ export class HUD {
     if (total >= this.starThresholds[3]) this.stars = 3;
   }
 
-  draw(ctx) {
+  /** Convert level timer progress to a clock time (6:00 PM → 12:00 AM) */
+  formatClock(levelTimer, levelDuration) {
+    const progress = Math.min(1, levelTimer / levelDuration);
+    // 6 hours from 18:00 to 24:00
+    const totalMinutes = Math.floor(progress * 360); // 6h = 360 min
+    const hour24 = 18 + Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    const displayHour = hour24 >= 24 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    const ampm = hour24 >= 24 ? 'AM' : 'PM';
+    return `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  }
+
+  draw(ctx, levelTimer, levelDuration) {
     // Top bar background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, CANVAS_W, 36);
@@ -51,13 +63,13 @@ export class HUD {
     ctx.fillStyle = '#ffc107';
     ctx.fillText(starStr, CANVAS_W / 2, y);
 
-    // Timer
-    ctx.fillStyle = this.timeRemaining < 30 ? '#f44336' : '#e0e0e0';
+    // Clock
+    const clock = this.formatClock(levelTimer || 0, levelDuration || 300);
+    const isLate = this.timeRemaining < 30;
+    ctx.fillStyle = isLate ? '#f44336' : '#e0e0e0';
     ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'right';
-    const min = Math.floor(this.timeRemaining / 60);
-    const sec = Math.floor(this.timeRemaining % 60).toString().padStart(2, '0');
-    ctx.fillText(`${min}:${sec}`, CANVAS_W - 14, y);
+    ctx.fillText(clock, CANVAS_W - 14, y);
 
     // Floating message
     if (this.message) {
