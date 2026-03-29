@@ -697,6 +697,12 @@ export class Renderer {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
+    // Beer uses the tap visual; wine/mixer use the classic button layout
+    if (modal.type === 'beer') {
+      this._drawTapModal(ctx, modal, carriedGlass, activePour);
+      return;
+    }
+
     const items = modal.items;
     const btnW = 110;
     const btnH = 100;
@@ -709,12 +715,11 @@ export class Renderer {
     const py = (CANVAS_H - ph) / 2;
 
     const typeColors = {
-      beer:  { bg: '#2a1a0a', border: '#d4a020', title: '#d4a020' },
       wine:  { bg: '#2a1020', border: '#8b1a4a', title: '#d4708a' },
       mixer: { bg: '#0a1a2a', border: '#4a9ad4', title: '#6ab4e8' },
     };
-    const colors = typeColors[modal.type] || typeColors.beer;
-    const titles = { beer: 'Draft Beers', wine: 'Wines', mixer: 'Soda Gun' };
+    const colors = typeColors[modal.type] || { bg: '#2a1a0a', border: '#d4a020', title: '#d4a020' };
+    const titles = { wine: 'Wines', mixer: 'Soda Gun' };
 
     ctx.fillStyle = colors.bg;
     ctx.strokeStyle = colors.border;
@@ -779,6 +784,140 @@ export class Renderer {
       ctx.font = '10px monospace';
       ctx.fillText(drinkDef.price > 0 ? `$${drinkDef.price}` : 'Free', bx + btnW / 2, btnY + 84);
     });
+
+    // Close button
+    ctx.fillStyle = '#f44336';
+    ctx.beginPath();
+    ctx.roundRect(px + pw - 40, py + 8, 30, 24, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('X', px + pw - 25, py + 20);
+  }
+
+  /** Beer-specific tap modal — shows actual taps, glass slides under active tap */
+  _drawTapModal(ctx, modal, carriedGlass, activePour) {
+    const items = modal.items;
+    const tapW = 90;
+    const tapGap = 24;
+    const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
+    const pw = Math.max(totalTapsW + 80, 340);
+    const ph = 320;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    // Panel
+    ctx.fillStyle = '#2a1a0a';
+    ctx.strokeStyle = '#d4a020';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    // Title
+    ctx.fillStyle = '#d4a020';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Draft Beers', px + pw / 2, py + 24);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.fillText('Hold a tap to pour', px + pw / 2, py + 44);
+
+    // Back wall behind taps
+    const wallY = py + 58;
+    const wallH = 100;
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(px + 15, wallY, pw - 30, wallH);
+
+    // Drip tray
+    const trayY = wallY + wallH;
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.roundRect(px + 20, trayY, pw - 40, 10, 3);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.fillRect(px + 24, trayY + 2, pw - 48, 6);
+
+    // Draw each tap
+    const startX = px + (pw - totalTapsW) / 2;
+    const pouringKey = activePour ? activePour.drinkKey : null;
+
+    for (let i = 0; i < items.length; i++) {
+      const drinkKey = items[i];
+      const drinkDef = DRINKS[drinkKey];
+      const tx = startX + i * (tapW + tapGap) + tapW / 2;
+      const isPouring = pouringKey === drinkKey;
+
+      // Tap mount plate
+      ctx.fillStyle = '#777';
+      ctx.beginPath();
+      ctx.roundRect(tx - 18, wallY + 8, 36, 12, 3);
+      ctx.fill();
+
+      // Tap body / pipe
+      ctx.fillStyle = '#888';
+      ctx.fillRect(tx - 4, wallY + 18, 8, 35);
+
+      // Tap handle — tilted when pouring
+      ctx.save();
+      ctx.translate(tx, wallY + 20);
+      if (isPouring) {
+        ctx.rotate(-0.6); // pulled forward
+      }
+      // Handle shaft
+      ctx.fillStyle = drinkDef.color;
+      ctx.beginPath();
+      ctx.roundRect(-5, -28, 10, 26, 4);
+      ctx.fill();
+      // Handle knob
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.roundRect(-7, -34, 14, 8, 3);
+      ctx.fill();
+      ctx.restore();
+
+      // Spout
+      ctx.fillStyle = '#999';
+      ctx.fillRect(tx - 3, wallY + 53, 6, 10);
+
+      // Pour stream when active
+      if (isPouring) {
+        ctx.fillStyle = drinkDef.color;
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(tx - 2, wallY + 63, 4, trayY - (wallY + 63));
+        ctx.globalAlpha = 1;
+      }
+
+      // Beer name label
+      ctx.fillStyle = '#ccc';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(drinkDef.name, tx, wallY + wallH + 24);
+
+      // Price
+      ctx.fillStyle = '#999';
+      ctx.font = '10px monospace';
+      ctx.fillText(`$${drinkDef.price}`, tx, wallY + wallH + 38);
+    }
+
+    // Glass under the active tap (or centered if not pouring)
+    if (carriedGlass) {
+      let glassX = px + pw / 2;
+      if (pouringKey) {
+        const idx = items.indexOf(pouringKey);
+        if (idx >= 0) {
+          glassX = startX + idx * (tapW + tapGap) + tapW / 2;
+        }
+      }
+      const glassY = trayY - 82;
+      this.drawGlassVisual(glassX, glassY, 40, 80, carriedGlass, !!activePour, true);
+    }
 
     // Close button
     ctx.fillStyle = '#f44336';

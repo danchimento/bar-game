@@ -302,8 +302,10 @@ export class Game {
   }
 
   spawnGuests() {
-    // Spawn new guests from schedule (always spawn, even if no seat)
-    if (this.spawnIndex < this.activeSchedule.length) {
+    const barClosed = this.levelTimer >= this.activeDuration;
+
+    // Spawn new guests from schedule — but not after closing time
+    if (!barClosed && this.spawnIndex < this.activeSchedule.length) {
       const next = this.activeSchedule[this.spawnIndex];
       if (this.levelTimer >= next.time) {
         const available = this.getAvailableSeats();
@@ -323,14 +325,21 @@ export class Game {
       }
     }
 
-    // Try to seat waiting guests
+    // Try to seat waiting guests — or turn them away if bar is closed
     const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
     if (waiting.length > 0) {
-      const available = this.getAvailableSeats();
-      for (const guest of waiting) {
-        if (available.length === 0) break;
-        const seat = available.shift();
-        guest.assignSeat(seat.id);
+      if (barClosed) {
+        // Bar closed — waiting guests leave
+        for (const guest of waiting) {
+          guest.transitionTo(GUEST_STATE.LEAVING);
+        }
+      } else {
+        const available = this.getAvailableSeats();
+        for (const guest of waiting) {
+          if (available.length === 0) break;
+          const seat = available.shift();
+          guest.assignSeat(seat.id);
+        }
       }
       this.positionWaitingGuests();
     }
@@ -1265,6 +1274,12 @@ export class Game {
   handleDrinkModalTap(x, y) {
     const modal = this.drinkModal;
     const items = modal.items;
+
+    // Beer tap modal has different layout
+    if (modal.type === 'beer') {
+      return this._handleTapModalTap(x, y);
+    }
+
     const btnW = 110;
     const btnH = 100;
     const gap = 20;
@@ -1280,6 +1295,41 @@ export class Game {
     for (let i = 0; i < items.length; i++) {
       const bx = startX + i * (btnW + gap);
       if (x > bx && x < bx + btnW && y > btnY && y < btnY + btnH) {
+        modal.pouringIndex = i;
+        this.startPour(items[i], modal.pourRate);
+        return;
+      }
+    }
+
+    // Close button
+    if (x > px + pw - 40 && x < px + pw - 10 && y > py + 8 && y < py + 32) {
+      this.closeDrinkModal();
+      return;
+    }
+
+    // Outside modal
+    if (x < px || x > px + pw || y < py || y > py + ph) {
+      this.closeDrinkModal();
+    }
+  }
+
+  _handleTapModalTap(x, y) {
+    const modal = this.drinkModal;
+    const items = modal.items;
+    const tapW = 90;
+    const tapGap = 24;
+    const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
+    const pw = Math.max(totalTapsW + 80, 340);
+    const ph = 320;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+    const startX = px + (pw - totalTapsW) / 2;
+    const wallY = py + 58;
+
+    // Hit test each tap handle area
+    for (let i = 0; i < items.length; i++) {
+      const tx = startX + i * (tapW + tapGap) + tapW / 2;
+      if (Math.abs(x - tx) < tapW / 2 && y > wallY - 10 && y < wallY + 100) {
         modal.pouringIndex = i;
         this.startPour(items[i], modal.pourRate);
         return;

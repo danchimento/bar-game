@@ -13,7 +13,7 @@ export const GARNISHES = {
 
 // Fill range: [min, max] — pour is "correct" if total fill is within this range
 export const DRINKS = {
-  GOLD_LAGER:   { name: 'Gold Lager',   type: 'beer',  price: 7,  icon: '🍺', color: '#f0c040', glass: 'PINT',        garnish: null, fillRange: [0.85, 1.0] },
+  GOLD_LAGER:   { name: 'Boors Light',  type: 'beer',  price: 7,  icon: '🍺', color: '#f0c040', glass: 'PINT',        garnish: null, fillRange: [0.85, 1.0] },
   HAZY_IPA:     { name: 'Hazy IPA',     type: 'beer',  price: 8,  icon: '🍺', color: '#d4a020', glass: 'PINT',        garnish: null, fillRange: [0.85, 1.0] },
   DARK_PORTER:  { name: 'Dark Porter',  type: 'beer',  price: 8,  icon: '🍺', color: '#3a1a0a', glass: 'PINT',        garnish: null, fillRange: [0.85, 1.0] },
   HARVEST_MOON: { name: 'Harvest Moon', type: 'beer',  price: 9,  icon: '🍺', color: '#e8b840', glass: 'PINT',        garnish: 'ORANGE', fillRange: [0.85, 1.0] },
