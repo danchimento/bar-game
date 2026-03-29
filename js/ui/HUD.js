@@ -45,11 +45,11 @@ export class HUD {
     ctx.textBaseline = 'middle';
 
     // Tips in top-left
-    const total = Math.floor(this.tips + this.revenue);
+    const tips = Math.floor(this.tips);
     ctx.fillStyle = '#4caf50';
     ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`$${total}`, 14, 16);
+    ctx.fillText(`Tips: $${tips}`, 14, 16);
 
     // Clock in top-right
     const clock = this.formatClock(levelTimer || 0, levelDuration || 300);
