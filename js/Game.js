@@ -1,5 +1,5 @@
 import {
-  CANVAS_W, CANVAS_H, SEATS, STATIONS, GUEST_STATE,
+  CANVAS_W, CANVAS_H, SEATS, GUEST_STATE,
   STATION_Y, SERVICE_MAT_Y, SEAT_Y,
   ACTION_DURATIONS, HIT_RADIUS,
   GAME_STATE, MOOD_MAX, BAR_TOP_Y,
@@ -7,7 +7,7 @@ import {
   ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from './constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from './data/menu.js';
-import { LEVEL_1 } from './data/level1.js';
+import { LEVELS } from './data/levels.js';
 import { Bartender } from './entities/Bartender.js';
 import { Guest } from './entities/Guest.js';
 import { GlassState } from './entities/GlassState.js';
@@ -38,7 +38,8 @@ export class Game {
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
-    this.level = LEVEL_1;
+    this.levelIndex = 0;
+    this.level = LEVELS[0];
 
     // POS state
     this.pos = {
@@ -106,6 +107,16 @@ export class Game {
   }
 
   startLevel() {
+    this.level = LEVELS[this.levelIndex];
+
+    // Apply per-level setting overrides
+    if (this.level.settings) {
+      for (const [k, v] of Object.entries(this.level.settings)) {
+        if (k in this.settings) this.settings[k] = v;
+      }
+    }
+    this.settings.levelDuration = this.level.duration;
+
     // Apply spawn spacing to schedule
     this.activeSchedule = this.level.spawnSchedule.map(s => ({
       ...s,
@@ -136,6 +147,16 @@ export class Game {
     this.prepModal.visible = false;
     this.carriedGlass = null;
     this.activePour = null;
+  }
+
+  /** Stations active in the current level */
+  getStations() {
+    return this.level?.stations || [];
+  }
+
+  /** Drinks available in the current level */
+  getAvailableDrinks() {
+    return this.level?.drinks || Object.keys(DRINKS);
   }
 
   loop(now) {
@@ -380,7 +401,7 @@ export class Game {
     this.renderer.clear();
 
     if (this.gameState === GAME_STATE.TITLE) {
-      this.renderer.drawTitleScreen();
+      this.renderer.drawTitleScreen(LEVELS);
       return;
     }
 
@@ -390,7 +411,7 @@ export class Game {
     }
 
     this.renderer.drawBar();
-    this.renderer.drawStations();
+    this.renderer.drawBackCounter(this.getStations(), this.getAvailableDrinks());
     this.renderer.drawDirtySeats(this.dirtySeats);
     this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
     this.renderer.drawCashOnBar(this.cashOnBar);
@@ -407,11 +428,11 @@ export class Game {
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
     this.renderer.drawDrinkModal(this.drinkModal, this.carriedGlass, this.activePour);
-    this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab);
+    this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab, this.getAvailableDrinks());
     this.renderer.drawPrepModal(this.prepModal, this.carriedGlass, this.activePour);
 
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      this.renderer.drawLevelComplete(this.hud);
+      this.renderer.drawLevelComplete(this.hud, this.levelIndex, LEVELS.length);
     }
   }
 
@@ -523,10 +544,21 @@ export class Game {
       Math.abs(x - this.lastTap.x) < 30 && Math.abs(y - this.lastTap.y) < 30;
     this.lastTap = { x, y, time: now };
 
-    // Title screen
+    // Title screen — level select buttons
     if (this.gameState === GAME_STATE.TITLE) {
-      if (x > CANVAS_W / 2 - 90 && x < CANVAS_W / 2 + 90 && y > 270 && y < 320) {
-        this.gameState = GAME_STATE.SETTINGS;
+      const btnW = 160;
+      const btnH = 44;
+      const gap = 12;
+      const totalH = LEVELS.length * (btnH + gap) - gap;
+      const startY = 240;
+      for (let i = 0; i < LEVELS.length; i++) {
+        const by = startY + i * (btnH + gap);
+        const bx = CANVAS_W / 2 - btnW / 2;
+        if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
+          this.levelIndex = i;
+          this.startLevel();
+          return;
+        }
       }
       return;
     }
@@ -539,8 +571,18 @@ export class Game {
 
     // Level complete
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      if (x > CANVAS_W / 2 - 80 && x < CANVAS_W / 2 + 80 && y > 340 && y < 385) {
+      // "Retry" button
+      if (x > CANVAS_W / 2 - 170 && x < CANVAS_W / 2 - 10 && y > 340 && y < 385) {
         this.startLevel();
+        return;
+      }
+      // "Next Day" button (if not last level)
+      if (this.levelIndex < LEVELS.length - 1) {
+        if (x > CANVAS_W / 2 + 10 && x < CANVAS_W / 2 + 170 && y > 340 && y < 385) {
+          this.levelIndex++;
+          this.startLevel();
+          return;
+        }
       }
       return;
     }
@@ -682,7 +724,7 @@ export class Game {
       }
 
       case 'TAPS': {
-        const beers = ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'];
+        const beers = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'beer');
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
         for (const key of beers) {
           options.push({
@@ -696,7 +738,7 @@ export class Game {
       }
 
       case 'WINE': {
-        const wines = ['RED_WINE', 'WHITE_WINE'];
+        const wines = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'wine');
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
         for (const key of wines) {
           options.push({
@@ -800,10 +842,10 @@ export class Game {
   }
 
   hitTestStation(x, y) {
-    for (const st of STATIONS) {
+    for (const st of this.getStations()) {
       const dx = x - st.x;
       const dy = y - STATION_Y;
-      if (Math.abs(dx) < 45 && Math.abs(dy) < 34) return st;
+      if (Math.abs(dx) < (st.width / 2 + 5) && Math.abs(dy) < 44) return st;
     }
     return null;
   }
@@ -1209,10 +1251,10 @@ export class Game {
     this.drinkModal.pouringIndex = -1;
 
     if (type === 'beer') {
-      this.drinkModal.items = ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'];
+      this.drinkModal.items = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'beer');
       this.drinkModal.pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER; // fill per second
     } else if (type === 'wine') {
-      this.drinkModal.items = ['RED_WINE', 'WHITE_WINE'];
+      this.drinkModal.items = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'wine');
       this.drinkModal.pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
     } else if (type === 'mixer') {
       this.drinkModal.items = MIXER_DRINKS;
@@ -1403,7 +1445,7 @@ export class Game {
   // ─── POS ────────────────────────────────────────────
 
   openPOS() {
-    const posStation = STATIONS.find(s => s.id === 'POS');
+    const posStation = this.getStations().find(s => s.id === 'POS');
     this.walkThenAct(posStation.x, () => {
       this.pos.visible = true;
       this.pos.mode = 'SELECT_SEAT';
@@ -1478,8 +1520,8 @@ export class Game {
         }
       }
 
-      // Drink buttons — add to POS tab
-      const drinks = Object.keys(DRINKS);
+      // Drink buttons — add to POS tab (only level-available drinks)
+      const drinks = this.getAvailableDrinks();
       const btnW = 105;
       const btnH = 60;
       const gap = 8;

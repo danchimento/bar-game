@@ -1,0 +1,180 @@
+// Each level defines:
+//   name        – display name
+//   day         – day number
+//   duration    – level length in seconds
+//   stations    – ordered list of station configs for the back counter
+//   drinks      – which drink keys are available this level
+//   spawnSchedule – guest arrival times & preferences
+//   starThresholds – tip+revenue targets for 1/2/3 stars
+//   settings    – optional per-level setting overrides
+
+const STATION_TEMPLATES = {
+  DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 90 },
+  SINK:        { id: 'SINK',       label: 'Sink',  width: 80 },
+  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 90 },
+  TAPS:        { id: 'TAPS',       label: 'Taps',  width: 120 },
+  WINE:        { id: 'WINE',       label: 'Wine',  width: 100 },
+  PREP:        { id: 'PREP',       label: 'Prep',  width: 100 },
+  POS:         { id: 'POS',        label: 'POS',   width: 80 },
+};
+
+/** Build a stations array with automatic x positions from an ordered list of IDs */
+function layoutStations(ids, totalWidth = 900, marginLeft = 30) {
+  const templates = ids.map(id => ({ ...STATION_TEMPLATES[id] }));
+  const totalStationWidth = templates.reduce((s, t) => s + t.width, 0);
+  const gap = (totalWidth - totalStationWidth) / (templates.length + 1);
+  let x = marginLeft + gap;
+  return templates.map(t => {
+    const cx = x + t.width / 2;
+    const station = { ...t, x: Math.round(cx) };
+    x += t.width + gap;
+    return station;
+  });
+}
+
+export const LEVELS = [
+  // ─── DAY 1: Just the basics — one beer ──────────────────
+  {
+    name: 'Day 1 — Opening Night',
+    day: 1,
+    duration: 240,
+    stations: layoutStations(['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS']),
+    drinks: ['GOLD_LAGER'],
+    spawnSchedule: [
+      { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 40,  type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 75,  type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 110, type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 145, type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 180, type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+    ],
+    starThresholds: { 1: 25, 2: 50, 3: 80 },
+    settings: {
+      moodDecayMultiplier: 0.7,
+      gracePeriod: 90,
+    },
+  },
+
+  // ─── DAY 2: Second tap — two beers ──────────────────────
+  {
+    name: 'Day 2 — Word Gets Around',
+    day: 2,
+    duration: 270,
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS']),
+    drinks: ['GOLD_LAGER', 'HAZY_IPA'],
+    spawnSchedule: [
+      { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 30,  type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 55,  type: 'regular', drinkPrefs: ['GOLD_LAGER', 'HAZY_IPA'] },
+      { time: 85,  type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 115, type: 'regular', drinkPrefs: ['HAZY_IPA'] },
+      { time: 145, type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 175, type: 'regular', drinkPrefs: ['HAZY_IPA', 'GOLD_LAGER'] },
+      { time: 210, type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+    ],
+    starThresholds: { 1: 35, 2: 70, 3: 110 },
+    settings: {
+      moodDecayMultiplier: 0.8,
+      gracePeriod: 75,
+    },
+  },
+
+  // ─── DAY 3: Three beers, things pick up ─────────────────
+  {
+    name: 'Day 3 — Happy Hour',
+    day: 3,
+    duration: 300,
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS']),
+    drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER'],
+    spawnSchedule: [
+      { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 25,  type: 'quick',   drinkPrefs: ['DARK_PORTER'] },
+      { time: 50,  type: 'regular', drinkPrefs: ['HAZY_IPA', 'GOLD_LAGER'] },
+      { time: 75,  type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 100, type: 'regular', drinkPrefs: ['DARK_PORTER', 'HAZY_IPA'] },
+      { time: 125, type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 155, type: 'regular', drinkPrefs: ['GOLD_LAGER', 'DARK_PORTER'] },
+      { time: 185, type: 'quick',   drinkPrefs: ['DARK_PORTER'] },
+      { time: 220, type: 'regular', drinkPrefs: ['HAZY_IPA'] },
+      { time: 255, type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+    ],
+    starThresholds: { 1: 45, 2: 90, 3: 140 },
+    settings: {
+      moodDecayMultiplier: 0.9,
+      gracePeriod: 60,
+    },
+  },
+
+  // ─── DAY 4: Full beer menu + garnish beer ──────────────
+  {
+    name: 'Day 4 — Regulars Night',
+    day: 4,
+    duration: 300,
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS']),
+    drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
+    spawnSchedule: [
+      { time: 5,   type: 'regular', drinkPrefs: ['HARVEST_MOON'] },
+      { time: 25,  type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 45,  type: 'regular', drinkPrefs: ['DARK_PORTER', 'HAZY_IPA'] },
+      { time: 65,  type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 90,  type: 'regular', drinkPrefs: ['HARVEST_MOON', 'GOLD_LAGER'] },
+      { time: 115, type: 'quick',   drinkPrefs: ['DARK_PORTER'] },
+      { time: 140, type: 'regular', drinkPrefs: ['GOLD_LAGER', 'HARVEST_MOON'] },
+      { time: 165, type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 195, type: 'regular', drinkPrefs: ['DARK_PORTER'] },
+      { time: 225, type: 'quick',   drinkPrefs: ['HARVEST_MOON'] },
+      { time: 255, type: 'regular', drinkPrefs: ['GOLD_LAGER', 'HAZY_IPA'] },
+    ],
+    starThresholds: { 1: 55, 2: 110, 3: 170 },
+    settings: {
+      moodDecayMultiplier: 1.0,
+      gracePeriod: 45,
+    },
+  },
+
+  // ─── DAY 5: Rush night — full beer menu, faster pace ───
+  {
+    name: 'Day 5 — Friday Rush',
+    day: 5,
+    duration: 300,
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS']),
+    drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
+    spawnSchedule: [
+      { time: 3,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 18,  type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 35,  type: 'regular', drinkPrefs: ['HARVEST_MOON', 'DARK_PORTER'] },
+      { time: 50,  type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+      { time: 70,  type: 'regular', drinkPrefs: ['DARK_PORTER'] },
+      { time: 90,  type: 'quick',   drinkPrefs: ['HAZY_IPA'] },
+      { time: 110, type: 'regular', drinkPrefs: ['GOLD_LAGER', 'HARVEST_MOON'] },
+      { time: 130, type: 'quick',   drinkPrefs: ['DARK_PORTER'] },
+      { time: 150, type: 'regular', drinkPrefs: ['HAZY_IPA', 'GOLD_LAGER'] },
+      { time: 170, type: 'quick',   drinkPrefs: ['HARVEST_MOON'] },
+      { time: 190, type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
+      { time: 210, type: 'quick',   drinkPrefs: ['DARK_PORTER'] },
+      { time: 235, type: 'regular', drinkPrefs: ['HAZY_IPA', 'HARVEST_MOON'] },
+      { time: 260, type: 'quick',   drinkPrefs: ['GOLD_LAGER'] },
+    ],
+    starThresholds: { 1: 65, 2: 130, 3: 200 },
+    settings: {
+      moodDecayMultiplier: 1.1,
+      gracePeriod: 30,
+    },
+  },
+];
+
+// Re-export guest types (moved from level1.js)
+export const GUEST_TYPES = {
+  regular: {
+    patience: 1.0,
+    maxDrinks: 3,
+    tipMultiplier: 1.2,
+    color: '#d4a574',
+  },
+  quick: {
+    patience: 0.8,
+    maxDrinks: 1,
+    tipMultiplier: 1.0,
+    color: '#c49464',
+  },
+};

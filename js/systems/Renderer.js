@@ -1,7 +1,7 @@
 import {
   CANVAS_W, CANVAS_H, COLORS,
   BAR_TOP_Y, SERVICE_MAT_Y, WALK_TRACK_Y, STATION_Y, STATION_LABEL_Y,
-  GUEST_Y, SEAT_Y, SEATS, STATIONS, BAR_LEFT, BAR_RIGHT,
+  GUEST_Y, SEAT_Y, SEATS, BAR_LEFT, BAR_RIGHT,
   MOOD_MAX, GUEST_STATE,
 } from '../constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
@@ -47,26 +47,281 @@ export class Renderer {
     }
   }
 
-  drawStations() {
+  drawBackCounter(stations, availableDrinks) {
     const ctx = this.ctx;
-    for (const st of STATIONS) {
-      ctx.fillStyle = COLORS.STATION_BG;
-      ctx.strokeStyle = COLORS.STATION_BORDER;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(st.x - 40, STATION_Y - 28, 80, 56, 8);
-      ctx.fill();
-      ctx.stroke();
+    const counterTop = STATION_Y - 40;
+    const counterH = 80;
 
-      ctx.font = '24px serif';
+    // Continuous back counter surface
+    ctx.fillStyle = '#3a2a1a';
+    ctx.beginPath();
+    ctx.roundRect(15, counterTop, CANVAS_W - 30, counterH, 6);
+    ctx.fill();
+    // Counter edge highlight
+    ctx.fillStyle = '#4d3a28';
+    ctx.fillRect(15, counterTop, CANVAS_W - 30, 3);
+    // Counter bottom shadow
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(15, counterTop + counterH - 3, CANVAS_W - 30, 3);
+
+    // Draw each station on the counter
+    for (const st of stations) {
+      const hw = st.width / 2;
+      switch (st.id) {
+        case 'DISHWASHER': this._drawDishwasher(ctx, st.x, counterTop, hw); break;
+        case 'SINK':       this._drawSink(ctx, st.x, counterTop, hw); break;
+        case 'GLASS_RACK': this._drawGlassRack(ctx, st.x, counterTop, hw); break;
+        case 'TAPS':       this._drawTaps(ctx, st.x, counterTop, hw, availableDrinks); break;
+        case 'WINE':       this._drawWineStation(ctx, st.x, counterTop, hw); break;
+        case 'PREP':       this._drawPrepStation(ctx, st.x, counterTop, hw); break;
+        case 'POS':        this._drawPOS(ctx, st.x, counterTop, hw); break;
+      }
+      // Label below counter
+      ctx.fillStyle = '#999';
+      ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(st.icon, st.x, STATION_Y);
-
-      ctx.fillStyle = '#ccc';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(st.label, st.x, STATION_LABEL_Y);
+      ctx.fillText(st.label, st.x, counterTop + counterH + 12);
     }
+  }
+
+  _drawDishwasher(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 8;
+    const w = hw * 2 - 10;
+    const h = 58;
+    // Machine body
+    ctx.fillStyle = '#708090';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 4);
+    ctx.fill();
+    // Door
+    ctx.fillStyle = '#5a6a7a';
+    ctx.beginPath();
+    ctx.roundRect(x + 4, y + 14, w - 8, h - 18, 3);
+    ctx.fill();
+    // Handle
+    ctx.strokeStyle = '#a0b0c0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y + 11);
+    ctx.lineTo(x + w - 8, y + 11);
+    ctx.stroke();
+    // Status light
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath();
+    ctx.arc(x + w - 10, y + 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  _drawSink(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 18;
+    const w = hw * 2 - 10;
+    const h = 40;
+    // Basin
+    ctx.fillStyle = '#b0b8c0';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, [0, 0, 8, 8]);
+    ctx.fill();
+    // Inner basin (darker)
+    ctx.fillStyle = '#8a9098';
+    ctx.beginPath();
+    ctx.roundRect(x + 5, y + 4, w - 10, h - 8, [0, 0, 6, 6]);
+    ctx.fill();
+    // Faucet
+    ctx.strokeStyle = '#c0c8d0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, y - 6);
+    ctx.lineTo(cx, y - 14);
+    ctx.lineTo(cx + 10, y - 14);
+    ctx.lineTo(cx + 10, y - 8);
+    ctx.stroke();
+    // Faucet knob
+    ctx.fillStyle = '#4488cc';
+    ctx.beginPath();
+    ctx.arc(cx - 6, y - 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  _drawGlassRack(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 6;
+    const w = hw * 2 - 10;
+    // Rack frame
+    ctx.fillStyle = '#5a4a38';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, 62, 4);
+    ctx.fill();
+    // Shelves
+    const shelfCount = 2;
+    const shelfH = 28;
+    for (let s = 0; s < shelfCount; s++) {
+      const sy = y + 4 + s * shelfH;
+      // Shelf line
+      ctx.fillStyle = '#6b5a48';
+      ctx.fillRect(x + 3, sy + shelfH - 2, w - 6, 2);
+      // Glasses on shelf
+      const glassCount = 3;
+      const glassW = 10;
+      const spacing = (w - 10) / (glassCount + 1);
+      for (let g = 0; g < glassCount; g++) {
+        const gx = x + 5 + spacing * (g + 1);
+        const gy = sy + shelfH - 4;
+        // Simple pint glass shape
+        ctx.strokeStyle = 'rgba(200, 220, 240, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(gx - glassW / 2 + 1, gy - 18);
+        ctx.lineTo(gx - glassW / 2, gy);
+        ctx.lineTo(gx + glassW / 2, gy);
+        ctx.lineTo(gx + glassW / 2 - 1, gy - 18);
+        ctx.stroke();
+      }
+    }
+  }
+
+  _drawTaps(ctx, cx, top, hw, availableDrinks) {
+    const beers = (availableDrinks || []).filter(d => DRINKS[d] && DRINKS[d].type === 'beer');
+    const tapCount = Math.max(1, beers.length);
+    const spacing = Math.min(28, (hw * 2 - 20) / (tapCount + 1));
+    const startX = cx - (tapCount - 1) * spacing / 2;
+
+    // Tap tower base
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.roundRect(cx - hw + 8, top + 30, hw * 2 - 16, 34, [0, 0, 4, 4]);
+    ctx.fill();
+    // Drip tray
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.roundRect(cx - hw + 12, top + 56, hw * 2 - 24, 8, 2);
+    ctx.fill();
+
+    // Tap tower back plate
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.roundRect(cx - hw + 14, top + 4, hw * 2 - 28, 30, [4, 4, 0, 0]);
+    ctx.fill();
+
+    for (let i = 0; i < tapCount; i++) {
+      const tx = startX + i * spacing;
+      const beer = beers[i];
+      const color = beer ? DRINKS[beer].color : '#888';
+
+      // Tap handle
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(tx - 4, top + 6, 8, 22, 3);
+      ctx.fill();
+      // Handle knob
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.roundRect(tx - 5, top + 4, 10, 6, 2);
+      ctx.fill();
+      // Spout
+      ctx.fillStyle = '#888';
+      ctx.fillRect(tx - 2, top + 28, 4, 8);
+    }
+  }
+
+  _drawWineStation(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 8;
+    // Wine rack slots
+    const bottles = [
+      { color: '#8b1a1a', label: 'R' },
+      { color: '#e8e0a0', label: 'W' },
+    ];
+    const slotW = 20;
+    const spacing = (hw * 2 - 10) / (bottles.length + 1);
+    for (let i = 0; i < bottles.length; i++) {
+      const bx = x + spacing * (i + 1);
+      const by = y + 5;
+      // Bottle
+      ctx.fillStyle = bottles[i].color;
+      ctx.beginPath();
+      ctx.roundRect(bx - slotW / 2, by, slotW, 48, 4);
+      ctx.fill();
+      // Neck
+      ctx.fillStyle = bottles[i].color;
+      ctx.beginPath();
+      ctx.roundRect(bx - 4, by - 8, 8, 12, 2);
+      ctx.fill();
+      // Label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(bottles[i].label, bx, by + 28);
+    }
+  }
+
+  _drawPrepStation(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 12;
+    const w = hw * 2 - 10;
+    // Cutting board
+    ctx.fillStyle = '#b89060';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, 45, 4);
+    ctx.fill();
+    ctx.fillStyle = '#a08050';
+    ctx.beginPath();
+    ctx.roundRect(x + 3, y + 3, w - 6, 39, 3);
+    ctx.fill();
+    // Garnish containers
+    const containers = ['#ff8c00', '#90ee90', '#fff44f', '#ff4040'];
+    const cw = 12;
+    const gap = 3;
+    const totalCw = containers.length * (cw + gap) - gap;
+    const cs = cx - totalCw / 2;
+    for (let i = 0; i < containers.length; i++) {
+      ctx.fillStyle = containers[i];
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.roundRect(cs + i * (cw + gap), y + 6, cw, cw, 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // Ice bucket hint
+    ctx.fillStyle = '#a0d4e8';
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(cx, y + 33, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  _drawPOS(ctx, cx, top, hw) {
+    const x = cx - hw + 5;
+    const y = top + 6;
+    const w = hw * 2 - 10;
+    // Monitor
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, 40, 3);
+    ctx.fill();
+    // Screen
+    ctx.fillStyle = '#1a3a2a';
+    ctx.beginPath();
+    ctx.roundRect(x + 3, y + 3, w - 6, 30, 2);
+    ctx.fill();
+    // Screen text
+    ctx.fillStyle = '#4caf50';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('POS', cx, y + 18);
+    // Stand
+    ctx.fillStyle = '#333';
+    ctx.fillRect(cx - 4, y + 40, 8, 12);
+    // Base
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.roundRect(cx - 12, y + 50, 24, 5, 2);
+    ctx.fill();
   }
 
   drawDirtySeats(dirtySeats) {
@@ -650,7 +905,7 @@ export class Renderer {
 
   // ─── POS OVERLAY ──────────────────────────────────
 
-  drawPOSOverlay(posState, guests, posTab) {
+  drawPOSOverlay(posState, guests, posTab, availableDrinks) {
     if (!posState.visible) return;
     const ctx = this.ctx;
 
@@ -771,7 +1026,7 @@ export class Renderer {
       ctx.textAlign = 'left';
       ctx.fillText('Add drink:', px + 20, py + 168);
 
-      const drinks = Object.keys(DRINKS);
+      const drinks = availableDrinks || Object.keys(DRINKS);
       const btnW = 105;
       const btnH = 60;
       const drinksGap = 8;
@@ -944,7 +1199,7 @@ export class Renderer {
     ctx.fillText('X', px + pw - 25, py + 20);
   }
 
-  drawLevelComplete(hud) {
+  drawLevelComplete(hud, levelIndex, totalLevels) {
     const ctx = this.ctx;
 
     ctx.fillStyle = 'rgba(0,0,0,0.75)';
@@ -954,28 +1209,43 @@ export class Renderer {
     ctx.font = 'bold 32px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Level Complete!', CANVAS_W / 2, 160);
+    ctx.fillText('Shift Complete!', CANVAS_W / 2, 160);
 
     const total = Math.floor(hud.tips + hud.revenue);
     ctx.fillStyle = '#4caf50';
     ctx.font = 'bold 22px monospace';
-    ctx.fillText(`Total: $${total}`, CANVAS_W / 2, 210);
+    ctx.fillText(`Tips: $${Math.floor(hud.tips)}`, CANVAS_W / 2, 210);
 
     ctx.fillStyle = '#aaa';
     ctx.font = '14px monospace';
-    ctx.fillText(`Revenue: $${Math.floor(hud.revenue)}  Tips: $${Math.floor(hud.tips)}`, CANVAS_W / 2, 245);
+    ctx.fillText(`Revenue: $${Math.floor(hud.revenue)}`, CANVAS_W / 2, 245);
 
     ctx.font = '40px serif';
-    const starStr = '⭐'.repeat(hud.stars) + '☆'.repeat(3 - hud.stars);
+    const starStr = '\u2B50'.repeat(hud.stars) + '\u2606'.repeat(3 - hud.stars);
     ctx.fillText(starStr, CANVAS_W / 2, 300);
 
-    ctx.fillStyle = '#e8c170';
+    // Retry button (left)
+    const hasNext = levelIndex < totalLevels - 1;
+    const retryX = hasNext ? CANVAS_W / 2 - 170 : CANVAS_W / 2 - 80;
+    const retryW = 160;
+    ctx.fillStyle = '#666';
     ctx.beginPath();
-    ctx.roundRect(CANVAS_W / 2 - 80, 340, 160, 45, 6);
+    ctx.roundRect(retryX, 340, retryW, 45, 6);
     ctx.fill();
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font = 'bold 16px monospace';
-    ctx.fillText('Play Again', CANVAS_W / 2, 363);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('Retry', retryX + retryW / 2, 363);
+
+    // Next Day button (right) — only if not last level
+    if (hasNext) {
+      ctx.fillStyle = '#e8c170';
+      ctx.beginPath();
+      ctx.roundRect(CANVAS_W / 2 + 10, 340, 160, 45, 6);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a2e';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText('Next Day', CANVAS_W / 2 + 90, 363);
+    }
   }
 
   drawSettingsScreen(settings) {
@@ -1078,7 +1348,7 @@ export class Renderer {
     ctx.fillText('Start Shift', px + pw / 2, py + ph - 35);
   }
 
-  drawTitleScreen() {
+  drawTitleScreen(levels) {
     const ctx = this.ctx;
 
     ctx.fillStyle = '#1a1a2e';
@@ -1088,23 +1358,34 @@ export class Renderer {
     ctx.font = 'bold 48px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('BAR RUSH', CANVAS_W / 2, 170);
+    ctx.fillText('BAR RUSH', CANVAS_W / 2, 120);
 
     ctx.fillStyle = '#aaa';
     ctx.font = '14px monospace';
-    ctx.fillText('A bartending time-management game', CANVAS_W / 2, 215);
+    ctx.fillText('A bartending time-management game', CANVAS_W / 2, 165);
 
-    ctx.fillStyle = '#e8c170';
-    ctx.beginPath();
-    ctx.roundRect(CANVAS_W / 2 - 90, 270, 180, 50, 8);
-    ctx.fill();
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText('Start Shift', CANVAS_W / 2, 296);
+    // Level select buttons
+    const btnW = 160;
+    const btnH = 44;
+    const gap = 12;
+    const startY = 240;
+    const lvls = levels || [];
+
+    for (let i = 0; i < lvls.length; i++) {
+      const by = startY + i * (btnH + gap);
+      const bx = CANVAS_W / 2 - btnW / 2;
+      ctx.fillStyle = '#e8c170';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, btnW, btnH, 6);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a2e';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(`Day ${lvls[i].day}`, CANVAS_W / 2, by + btnH / 2);
+    }
 
     ctx.fillStyle = '#666';
-    ctx.font = '12px monospace';
-    ctx.fillText('Tap guests and stations to serve drinks', CANVAS_W / 2, 380);
-    ctx.fillText('Walk to stations, take orders, pour drinks, collect cash', CANVAS_W / 2, 400);
+    ctx.font = '11px monospace';
+    const bottomY = startY + lvls.length * (btnH + gap) + 15;
+    ctx.fillText('Tap guests and stations to serve drinks', CANVAS_W / 2, bottomY);
   }
 }
