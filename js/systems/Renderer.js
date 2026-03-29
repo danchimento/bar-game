@@ -657,8 +657,8 @@ export class Renderer {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    const pw = 500;
-    const ph = 440;
+    const pw = 510;
+    const ph = 460;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -772,9 +772,9 @@ export class Renderer {
       ctx.fillText('Add drink:', px + 20, py + 168);
 
       const drinks = Object.keys(DRINKS);
-      const btnW = 65;
-      const btnH = 50;
-      const drinksGap = 6;
+      const btnW = 105;
+      const btnH = 60;
+      const drinksGap = 8;
       const cols = 4;
       const drinksY = py + 180;
 
@@ -787,22 +787,23 @@ export class Renderer {
 
         ctx.fillStyle = '#2a2a1a';
         ctx.beginPath();
-        ctx.roundRect(bx, by, btnW, btnH, 4);
+        ctx.roundRect(bx, by, btnW, btnH, 6);
         ctx.fill();
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.font = '14px serif';
+        ctx.font = '20px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(drinkDef.icon, bx + btnW / 2, by + 16);
+        ctx.fillText(drinkDef.icon, bx + btnW / 2, by + 18);
 
         ctx.fillStyle = '#ccc';
-        ctx.font = '8px monospace';
-        ctx.fillText(drinkDef.name, bx + btnW / 2, by + 33);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(drinkDef.name, bx + btnW / 2, by + 38);
         ctx.fillStyle = '#888';
-        ctx.fillText(drinkDef.price > 0 ? `$${drinkDef.price}` : 'Free', bx + btnW / 2, by + 43);
+        ctx.font = '10px monospace';
+        ctx.fillText(drinkDef.price > 0 ? `$${drinkDef.price}` : 'Free', bx + btnW / 2, by + 52);
       });
 
       // Print Check button

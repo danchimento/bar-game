@@ -226,6 +226,21 @@ export class Game {
             guest.sipDrinkIndex++;
           }
         }
+
+        // Check if all drinks are empty → transition
+        const allEmpty = !glasses || glasses.every(g =>
+          g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
+        );
+        if (allEmpty) {
+          // Clear empty glasses from bar
+          this.drinksAtSeats.delete(guest.seatId);
+          guest.drinksHad++;
+          if (guest.drinksHad < guest.maxDrinks) {
+            guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
+          } else {
+            guest.transitionTo(GUEST_STATE.READY_TO_PAY);
+          }
+        }
       }
     }
 
@@ -1359,7 +1374,7 @@ export class Game {
 
     if (!hasCash && !hasDirty) return;
 
-    if (bt.carrying && bt.carrying !== 'DIRTY_GLASS') {
+    if (hasDirty && bt.carrying && bt.carrying !== 'DIRTY_GLASS') {
       this.hud.showMessage('Hands full!', 1);
       return;
     }
@@ -1367,20 +1382,12 @@ export class Game {
     const seatX = SEATS[seatId].x;
     this.walkThenAct(seatX, () => {
       if (hasCash) {
-        // Collect cash first
         bt.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {
           const cash = this.cashOnBar.get(seatId);
           if (cash) {
             this.hud.tips += cash.tipAmount;
             this.cashOnBar.delete(seatId);
             this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
-          }
-          // Then bus if dirty — chain automatically
-          if (this.dirtySeats.has(seatId)) {
-            bt.startAction(ACTION_DURATIONS.BUS, 'Clearing...', () => {
-              bt.carrying = 'DIRTY_GLASS';
-              this.dirtySeats.delete(seatId);
-            });
           }
         });
       } else if (hasDirty) {
@@ -1405,8 +1412,8 @@ export class Game {
   }
 
   handlePOSTap(x, y) {
-    const pw = 500;
-    const ph = 440;
+    const pw = 510;
+    const ph = 460;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -1471,11 +1478,11 @@ export class Game {
         }
       }
 
-      // Drink buttons — add to POS tab (2 rows if needed)
+      // Drink buttons — add to POS tab
       const drinks = Object.keys(DRINKS);
-      const btnW = 65;
-      const btnH = 50;
-      const gap = 6;
+      const btnW = 105;
+      const btnH = 60;
+      const gap = 8;
       const cols = 4;
       const drinksY = py + 180;
       for (let i = 0; i < drinks.length; i++) {

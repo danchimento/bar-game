@@ -239,15 +239,7 @@ export class Guest {
         break;
 
       case GUEST_STATE.ENJOYING:
-        this.stateTimer -= dt;
-        if (this.stateTimer <= 0) {
-          this.drinksHad++;
-          if (this.drinksHad < this.maxDrinks) {
-            this.transitionTo(GUEST_STATE.WANTS_ANOTHER);
-          } else {
-            this.transitionTo(GUEST_STATE.READY_TO_PAY);
-          }
-        }
+        // Transition is handled by Game.js when drinks are empty
         break;
 
       case GUEST_STATE.REVIEWING_CHECK:
