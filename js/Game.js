@@ -1404,9 +1404,6 @@ export class Game {
       }
     } else if (this.pos.mode === 'SEAT_VIEW') {
       const seatId = this.pos.selectedSeat;
-      const guest = this.guests.find(g => g.seatId === seatId &&
-        g.state !== GUEST_STATE.DONE && g.state !== GUEST_STATE.LEAVING &&
-        g.state !== GUEST_STATE.ANGRY_LEAVING);
 
       // Back button
       const backBx = px + 15;
@@ -1456,11 +1453,9 @@ export class Game {
         const bx = px + 20 + col * (btnW + gap);
         const by = drinksY + row * (btnH + gap);
         if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
-          if (guest) {
-            if (!this.posTab.has(seatId)) this.posTab.set(seatId, []);
-            this.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
-            this.hud.showMessage(`Added ${DRINKS[drinks[i]].name}`, 1);
-          }
+          if (!this.posTab.has(seatId)) this.posTab.set(seatId, []);
+          this.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
+          this.hud.showMessage(`Added ${DRINKS[drinks[i]].name}`, 1);
           return;
         }
       }

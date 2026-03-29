@@ -686,44 +686,30 @@ export class Renderer {
         const bx = px + 20 + (i % 3) * 155;
         const by = py + 70 + Math.floor(i / 3) * 55;
 
-        const guest = guests.find(g => g.seatId === i &&
-          g.state !== GUEST_STATE.DONE && g.state !== GUEST_STATE.LEAVING &&
-          g.state !== GUEST_STATE.ANGRY_LEAVING);
-        const active = !!guest;
+        const tab = posTab.get(i) || [];
+        const hasTab = tab.length > 0;
 
-        ctx.fillStyle = active ? '#2a4a2a' : '#222';
+        ctx.fillStyle = hasTab ? '#2a3a2a' : '#2a2a2a';
         ctx.beginPath();
         ctx.roundRect(bx, by, 140, 42, 4);
         ctx.fill();
 
-        ctx.strokeStyle = active ? '#4caf50' : '#444';
+        ctx.strokeStyle = '#666';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = active ? '#fff' : '#555';
+        ctx.fillStyle = '#fff';
         ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(`Seat ${i + 1}`, bx + 12, by + 14);
 
-        if (guest) {
-          ctx.fillStyle = '#aaa';
-          ctx.font = '10px monospace';
-          const stateLabel = guest.state === GUEST_STATE.READY_TO_PAY ? 'Ready to pay' :
-            guest.state === GUEST_STATE.WAITING_FOR_DRINK ? 'Waiting' :
-            guest.state === GUEST_STATE.ENJOYING ? 'Enjoying' : guest.state;
-          ctx.fillText(stateLabel, bx + 12, by + 32);
-        } else {
-          ctx.fillStyle = '#555';
-          ctx.font = '10px monospace';
-          ctx.fillText('Empty', bx + 12, by + 32);
-        }
+        ctx.fillStyle = '#aaa';
+        ctx.font = '10px monospace';
+        ctx.fillText(hasTab ? `${tab.length} item${tab.length > 1 ? 's' : ''}` : 'No tab', bx + 12, by + 32);
       }
     } else if (posState.mode === 'SEAT_VIEW') {
       const seatId = posState.selectedSeat;
-      const guest = guests.find(g => g.seatId === seatId &&
-        g.state !== GUEST_STATE.DONE && g.state !== GUEST_STATE.LEAVING &&
-        g.state !== GUEST_STATE.ANGRY_LEAVING);
 
       // Back button
       ctx.fillStyle = '#444';
