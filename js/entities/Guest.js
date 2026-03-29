@@ -87,7 +87,7 @@ export class Guest {
       case GUEST_STATE.READY_TO_ORDER: return '✋';
       case GUEST_STATE.ORDER_TAKEN: return '👍';
       case GUEST_STATE.WAITING_FOR_DRINK: return '⏳';
-      case GUEST_STATE.ENJOYING: return '😊';
+      case GUEST_STATE.ENJOYING: return null;
       case GUEST_STATE.WANTS_ANOTHER: return '🍺?';
       case GUEST_STATE.READY_TO_PAY: return '💵';
       case GUEST_STATE.REVIEWING_CHECK: return '🧾';

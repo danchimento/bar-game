@@ -41,11 +41,12 @@ export const SEATS = [
 
 // Station definitions
 export const STATIONS = [
-  { id: 'DISHWASHER',  x: 70,  label: 'Dish',  icon: '🫧' },
-  { id: 'GLASS_RACK',  x: 200, label: 'Glass', icon: '🥃' },
-  { id: 'TAPS',        x: 360, label: 'Taps',  icon: '🍺' },
+  { id: 'DISHWASHER',  x: 60,  label: 'Dish',  icon: '🫧' },
+  { id: 'SINK',        x: 150, label: 'Sink',  icon: '🚰' },
+  { id: 'GLASS_RACK',  x: 250, label: 'Glass', icon: '🥃' },
+  { id: 'TAPS',        x: 380, label: 'Taps',  icon: '🍺' },
   { id: 'WINE',        x: 510, label: 'Wine',  icon: '🍷' },
-  { id: 'PREP',        x: 660, label: 'Prep',  icon: '🔪' },
+  { id: 'PREP',        x: 650, label: 'Prep',  icon: '🔪' },
   { id: 'POS',         x: 850, label: 'POS',   icon: '💻' },
 ];
 

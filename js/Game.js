@@ -429,7 +429,7 @@ export class Game {
         }
       }
 
-      // Drag-release on radial menu
+      // Drag-release on radial menu — always close on release
       if (this.radialMenu.visible && this.radialMenu.dragging) {
         this.radialMenu.dragging = false;
         this._radialPouring = false;
@@ -440,8 +440,8 @@ export class Game {
           if (option.action && !option.disabled && !option.pourKey) {
             option.action();
           }
-          this.radialMenu.close();
         }
+        this.radialMenu.close();
         // Radial was active — don't also fire station tap
         this.pendingStationTap = null;
       }
@@ -693,7 +693,12 @@ export class Game {
               });
             },
           });
-        } else if (this.carriedGlass && !this.carriedGlass.isEmpty) {
+        }
+        break;
+      }
+
+      case 'SINK': {
+        if (this.carriedGlass && !this.carriedGlass.isEmpty) {
           options.push({
             label: 'Dump',
             action: () => {
@@ -910,13 +915,12 @@ export class Game {
       const result = glass.validate(wantedKey);
 
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
-        // Place drink on bar in front of guest
-        this.drinksAtSeats.set(guest.seatId, glass);
-        this.bartender.carrying = null;
-        this.carriedGlass = null;
-
         if (result.valid) {
-          // Perfect serve
+          // Place drink on bar in front of guest
+          this.drinksAtSeats.set(guest.seatId, glass);
+          this.bartender.carrying = null;
+          this.carriedGlass = null;
+
           guest.drinksServed.push(wantedKey);
           guest.totalSpent += wantedDef.price;
           this.hud.revenue += wantedDef.price;
@@ -936,17 +940,28 @@ export class Game {
             this.hud.showMessage('Served!', 1);
           }
         } else {
-          // Something wrong — apply penalties based on issues
+          // Wrong drink — keep it, don't place on bar
           const issues = result.issues;
-          if (issues.includes('wrong_glass')) {
-            guest.mood -= 15;
-            this.hud.showMessage('Wrong glass!', 1.5);
-          } else if (issues.includes('wrong_drink') || issues.includes('contaminated')) {
-            guest.mood -= 25;
-            this.hud.showMessage('Wrong drink!', 1.5);
-          } else if (issues.includes('underfilled')) {
-            guest.mood -= 8;
-            // Still accept it but they're annoyed
+          if (issues.includes('wrong_glass') || issues.includes('wrong_drink') || issues.includes('contaminated')) {
+            // Reject — player keeps the drink
+            const msg = issues.includes('wrong_glass') ? 'Wrong glass!' :
+              issues.includes('wrong_drink') ? 'Wrong drink!' : 'Contaminated!';
+            guest.mood -= issues.includes('wrong_drink') || issues.includes('contaminated') ? 25 : 15;
+            this.hud.showMessage(msg, 1.5);
+          } else {
+            // Accepted with penalty — place drink on bar
+            this.drinksAtSeats.set(guest.seatId, glass);
+            this.bartender.carrying = null;
+            this.carriedGlass = null;
+
+            let moodPenalty = 0;
+            let msg = '';
+            if (issues.includes('underfilled')) { moodPenalty = 8; msg = 'Underfilled...'; }
+            else if (issues.includes('overfilled')) { moodPenalty = 5; msg = 'Overfilled!'; }
+            else if (issues.includes('missing_garnish')) { moodPenalty = 10; msg = 'Missing garnish!'; }
+            else if (issues.includes('missing_ice')) { moodPenalty = 8; msg = 'No ice?!'; }
+            guest.mood -= moodPenalty;
+
             guest.drinksServed.push(wantedKey);
             guest.totalSpent += wantedDef.price;
             this.hud.revenue += wantedDef.price;
@@ -958,49 +973,7 @@ export class Game {
             } else {
               guest.transitionTo(GUEST_STATE.ENJOYING);
             }
-            this.hud.showMessage('Underfilled...', 1.5);
-          } else if (issues.includes('overfilled')) {
-            guest.mood -= 5;
-            guest.drinksServed.push(wantedKey);
-            guest.totalSpent += wantedDef.price;
-            this.hud.revenue += wantedDef.price;
-            if (guest.currentOrder) {
-              guest.fulfilledItems.push(wantedKey);
-              if (guest.fulfilledItems.length >= guest.currentOrder.length) {
-                guest.transitionTo(GUEST_STATE.ENJOYING);
-              }
-            } else {
-              guest.transitionTo(GUEST_STATE.ENJOYING);
-            }
-            this.hud.showMessage('Overfilled!', 1.5);
-          } else if (issues.includes('missing_garnish')) {
-            guest.mood -= 10;
-            guest.drinksServed.push(wantedKey);
-            guest.totalSpent += wantedDef.price;
-            this.hud.revenue += wantedDef.price;
-            if (guest.currentOrder) {
-              guest.fulfilledItems.push(wantedKey);
-              if (guest.fulfilledItems.length >= guest.currentOrder.length) {
-                guest.transitionTo(GUEST_STATE.ENJOYING);
-              }
-            } else {
-              guest.transitionTo(GUEST_STATE.ENJOYING);
-            }
-            this.hud.showMessage('Missing garnish!', 1.5);
-          } else if (issues.includes('missing_ice')) {
-            guest.mood -= 8;
-            guest.drinksServed.push(wantedKey);
-            guest.totalSpent += wantedDef.price;
-            this.hud.revenue += wantedDef.price;
-            if (guest.currentOrder) {
-              guest.fulfilledItems.push(wantedKey);
-              if (guest.fulfilledItems.length >= guest.currentOrder.length) {
-                guest.transitionTo(GUEST_STATE.ENJOYING);
-              }
-            } else {
-              guest.transitionTo(GUEST_STATE.ENJOYING);
-            }
-            this.hud.showMessage('No ice?!', 1.5);
+            this.hud.showMessage(msg, 1.5);
           }
         }
       });
@@ -1075,8 +1048,13 @@ export class Game {
               this.hud.showMessage('Glasses cleaned', 1);
             });
           });
-        } else if (this.carriedGlass && !this.carriedGlass.isEmpty) {
-          // Dump contents of glass
+        } else {
+          this.hud.showMessage('Need dirty glasses', 1);
+        }
+        break;
+
+      case 'SINK':
+        if (this.carriedGlass && !this.carriedGlass.isEmpty) {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.4, 'Dumping...', () => {
               this.carriedGlass.dump();
