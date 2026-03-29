@@ -797,18 +797,17 @@ export class Renderer {
     ctx.fillText('X', px + pw - 25, py + 20);
   }
 
-  /** Beer-specific tap modal — shows actual taps, glass slides under active tap */
+  /** Beer-specific tap modal — wall-mount style taps with drip tray shelf */
   _drawTapModal(ctx, modal, carriedGlass, activePour) {
     const items = modal.items;
-    const tapW = 90;
-    const tapGap = 24;
-    const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
-    const pw = Math.max(totalTapsW + 80, 340);
-    const ph = 420;
+    const tapSpacing = 80;
+    const totalTapsW = (items.length - 1) * tapSpacing;
+    const pw = Math.max(totalTapsW + 160, 340);
+    const ph = 380;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
-    // Panel
+    // Panel background
     ctx.fillStyle = '#2a1a0a';
     ctx.strokeStyle = '#d4a020';
     ctx.lineWidth = 3;
@@ -828,101 +827,154 @@ export class Renderer {
     ctx.font = '11px monospace';
     ctx.fillText('Hold a tap to pour', px + pw / 2, py + 44);
 
-    // Back wall behind taps
-    const wallY = py + 58;
-    const wallH = 100;
-    ctx.fillStyle = '#1a1208';
-    ctx.fillRect(px + 15, wallY, pw - 30, wallH);
+    // ─── Stainless steel back plate ───
+    const plateX = px + 25;
+    const plateY = py + 60;
+    const plateW = pw - 50;
+    const plateH = 140;
 
-    // Drip tray
-    const trayY = wallY + wallH;
-    ctx.fillStyle = '#444';
+    // Plate body
+    ctx.fillStyle = '#b8bcc0';
     ctx.beginPath();
-    ctx.roundRect(px + 20, trayY, pw - 40, 10, 3);
+    ctx.roundRect(plateX, plateY, plateW, plateH, 4);
     ctx.fill();
-    ctx.fillStyle = '#333';
-    ctx.fillRect(px + 24, trayY + 2, pw - 48, 6);
+    // Brushed steel effect
+    ctx.fillStyle = 'rgba(160,165,170,0.3)';
+    for (let sy = plateY + 4; sy < plateY + plateH - 4; sy += 6) {
+      ctx.fillRect(plateX + 4, sy, plateW - 8, 1);
+    }
+    // Plate edge highlight
+    ctx.strokeStyle = '#d0d4d8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(plateX, plateY, plateW, plateH, 4);
+    ctx.stroke();
 
-    // Draw each tap
-    const startX = px + (pw - totalTapsW) / 2;
+    // ─── Drip tray shelf ───
+    const trayY = plateY + plateH;
+    const trayH = 20;
+    // Tray body
+    ctx.fillStyle = '#a0a4a8';
+    ctx.beginPath();
+    ctx.moveTo(plateX, trayY);
+    ctx.lineTo(plateX + plateW, trayY);
+    ctx.lineTo(plateX + plateW - 5, trayY + trayH);
+    ctx.lineTo(plateX + 5, trayY + trayH);
+    ctx.closePath();
+    ctx.fill();
+    // Tray lip
+    ctx.fillStyle = '#888c90';
+    ctx.fillRect(plateX + 2, trayY, plateW - 4, 3);
+    // Perforated holes
+    ctx.fillStyle = '#707478';
+    const holeStartX = plateX + 20;
+    const holeEndX = plateX + plateW - 20;
+    const holeY = trayY + 8;
+    for (let hx = holeStartX; hx < holeEndX; hx += 10) {
+      for (let hy = holeY; hy < trayY + trayH - 4; hy += 8) {
+        ctx.beginPath();
+        ctx.arc(hx, hy, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // ─── Draw each tap on the plate ───
+    const startX = px + pw / 2 - totalTapsW / 2;
     const pouringKey = activePour ? activePour.drinkKey : null;
+    const faucetY = plateY + plateH * 0.55; // faucets mounted mid-plate
 
     for (let i = 0; i < items.length; i++) {
       const drinkKey = items[i];
       const drinkDef = DRINKS[drinkKey];
-      const tx = startX + i * (tapW + tapGap) + tapW / 2;
+      const tx = startX + i * tapSpacing;
       const isPouring = pouringKey === drinkKey;
 
-      // Tap mount plate
-      ctx.fillStyle = '#777';
+      // ── Faucet body (round disc on the plate) ──
+      ctx.fillStyle = '#c8ccd0';
       ctx.beginPath();
-      ctx.roundRect(tx - 18, wallY + 8, 36, 12, 3);
+      ctx.arc(tx, faucetY, 12, 0, Math.PI * 2);
       ctx.fill();
+      // Inner ring
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(tx, faucetY, 8, 0, Math.PI * 2);
+      ctx.stroke();
 
-      // Tap body / pipe
-      ctx.fillStyle = '#888';
-      ctx.fillRect(tx - 4, wallY + 18, 8, 35);
+      // ── Spout (angled down from faucet) ──
+      ctx.strokeStyle = '#c0c4c8';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, faucetY + 10);
+      ctx.lineTo(tx, faucetY + 32);
+      ctx.stroke();
+      // Spout tip
+      ctx.fillStyle = '#d0d4d8';
+      ctx.beginPath();
+      ctx.arc(tx, faucetY + 34, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineCap = 'butt';
 
-      // Tap handle — tilted when pouring
+      // ── Handle (angled up from faucet) ──
       ctx.save();
-      ctx.translate(tx, wallY + 20);
+      ctx.translate(tx, faucetY - 10);
       if (isPouring) {
-        ctx.rotate(-0.6); // pulled forward
+        ctx.rotate(-0.5); // pulled forward
       }
       // Handle shaft
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.roundRect(-4, -40, 8, 38, 3);
+      ctx.fill();
+      // Handle knob (colored per beer)
       ctx.fillStyle = drinkDef.color;
       ctx.beginPath();
-      ctx.roundRect(-5, -28, 10, 26, 4);
+      ctx.roundRect(-6, -48, 12, 12, 4);
       ctx.fill();
-      // Handle knob
-      ctx.fillStyle = '#222';
-      ctx.beginPath();
-      ctx.roundRect(-7, -34, 14, 8, 3);
-      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.restore();
 
-      // Spout
-      ctx.fillStyle = '#999';
-      ctx.fillRect(tx - 3, wallY + 53, 6, 10);
-
-      // Pour stream when active
+      // ── Pour stream ──
       if (isPouring) {
         ctx.fillStyle = drinkDef.color;
         ctx.globalAlpha = 0.7;
-        ctx.fillRect(tx - 2, wallY + 63, 4, trayY - (wallY + 63));
+        ctx.fillRect(tx - 2, faucetY + 34, 4, trayY - (faucetY + 34));
         ctx.globalAlpha = 1;
       }
 
-      // Beer name label
+      // ── Beer name below tray ──
       ctx.fillStyle = '#ccc';
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(drinkDef.name, tx, wallY + wallH + 24);
+      ctx.fillText(drinkDef.name, tx, trayY + trayH + 16);
     }
 
-    // Glass under the active tap (or centered if not pouring) — below drip tray
+    // ─── Glass on the drip tray ───
     if (carriedGlass) {
       let glassX = px + pw / 2;
       if (pouringKey) {
         const idx = items.indexOf(pouringKey);
         if (idx >= 0) {
-          glassX = startX + idx * (tapW + tapGap) + tapW / 2;
+          glassX = startX + idx * tapSpacing;
         }
       }
-      const glassY = trayY + 14;
-      const glassH = 80;
-      this.drawGlassVisual(glassX, glassY, 40, glassH, carriedGlass, !!activePour, true);
+      const glassH = 70;
+      const glassY = trayY - glassH + 2; // sitting on the tray
+      this.drawGlassVisual(glassX, glassY, 36, glassH, carriedGlass, !!activePour, true);
 
-      // Extend pour stream down into the glass when pouring
+      // Extend pour stream into glass
       if (pouringKey) {
         const idx = items.indexOf(pouringKey);
         if (idx >= 0) {
-          const tx = startX + idx * (tapW + tapGap) + tapW / 2;
+          const tx = startX + idx * tapSpacing;
           const drinkDef = DRINKS[pouringKey];
           ctx.fillStyle = drinkDef.color;
-          ctx.globalAlpha = 0.7;
-          ctx.fillRect(tx - 2, trayY, 4, glassY + 4 - trayY);
+          ctx.globalAlpha = 0.5;
+          ctx.fillRect(tx - 1, faucetY + 34, 3, glassY + 4 - (faucetY + 34));
           ctx.globalAlpha = 1;
         }
       }

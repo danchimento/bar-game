@@ -1316,20 +1316,19 @@ export class Game {
   _handleTapModalTap(x, y) {
     const modal = this.drinkModal;
     const items = modal.items;
-    const tapW = 90;
-    const tapGap = 24;
-    const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
-    const pw = Math.max(totalTapsW + 80, 340);
-    const ph = 420;
+    const tapSpacing = 80;
+    const totalTapsW = (items.length - 1) * tapSpacing;
+    const pw = Math.max(totalTapsW + 160, 340);
+    const ph = 380;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
-    const startX = px + (pw - totalTapsW) / 2;
-    const wallY = py + 58;
+    const startX = px + pw / 2 - totalTapsW / 2;
+    const plateY = py + 60;
 
-    // Hit test each tap handle area
+    // Hit test each tap handle/faucet area
     for (let i = 0; i < items.length; i++) {
-      const tx = startX + i * (tapW + tapGap) + tapW / 2;
-      if (Math.abs(x - tx) < tapW / 2 && y > wallY - 10 && y < wallY + 100) {
+      const tx = startX + i * tapSpacing;
+      if (Math.abs(x - tx) < 35 && y > plateY && y < plateY + 140) {
         modal.pouringIndex = i;
         this.startPour(items[i], modal.pourRate);
         return;
