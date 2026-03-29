@@ -1320,7 +1320,7 @@ export class Game {
     const tapGap = 24;
     const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
     const pw = Math.max(totalTapsW + 80, 340);
-    const ph = 320;
+    const ph = 420;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
     const startX = px + (pw - totalTapsW) / 2;

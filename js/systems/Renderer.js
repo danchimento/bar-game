@@ -804,7 +804,7 @@ export class Renderer {
     const tapGap = 24;
     const totalTapsW = items.length * tapW + (items.length - 1) * tapGap;
     const pw = Math.max(totalTapsW + 80, 340);
-    const ph = 320;
+    const ph = 420;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -899,14 +899,9 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(drinkDef.name, tx, wallY + wallH + 24);
-
-      // Price
-      ctx.fillStyle = '#999';
-      ctx.font = '10px monospace';
-      ctx.fillText(`$${drinkDef.price}`, tx, wallY + wallH + 38);
     }
 
-    // Glass under the active tap (or centered if not pouring)
+    // Glass under the active tap (or centered if not pouring) — below drip tray
     if (carriedGlass) {
       let glassX = px + pw / 2;
       if (pouringKey) {
@@ -915,8 +910,22 @@ export class Renderer {
           glassX = startX + idx * (tapW + tapGap) + tapW / 2;
         }
       }
-      const glassY = trayY - 82;
-      this.drawGlassVisual(glassX, glassY, 40, 80, carriedGlass, !!activePour, true);
+      const glassY = trayY + 14;
+      const glassH = 80;
+      this.drawGlassVisual(glassX, glassY, 40, glassH, carriedGlass, !!activePour, true);
+
+      // Extend pour stream down into the glass when pouring
+      if (pouringKey) {
+        const idx = items.indexOf(pouringKey);
+        if (idx >= 0) {
+          const tx = startX + idx * (tapW + tapGap) + tapW / 2;
+          const drinkDef = DRINKS[pouringKey];
+          ctx.fillStyle = drinkDef.color;
+          ctx.globalAlpha = 0.7;
+          ctx.fillRect(tx - 2, trayY, 4, glassY + 4 - trayY);
+          ctx.globalAlpha = 1;
+        }
+      }
     }
 
     // Close button
