@@ -119,7 +119,7 @@ export class Game {
     this.cashOnBar = new Map();
     this.posTab = new Map();
     this.serviceMat = [];
-    this.drinksAtSeats = new Map(); // seatId → GlassState
+    this.drinksAtSeats = new Map(); // seatId → [GlassState, ...]
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
@@ -181,19 +181,38 @@ export class Game {
     for (const guest of this.guests) {
       guest.update(dt, this.levelTimer, this.settings);
 
-      // Deplete drink at seat while guest is enjoying
-      if (guest.state === GUEST_STATE.ENJOYING && guest.enjoyTotal > 0) {
-        const glass = this.drinksAtSeats.get(guest.seatId);
-        if (glass && glass.layers.length > 0) {
-          const progress = Math.max(0, guest.stateTimer / guest.enjoyTotal);
-          // Scale layers to match remaining progress
-          const targetFill = glass._initialFill * progress;
-          const currentLiquid = glass.layers.reduce((s, l) => s + l.amount, 0);
-          if (currentLiquid > targetFill) {
-            const scale = targetFill / currentLiquid;
-            for (const layer of glass.layers) {
-              layer.amount *= scale;
+      // Sip animation update
+      if (guest.sipping) {
+        guest.sipAnimTimer -= dt;
+        if (guest.sipAnimTimer <= 0) {
+          guest.sipping = false;
+        }
+      }
+
+      // Sip-based drink depletion while enjoying
+      if (guest.state === GUEST_STATE.ENJOYING) {
+        const glasses = this.drinksAtSeats.get(guest.seatId);
+        if (glasses && glasses.length > 0) {
+          guest.sipTimer -= dt;
+          if (guest.sipTimer <= 0) {
+            guest.sipTimer = guest.sipInterval;
+            // Pick which drink to sip — alternate
+            const idx = guest.sipDrinkIndex % glasses.length;
+            const glass = glasses[idx];
+            if (glass.layers.length > 0) {
+              const remaining = glass.layers.reduce((s, l) => s + l.amount, 0);
+              const sip = Math.min(guest.sipAmount, remaining);
+              // Deplete layers proportionally
+              if (remaining > 0 && sip > 0) {
+                const scale = (remaining - sip) / remaining;
+                for (const layer of glass.layers) {
+                  layer.amount *= scale;
+                }
+              }
+              guest.sipping = true;
+              guest.sipAnimTimer = 0.5;
             }
+            guest.sipDrinkIndex++;
           }
         }
       }
@@ -934,8 +953,8 @@ export class Game {
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
         if (result.valid) {
           // Place drink on bar in front of guest
-          glass._initialFill = glass.layers.reduce((s, l) => s + l.amount, 0);
-          this.drinksAtSeats.set(guest.seatId, glass);
+          if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
+          this.drinksAtSeats.get(guest.seatId).push(glass);
           this.bartender.carrying = null;
           this.carriedGlass = null;
 
@@ -968,8 +987,8 @@ export class Game {
             this.hud.showMessage(msg, 1.5);
           } else {
             // Accepted with penalty — place drink on bar
-            glass._initialFill = glass.layers.reduce((s, l) => s + l.amount, 0);
-            this.drinksAtSeats.set(guest.seatId, glass);
+            if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
+            this.drinksAtSeats.get(guest.seatId).push(glass);
             this.bartender.carrying = null;
             this.carriedGlass = null;
 

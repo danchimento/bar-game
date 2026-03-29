@@ -55,6 +55,14 @@ export class Guest {
     this.totalSpent = 0;
     this.checkedIn = false;
     this.seatDirty = false;
+
+    // Sipping behavior
+    this.sipInterval = 2.5 + Math.random() * 3.5;  // seconds between sips (2.5–6)
+    this.sipAmount = 0.05 + Math.random() * 0.08;   // fill amount per sip (0.05–0.13)
+    this.sipTimer = this.sipInterval;
+    this.sipDrinkIndex = 0;                          // alternates between drinks
+    this.sipping = false;                            // true during sip animation
+    this.sipAnimTimer = 0;                           // animation countdown
   }
 
   getMoodLabel() {

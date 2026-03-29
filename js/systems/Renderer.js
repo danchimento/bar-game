@@ -84,9 +84,11 @@ export class Renderer {
   }
 
   drawDrinksAtSeats(drinksMap) {
-    for (const [seatId, glass] of drinksMap) {
+    for (const [seatId, glasses] of drinksMap) {
       const seat = SEATS[seatId];
-      this.drawMiniGlass(seat.x + 20, BAR_TOP_Y + 5, 16, 22, glass);
+      for (let i = 0; i < glasses.length; i++) {
+        this.drawMiniGlass(seat.x + 14 + i * 20, BAR_TOP_Y + 5, 16, 22, glasses[i]);
+      }
     }
   }
 
@@ -150,6 +152,14 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(x, y - 9, 9, Math.PI, 0);
       ctx.fill();
+
+      // Sip animation — show drinking icon briefly
+      if (guest.sipping) {
+        ctx.font = '14px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('🍹', x, y - 24);
+      }
 
       const indicator = guest.getIndicator();
       if (indicator) {
