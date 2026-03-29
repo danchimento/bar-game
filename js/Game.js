@@ -141,8 +141,19 @@ export class Game {
   loop(now) {
     const dt = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
-    this.update(dt);
-    this.render();
+    try {
+      this.update(dt);
+      this.render();
+    } catch (e) {
+      console.error('Game loop error:', e);
+      // Show error on canvas so user can report it
+      this.ctx.fillStyle = 'red';
+      this.ctx.font = 'bold 14px monospace';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(`ERROR: ${e.message}`, 10, 30);
+      this.ctx.font = '11px monospace';
+      this.ctx.fillText(`${e.stack?.split('\n')[1]?.trim() || ''}`, 10, 50);
+    }
     requestAnimationFrame(this.loop.bind(this));
   }
 
