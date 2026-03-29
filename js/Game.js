@@ -94,7 +94,7 @@ export class Game {
 
     // Long-press tracking — works for ALL stations
     this.longPressTimer = null;
-    this.longPressThreshold = 400; // ms
+    this.longPressThreshold = 250; // ms
     this.longPressFired = false;   // suppress tap when long-press fires
     this.pendingStationTap = null; // deferred station tap for tap-vs-longpress
     this.pointerDownPos = { x: 0, y: 0 };
@@ -422,6 +422,8 @@ export class Game {
           }
           this.radialMenu.close();
         }
+        // Radial was active — don't also fire station tap
+        this.pendingStationTap = null;
       }
 
       // Deferred station tap — only fire if long-press didn't activate
@@ -598,7 +600,6 @@ export class Game {
       }
 
       case 'TAPS': {
-        if (!this.carriedGlass) return [];
         const beers = ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'];
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
         for (const key of beers) {
@@ -615,7 +616,6 @@ export class Game {
       }
 
       case 'WINE': {
-        if (!this.carriedGlass) return [];
         const wines = ['RED_WINE', 'WHITE_WINE'];
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
         for (const key of wines) {
@@ -632,11 +632,10 @@ export class Game {
       }
 
       case 'PREP': {
-        if (!this.carriedGlass) return [];
         // Ice option
         options.push({
           label: '🧊 Ice',
-          disabled: this.carriedGlass.ice > 0,
+          disabled: !this.carriedGlass || this.carriedGlass.ice > 0,
           action: () => {
             this.walkThenAct(station.x, () => { this.addIce(); });
           },
@@ -645,7 +644,7 @@ export class Game {
         for (const key of Object.keys(GARNISHES)) {
           options.push({
             label: GARNISHES[key].name,
-            disabled: this.carriedGlass.garnishes.includes(key),
+            disabled: this.carriedGlass && this.carriedGlass.garnishes.includes(key),
             action: () => {
               this.walkThenAct(station.x, () => { this.addGarnish(key); });
             },
@@ -1072,30 +1071,18 @@ export class Game {
         break;
 
       case 'TAPS':
-        if (!this.carriedGlass) {
-          this.hud.showMessage('Need a glass first', 1);
-          return;
-        }
         this.walkThenAct(station.x, () => {
           this.openDrinkModal('beer', station.x);
         });
         break;
 
       case 'WINE':
-        if (!this.carriedGlass) {
-          this.hud.showMessage('Need a glass first', 1);
-          return;
-        }
         this.walkThenAct(station.x, () => {
           this.openDrinkModal('wine', station.x);
         });
         break;
 
       case 'PREP':
-        if (!bt.carrying || (!bt.carrying.startsWith('DRINK_') && !bt.carrying.startsWith('GLASS_'))) {
-          this.hud.showMessage('Need a glass first', 1);
-          return;
-        }
         this.walkThenAct(station.x, () => {
           this.prepModal.visible = true;
         });
@@ -1296,11 +1283,8 @@ export class Game {
       this.hud.showMessage('Already has ice!', 1);
       return;
     }
-    this.bartender.startAction(ACTION_DURATIONS.GARNISH, 'Adding ice...', () => {
-      this.carriedGlass.addIce(0.3);
-      this.hud.showMessage('Ice added', 1);
-    });
-    this.prepModal.visible = false;
+    this.carriedGlass.addIce(0.3);
+    this.hud.showMessage('Ice added', 1);
   }
 
   // ─── SERVICE MAT (put-down drinks) ──────────────────
