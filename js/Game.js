@@ -1319,7 +1319,7 @@ export class Game {
     const tapSpacing = 80;
     const totalTapsW = (items.length - 1) * tapSpacing;
     const pw = Math.max(totalTapsW + 160, 340);
-    const ph = 380;
+    const ph = 500;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
     const startX = px + pw / 2 - totalTapsW / 2;
@@ -1328,7 +1328,7 @@ export class Game {
     // Hit test each tap handle/faucet area
     for (let i = 0; i < items.length; i++) {
       const tx = startX + i * tapSpacing;
-      if (Math.abs(x - tx) < 35 && y > plateY && y < plateY + 140) {
+      if (Math.abs(x - tx) < 35 && y > plateY && y < plateY + 245) {
         modal.pouringIndex = i;
         this.startPour(items[i], modal.pourRate);
         return;

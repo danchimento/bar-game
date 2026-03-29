@@ -803,7 +803,7 @@ export class Renderer {
     const tapSpacing = 80;
     const totalTapsW = (items.length - 1) * tapSpacing;
     const pw = Math.max(totalTapsW + 160, 340);
-    const ph = 380;
+    const ph = 500;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -831,7 +831,7 @@ export class Renderer {
     const plateX = px + 25;
     const plateY = py + 60;
     const plateW = pw - 50;
-    const plateH = 140;
+    const plateH = 245;
 
     // Plate body
     ctx.fillStyle = '#b8bcc0';
@@ -881,7 +881,7 @@ export class Renderer {
     // ─── Draw each tap on the plate ───
     const startX = px + pw / 2 - totalTapsW / 2;
     const pouringKey = activePour ? activePour.drinkKey : null;
-    const faucetY = plateY + plateH * 0.55; // faucets mounted mid-plate
+    const faucetY = plateY + plateH * 0.35; // faucets mounted upper portion
 
     for (let i = 0; i < items.length; i++) {
       const drinkKey = items[i];
