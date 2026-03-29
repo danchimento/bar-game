@@ -1271,7 +1271,7 @@ export class Game {
     }
 
     // Mixer/Soda gun buttons — row 3 — pour directly while held
-    const mixerY = py + 220;
+    const mixerY = py + 225;
     const mixerBtnW = 90;
     const mixerStartX = px + 20;
     for (let i = 0; i < MIXER_DRINKS.length; i++) {
