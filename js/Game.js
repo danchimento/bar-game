@@ -62,6 +62,8 @@ export class Game {
       stationX: 0,
       pouringIndex: -1, // which drink button is held
       pourRate: 0,      // fill per second while held
+      glassX: 0,        // current animated glass x position (tap modal)
+      glassTargetX: 0,  // target glass x position
     };
 
     // Prep/Garnish modal
@@ -187,14 +189,14 @@ export class Game {
 
     // Update active pour — works for modals AND radial-initiated pours
     if (this.activePour && this.carriedGlass) {
-      const added = this.carriedGlass.pour(this.activePour.drinkKey, this.activePour.pourRate * dt);
-      if (added <= 0) {
-        this.activePour = null; // glass full
-      }
-      // Keep drinkModal in sync if open
-      if (this.drinkModal.visible && added <= 0) {
-        this.drinkModal.pouringIndex = -1;
-      }
+      this.carriedGlass.pour(this.activePour.drinkKey, this.activePour.pourRate * dt);
+    }
+
+    // Animate glass slide in tap modal
+    if (this.drinkModal.visible && this.drinkModal.type === 'beer') {
+      const speed = 12; // lerp speed
+      const dx = this.drinkModal.glassTargetX - this.drinkModal.glassX;
+      this.drinkModal.glassX += dx * Math.min(1, speed * dt);
     }
 
     this.spawnGuests();
@@ -518,6 +520,15 @@ export class Game {
         this.activePour = null;
         if (this.drinkModal.visible) {
           this.drinkModal.pouringIndex = -1;
+          // Slide glass back to rest position
+          if (this.drinkModal.type === 'beer') {
+            const items = this.drinkModal.items;
+            const tapSpacing = 80;
+            const totalTapsW = (items.length - 1) * tapSpacing;
+            const pw = Math.max(totalTapsW + 160, 340);
+            const px = (CANVAS_W - pw) / 2;
+            this.drinkModal.glassTargetX = px + 50;
+          }
         }
       }
 
@@ -1262,6 +1273,14 @@ export class Game {
     if (type === 'beer') {
       this.drinkModal.items = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'beer');
       this.drinkModal.pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER; // fill per second
+      // Initialize glass resting position (left side of plate)
+      const tapSpacing = 80;
+      const totalTapsW = (this.drinkModal.items.length - 1) * tapSpacing;
+      const pw = Math.max(totalTapsW + 160, 340);
+      const px = (CANVAS_W - pw) / 2;
+      const restX = px + 50; // left side of plate
+      this.drinkModal.glassX = restX;
+      this.drinkModal.glassTargetX = restX;
     } else if (type === 'wine') {
       this.drinkModal.items = this.getAvailableDrinks().filter(d => DRINKS[d].type === 'wine');
       this.drinkModal.pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
@@ -1330,6 +1349,7 @@ export class Game {
       const tx = startX + i * tapSpacing;
       if (Math.abs(x - tx) < 35 && y > plateY && y < plateY + 245) {
         modal.pouringIndex = i;
+        modal.glassTargetX = tx; // slide glass under this tap
         this.startPour(items[i], modal.pourRate);
         return;
       }

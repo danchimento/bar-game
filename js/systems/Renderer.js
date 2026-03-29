@@ -955,26 +955,52 @@ export class Renderer {
 
     // ─── Glass on the drip tray ───
     if (carriedGlass) {
-      let glassX = px + pw / 2;
-      if (pouringKey) {
-        const idx = items.indexOf(pouringKey);
-        if (idx >= 0) {
-          glassX = startX + idx * tapSpacing;
-        }
-      }
+      const glassX = modal.glassX || (px + 50);
       const glassH = 70;
+      const glassW = 36;
       const glassY = trayY - glassH + 2; // sitting on the tray
-      this.drawGlassVisual(glassX, glassY, 36, glassH, carriedGlass, !!activePour, true);
 
-      // Extend pour stream into glass
+      // Bartender tilt: angle glass ~20° when pouring (proper pour technique)
+      // Ease tilt based on fill level — start tilted, straighten as it fills
+      const isPouring = !!pouringKey;
+      const fill = carriedGlass.totalFill;
+      // Tilt more when empty, straighten as glass fills past 70%
+      const tiltMax = 0.35; // ~20 degrees
+      const tiltAmount = isPouring ? tiltMax * Math.max(0, 1 - fill / 0.7) : 0;
+
+      ctx.save();
+      ctx.translate(glassX, glassY + glassH); // pivot at bottom of glass
+      ctx.rotate(tiltAmount);
+      this.drawGlassVisual(0, -glassH, glassW, glassH, carriedGlass, isPouring, true);
+
+      // Overflow visual — beer running down the sides
+      if (carriedGlass.overflow > 0) {
+        const overflowAlpha = Math.min(0.8, carriedGlass.overflow * 3);
+        const drinkColor = carriedGlass.layers.length > 0 ? carriedGlass.layers[0].color : '#f0c040';
+        ctx.fillStyle = drinkColor;
+        ctx.globalAlpha = overflowAlpha;
+        // Drips on left and right side
+        ctx.fillRect(-glassW / 2 - 3, -glassH + 2, 4, glassH * 0.6);
+        ctx.fillRect(glassW / 2 - 1, -glassH + 4, 4, glassH * 0.5);
+        // Puddle at base
+        ctx.beginPath();
+        ctx.ellipse(0, 2, glassW / 2 + 6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+
+      // Pour stream from spout into glass
       if (pouringKey) {
         const idx = items.indexOf(pouringKey);
         if (idx >= 0) {
           const tx = startX + idx * tapSpacing;
           const drinkDef = DRINKS[pouringKey];
           ctx.fillStyle = drinkDef.color;
-          ctx.globalAlpha = 0.5;
-          ctx.fillRect(tx - 1, faucetY + 34, 3, glassY + 4 - (faucetY + 34));
+          ctx.globalAlpha = 0.6;
+          // Stream from spout to glass opening
+          const streamEndY = glassY + 4;
+          ctx.fillRect(tx - 2, faucetY + 34, 4, streamEndY - (faucetY + 34));
           ctx.globalAlpha = 1;
         }
       }

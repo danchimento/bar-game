@@ -15,6 +15,7 @@ export class GlassState {
     this.layers = [];                      // [{ drinkKey, color, amount }]
     this.ice = 0;                          // volume taken by ice
     this.garnishes = [];                   // ['ORANGE', 'LIME', ...]
+    this.overflow = 0;                     // amount spilled over the top
   }
 
   get totalFill() {
@@ -54,17 +55,27 @@ export class GlassState {
   pour(drinkKey, amount) {
     const drinkDef = DRINKS[drinkKey];
     if (!drinkDef) return 0;
-    const add = Math.min(amount, this.remainingCapacity);
-    if (add <= 0) return 0;
 
-    // Merge into existing layer of same drink if present
-    const existing = this.layers.find(l => l.drinkKey === drinkKey);
-    if (existing) {
-      existing.amount += add;
-    } else {
-      this.layers.push({ drinkKey, color: drinkDef.color, amount: add });
+    const remaining = this.remainingCapacity;
+    const fitInGlass = Math.min(amount, remaining);
+    const spill = amount - fitInGlass;
+
+    if (fitInGlass > 0) {
+      // Merge into existing layer of same drink if present
+      const existing = this.layers.find(l => l.drinkKey === drinkKey);
+      if (existing) {
+        existing.amount += fitInGlass;
+      } else {
+        this.layers.push({ drinkKey, color: drinkDef.color, amount: fitInGlass });
+      }
     }
-    return add;
+
+    // Track overflow
+    if (spill > 0) {
+      this.overflow += spill;
+    }
+
+    return amount; // always return full amount so pour doesn't auto-stop
   }
 
   addGarnish(garnishKey) {
@@ -105,10 +116,11 @@ export class GlassState {
     // Check fill level is in acceptable range
     const liquidFill = this.layers.reduce((sum, l) => sum + l.amount, 0);
     const [minFill, maxFill] = drinkDef.fillRange;
-    if (liquidFill < minFill) {
+    if (this.overflow > 0.01) {
+      issues.push('overfilled'); // beer spilled over the top
+    } else if (liquidFill < minFill) {
       issues.push('underfilled');
     } else if (this.totalFill > maxFill + 0.15) {
-      // Allow slight overfill with ice but not excessive
       issues.push('overfilled');
     }
 
