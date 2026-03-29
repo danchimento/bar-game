@@ -1419,6 +1419,7 @@ export class Game {
         if (x > bx && x < bx + 140 && y > by && y < by + 42) {
           this.pos.mode = 'SEAT_VIEW';
           this.pos.selectedSeat = i;
+          return;
         }
       }
     } else if (this.pos.mode === 'SEAT_VIEW') {

@@ -806,7 +806,7 @@ export class Renderer {
       });
 
       // Print Check button
-      const canPrint = guest && guest.state === GUEST_STATE.READY_TO_PAY && tab.length > 0;
+      const canPrint = tab.length > 0;
       ctx.fillStyle = canPrint ? '#ffc107' : '#333';
       ctx.beginPath();
       ctx.roundRect(px + pw - 160, py + ph - 55, 140, 40, 6);
