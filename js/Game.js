@@ -180,6 +180,23 @@ export class Game {
     // Update guests
     for (const guest of this.guests) {
       guest.update(dt, this.levelTimer, this.settings);
+
+      // Deplete drink at seat while guest is enjoying
+      if (guest.state === GUEST_STATE.ENJOYING && guest.enjoyTotal > 0) {
+        const glass = this.drinksAtSeats.get(guest.seatId);
+        if (glass && glass.layers.length > 0) {
+          const progress = Math.max(0, guest.stateTimer / guest.enjoyTotal);
+          // Scale layers to match remaining progress
+          const targetFill = glass._initialFill * progress;
+          const currentLiquid = glass.layers.reduce((s, l) => s + l.amount, 0);
+          if (currentLiquid > targetFill) {
+            const scale = targetFill / currentLiquid;
+            for (const layer of glass.layers) {
+              layer.amount *= scale;
+            }
+          }
+        }
+      }
     }
 
     // Clean up done guests — cash stays on bar
@@ -698,15 +715,15 @@ export class Game {
       }
 
       case 'SINK': {
-        if (this.carriedGlass && !this.carriedGlass.isEmpty) {
+        if (this.carriedGlass) {
           options.push({
             label: 'Dump',
             action: () => {
               this.walkThenAct(station.x, () => {
                 bt.startAction(0.4, 'Dumping...', () => {
-                  this.carriedGlass.dump();
-                  bt.carrying = `GLASS_${this.carriedGlass.glassType}`;
-                  this.hud.showMessage('Glass emptied', 1);
+                  this.carriedGlass = null;
+                  bt.carrying = null;
+                  this.hud.showMessage('Dumped', 1);
                 });
               });
             },
@@ -917,6 +934,7 @@ export class Game {
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
         if (result.valid) {
           // Place drink on bar in front of guest
+          glass._initialFill = glass.layers.reduce((s, l) => s + l.amount, 0);
           this.drinksAtSeats.set(guest.seatId, glass);
           this.bartender.carrying = null;
           this.carriedGlass = null;
@@ -950,6 +968,7 @@ export class Game {
             this.hud.showMessage(msg, 1.5);
           } else {
             // Accepted with penalty — place drink on bar
+            glass._initialFill = glass.layers.reduce((s, l) => s + l.amount, 0);
             this.drinksAtSeats.set(guest.seatId, glass);
             this.bartender.carrying = null;
             this.carriedGlass = null;
@@ -1054,12 +1073,12 @@ export class Game {
         break;
 
       case 'SINK':
-        if (this.carriedGlass && !this.carriedGlass.isEmpty) {
+        if (this.carriedGlass) {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.4, 'Dumping...', () => {
-              this.carriedGlass.dump();
-              bt.carrying = `GLASS_${this.carriedGlass.glassType}`;
-              this.hud.showMessage('Glass emptied', 1);
+              this.carriedGlass = null;
+              bt.carrying = null;
+              this.hud.showMessage('Dumped', 1);
             });
           });
         } else {
