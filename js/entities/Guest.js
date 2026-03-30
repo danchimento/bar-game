@@ -62,10 +62,12 @@ export class Guest {
     this.sipTimer = this.sipInterval;
     this.sipDrinkIndex = 0;                          // alternates between drinks
     this.sipping = false;                            // true during sip animation
-    this.sipAnimTimer = 0;                           // animation countdown
+    this.sipAnimTimer = 0;                           // animation countdown (total 1.0s)
     this.wasAngry = false;                           // true if left via ANGRY_LEAVING
     this.waitStartTime = 0;                          // levelTimer when WAITING_FOR_DRINK began
     this.totalWaitTime = 0;                          // accumulated wait time across all rounds
+    this.lookingReason = null;                       // 'first_order' | 'another' | 'check'
+    this.sipAnimProgress = 0;                        // 0→1→0 glass lift animation
   }
 
   getMoodLabel() {
@@ -94,12 +96,13 @@ export class Guest {
     switch (this.state) {
       case GUEST_STATE.WAITING_FOR_SEAT: return '⏳';
       case GUEST_STATE.ARRIVING: return null;
-      case GUEST_STATE.SEATED: return this.greeted ? '...' : '👋';
-      case GUEST_STATE.READY_TO_ORDER: return '✋';
-      case GUEST_STATE.ORDER_TAKEN: return '👍';
+      case GUEST_STATE.SEATED: return null;
+      case GUEST_STATE.LOOKING: return '👀';
+      case GUEST_STATE.READY_TO_ORDER: return null;
+      case GUEST_STATE.ORDER_TAKEN: return null;  // order text shown instead
       case GUEST_STATE.WAITING_FOR_DRINK: return '⏳';
       case GUEST_STATE.ENJOYING: return null;
-      case GUEST_STATE.WANTS_ANOTHER: return '🍺?';
+      case GUEST_STATE.WANTS_ANOTHER: return '🍺';
       case GUEST_STATE.READY_TO_PAY: return '💵';
       case GUEST_STATE.REVIEWING_CHECK: return '🧾';
       case GUEST_STATE.ANGRY_LEAVING: return '😡';
@@ -112,6 +115,9 @@ export class Guest {
     switch (newState) {
       case GUEST_STATE.SEATED:
         this.stateTimer = (this.settings?.settleTime ?? SETTLE_TIME) * this.patience;
+        break;
+      case GUEST_STATE.LOOKING:
+        // lookingReason must be set before calling transitionTo
         break;
       case GUEST_STATE.READY_TO_ORDER:
         this.chooseDrink();
@@ -135,9 +141,8 @@ export class Guest {
         break;
       }
       case GUEST_STATE.WANTS_ANOTHER:
-        // Keep same drink — "another one"
-        this.currentOrder = [this.currentDrink];
-        this.fulfilledItems = [];
+        // Brief state — auto-transitions to WAITING_FOR_DRINK
+        this.stateTimer = 1.5;
         break;
       case GUEST_STATE.READY_TO_PAY:
         break;
@@ -191,8 +196,6 @@ export class Guest {
     const baseTip = this.totalSpent * 0.20;
     this.tipAmount = Math.round(baseTip * moodFraction * this.tipMultiplier * 100) / 100;
     if (this.checkedIn) this.tipAmount *= 1.1;
-    // Memory bonus — didn't need to write the order down
-    if (!this.orderWrittenDown) this.tipAmount *= 1.15;
   }
 
   update(dt, levelTimer, settings) {
@@ -233,12 +236,20 @@ export class Guest {
 
       case GUEST_STATE.SEATED:
         this.stateTimer -= dt;
-        if (this.stateTimer <= 0 && this.greeted) {
-          this.transitionTo(GUEST_STATE.READY_TO_ORDER);
+        if (this.stateTimer <= 0) {
+          this.lookingReason = 'first_order';
+          this.transitionTo(GUEST_STATE.LOOKING);
         }
         break;
 
       case GUEST_STATE.ORDER_TAKEN:
+        this.stateTimer -= dt;
+        if (this.stateTimer <= 0) {
+          this.transitionTo(GUEST_STATE.WAITING_FOR_DRINK);
+        }
+        break;
+
+      case GUEST_STATE.WANTS_ANOTHER:
         this.stateTimer -= dt;
         if (this.stateTimer <= 0) {
           this.transitionTo(GUEST_STATE.WAITING_FOR_DRINK);

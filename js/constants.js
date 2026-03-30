@@ -73,6 +73,7 @@ export const GUEST_STATE = {
   WAITING_FOR_SEAT: 'WAITING_FOR_SEAT',
   ARRIVING: 'ARRIVING',
   SEATED: 'SEATED',
+  LOOKING: 'LOOKING',          // wants bartender attention (first order, another, or check)
   READY_TO_ORDER: 'READY_TO_ORDER',
   ORDER_TAKEN: 'ORDER_TAKEN',
   WAITING_FOR_DRINK: 'WAITING_FOR_DRINK',
@@ -100,6 +101,7 @@ export const MOOD_DECAY = {
   WAITING_FOR_SEAT: 0.25,
   ARRIVING: 0,
   SEATED: 0.15,
+  LOOKING: 0.5,
   READY_TO_ORDER: 0.6,
   ORDER_TAKEN: 0,
   WAITING_FOR_DRINK: 0.75,

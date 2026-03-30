@@ -400,7 +400,7 @@ export class Renderer {
     }
   }
 
-  drawGuests(guests, waitingCount) {
+  drawGuests(guests, waitingCount, drinksAtSeats) {
     const ctx = this.ctx;
 
     // Show waiting queue as a count badge instead of individual guests
@@ -440,12 +440,21 @@ export class Renderer {
       ctx.arc(x, y - 9, 9, Math.PI, 0);
       ctx.fill();
 
-      // Sip animation — show drinking icon briefly
-      if (guest.sipping) {
-        ctx.font = '14px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText('🍹', x, y - 24);
+      // Sip animation — glass lifts to mouth and back down
+      if (guest.sipping && guest.sipAnimTimer > 0 && guest.seatId !== null && drinksAtSeats) {
+        const glasses = drinksAtSeats.get(guest.seatId);
+        if (glasses && glasses.length > 0) {
+          const glassIdx = (guest.sipDrinkIndex - 1 + glasses.length) % glasses.length;
+          const glass = glasses[glassIdx] || glasses[0];
+          // Bell curve: 0 → 1 → 0 over the animation
+          const t = 1 - guest.sipAnimTimer / 1.0;
+          const lift = Math.sin(t * Math.PI);  // peaks at t=0.5
+          const restY = BAR_TOP_Y + 5;
+          const mouthY = y - 16;
+          const animY = restY + (mouthY - restY) * lift;
+          const animX = x + (x - (SEATS[guest.seatId].x + 14)) * (1 - lift);
+          this.drawMiniGlass(x, animY, 14, 20, glass);
+        }
       }
 
       const indicator = guest.getIndicator();
@@ -456,8 +465,21 @@ export class Renderer {
         ctx.fillText(indicator, x, y - 24);
       }
 
+      // "+1" indicator for reorders
+      if (guest.state === GUEST_STATE.WANTS_ANOTHER && guest.orderRevealTimer > 0) {
+        const alpha = Math.min(1, guest.orderRevealTimer / 1.0);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = '#ffc107';
+        ctx.fillText('+1', x, y - 24);
+        ctx.restore();
+      }
+
       // Order label — shows temporarily after order is taken, fades out
-      if (guest.currentOrder && guest.orderRevealTimer > 0) {
+      else if (guest.currentOrder && guest.orderRevealTimer > 0) {
         const alpha = Math.min(1, guest.orderRevealTimer / 1.0);
         ctx.save();
         ctx.globalAlpha = alpha;

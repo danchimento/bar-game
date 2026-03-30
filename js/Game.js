@@ -275,7 +275,7 @@ export class Game {
                 }
               }
               guest.sipping = true;
-              guest.sipAnimTimer = 0.5;
+              guest.sipAnimTimer = 1.0;
             }
             guest.sipDrinkIndex++;
           }
@@ -290,10 +290,11 @@ export class Game {
           guest.drinksHad++;
           const barClosed = this.levelTimer >= this.activeDuration;
           if (guest.drinksHad < guest.maxDrinks && !barClosed) {
-            guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
+            guest.lookingReason = 'another';
           } else {
-            guest.transitionTo(GUEST_STATE.READY_TO_PAY);
+            guest.lookingReason = 'check';
           }
+          guest.transitionTo(GUEST_STATE.LOOKING);
         }
       }
 
@@ -492,7 +493,7 @@ export class Game {
     this.renderer.drawCashOnBar(this.cashOnBar);
     this.renderer.drawServiceMat(this.serviceMat);
     const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
-    this.renderer.drawGuests(this.guests, waitingCount);
+    this.renderer.drawGuests(this.guests, waitingCount, this.drinksAtSeats);
     this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
     if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGlass);
     // Glass fill overlay — always visible when carrying a glass with contents or pouring
@@ -705,8 +706,8 @@ export class Game {
 
     if (this.gameState !== GAME_STATE.PLAYING) return;
 
-    // Pause button (top-center) — generous hit area
-    if (x > CANVAS_W / 2 - 50 && x < CANVAS_W / 2 + 50 && y < 50) {
+    // Pause button (top-center) — large tap zone
+    if (x > CANVAS_W / 2 - 80 && x < CANVAS_W / 2 + 80 && y < 60) {
       this.clearLongPress();
       this.gameState = GAME_STATE.PAUSED;
       this._quitConfirm = false;
@@ -1057,18 +1058,14 @@ export class Game {
 
     switch (guest.state) {
       case GUEST_STATE.SEATED:
-        if (!guest.greeted) {
-          options.push({ label: 'Greet', icon: '👋', action: () => this.greetGuest(guest) });
-          options.push({ label: 'Greet & Order', icon: '📋', action: () => this.greetAndOrder(guest) });
-        }
-        // Anticipation: serve a drink before they even order
+        // Still settling — can serve anticipated drink
         if (this.carriedGlass && this.carriedGlass.primaryDrink) {
           options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
         }
         break;
 
-      case GUEST_STATE.READY_TO_ORDER:
-        options.push({ label: 'Take Order', icon: '📋', action: () => this.takeOrder(guest) });
+      case GUEST_STATE.LOOKING:
+        options.push({ label: 'Check In', icon: '👀', action: () => this.acknowledgeGuest(guest) });
         if (this.carriedGlass && this.carriedGlass.primaryDrink) {
           options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
         }
@@ -1076,15 +1073,12 @@ export class Game {
 
       case GUEST_STATE.WAITING_FOR_DRINK:
         if (this.carriedGlass && this.carriedGlass.primaryDrink) {
-          // Find the next unfulfilled item index
           const nextIdx = guest.currentOrder
             ? guest.fulfilledItems.length
             : 0;
           options.push({ label: 'Serve', icon: '🍺', action: () => this.serveDrink(guest, nextIdx) });
         }
-        if (!guest.orderOnNotepad) {
-          options.push({ label: 'Write Down', icon: '📝', action: () => this.writeDownOrder(guest) });
-        }
+        options.push({ label: 'Ask Again', icon: '❓', action: () => this.askOrder(guest) });
         break;
 
       case GUEST_STATE.ENJOYING:
@@ -1092,7 +1086,6 @@ export class Game {
         break;
 
       case GUEST_STATE.WANTS_ANOTHER:
-        options.push({ label: 'Another', icon: '🍺', action: () => this.takeOrder(guest) });
         if (this.carriedGlass && this.carriedGlass.primaryDrink) {
           options.push({ label: 'Serve', icon: '🍻', action: () => this.serveAnticipated(guest) });
         }
@@ -1147,51 +1140,44 @@ export class Game {
     this.pendingAction = { targetX, callback };
   }
 
-  greetGuest(guest) {
+  acknowledgeGuest(guest) {
     const seatX = SEATS[guest.seatId].x;
     this.walkThenAct(seatX, () => {
-      this.bartender.startAction(ACTION_DURATIONS.GREET, 'Greeting...', () => {
+      this.bartender.startAction(ACTION_DURATIONS.GREET, 'Checking in...', () => {
         guest.greeted = true;
         guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
-        if (guest.stateTimer <= 0) {
-          guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
+
+        switch (guest.lookingReason) {
+          case 'first_order':
+            // Guest reveals their order
+            guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
+            guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
+            this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
+            break;
+          case 'another':
+            // Guest wants another of the same — show +1
+            guest.currentOrder = [guest.currentDrink];
+            guest.fulfilledItems = [];
+            guest.orderRevealTimer = this.settings?.orderRevealTime ?? 4;
+            guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
+            this.hud.showMessage('Another one!', 1);
+            break;
+          case 'check':
+            // Guest wants the check
+            guest.transitionTo(GUEST_STATE.READY_TO_PAY);
+            this.hud.showMessage('Wants the check', 1);
+            break;
         }
-        this.hud.showMessage('Greeted!', 1);
       });
     });
   }
 
-  greetAndOrder(guest) {
+  askOrder(guest) {
     const seatX = SEATS[guest.seatId].x;
     this.walkThenAct(seatX, () => {
-      this.bartender.startAction(ACTION_DURATIONS.GREET + ACTION_DURATIONS.TAKE_ORDER, 'Greet & order...', () => {
-        guest.greeted = true;
-        guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
-        guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
-        guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
+      this.bartender.startAction(0.4, 'Asking...', () => {
+        guest.orderRevealTimer = this.settings?.orderRevealTime ?? 4;
         this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
-      });
-    });
-  }
-
-  takeOrder(guest) {
-    const seatX = SEATS[guest.seatId].x;
-    this.walkThenAct(seatX, () => {
-      this.bartender.startAction(ACTION_DURATIONS.TAKE_ORDER, 'Taking order...', () => {
-        guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
-        this.hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
-      });
-    });
-  }
-
-  writeDownOrder(guest) {
-    const seatX = SEATS[guest.seatId].x;
-    this.walkThenAct(seatX, () => {
-      this.bartender.startAction(ACTION_DURATIONS.TAKE_ORDER, 'Writing...', () => {
-        this.notepad.addOrder(guest.id, guest.seatId, guest.currentDrink);
-        guest.orderOnNotepad = true;
-        guest.orderWrittenDown = true;
-        this.hud.showMessage('Order noted', 1);
       });
     });
   }
