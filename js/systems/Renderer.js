@@ -1206,16 +1206,18 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.fillText('Select a seat:', px + pw / 2, py + 55);
 
+      const cols = Math.min(SEATS.length, 3);
+      const btnW = Math.floor((pw - 40 - (cols - 1) * 15) / cols);
       for (let i = 0; i < SEATS.length; i++) {
-        const bx = px + 20 + (i % 3) * 155;
-        const by = py + 70 + Math.floor(i / 3) * 55;
+        const bx = px + 20 + (i % cols) * (btnW + 15);
+        const by = py + 70 + Math.floor(i / cols) * 55;
 
         const tab = posTab.get(i) || [];
         const hasTab = tab.length > 0;
 
         ctx.fillStyle = hasTab ? '#2a3a2a' : '#2a2a2a';
         ctx.beginPath();
-        ctx.roundRect(bx, by, 140, 42, 4);
+        ctx.roundRect(bx, by, btnW, 42, 4);
         ctx.fill();
 
         ctx.strokeStyle = '#666';

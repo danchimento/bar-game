@@ -32,12 +32,23 @@ export const STATION_LABEL_Y = 520;
 export const BAR_LEFT = 30;
 export const BAR_RIGHT = 930;
 
-// Seat positions (3 seats)
+// Seat positions (dynamic — rebuilt per level)
 export const SEATS = [
   { id: 0, x: 200 },
   { id: 1, x: 480 },
   { id: 2, x: 760 },
 ];
+
+/** Reconfigure SEATS in-place for N seats, evenly spaced across the bar */
+export function setSeatCount(n) {
+  SEATS.length = 0;
+  const margin = 120;
+  const barWidth = CANVAS_W - margin * 2;
+  const gap = barWidth / (n + 1);
+  for (let i = 0; i < n; i++) {
+    SEATS.push({ id: i, x: Math.round(margin + gap * (i + 1)) });
+  }
+}
 
 // Station definitions
 export const STATIONS = [

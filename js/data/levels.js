@@ -38,6 +38,7 @@ export const LEVELS = [
   {
     name: 'Day 1 — Opening Night',
     day: 1,
+    seats: 3,
     duration: 240,
     stations: layoutStations(['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER'],
@@ -60,6 +61,7 @@ export const LEVELS = [
   {
     name: 'Day 2 — Word Gets Around',
     day: 2,
+    seats: 3,
     duration: 270,
     stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA'],
@@ -84,6 +86,7 @@ export const LEVELS = [
   {
     name: 'Day 3 — Happy Hour',
     day: 3,
+    seats: 4,
     duration: 300,
     stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER'],
@@ -110,6 +113,7 @@ export const LEVELS = [
   {
     name: 'Day 4 — Regulars Night',
     day: 4,
+    seats: 4,
     duration: 300,
     stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
@@ -137,6 +141,7 @@ export const LEVELS = [
   {
     name: 'Day 5 — Friday Rush',
     day: 5,
+    seats: 5,
     duration: 300,
     stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],

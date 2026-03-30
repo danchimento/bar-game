@@ -1,5 +1,5 @@
 import {
-  CANVAS_W, CANVAS_H, SEATS, GUEST_STATE,
+  CANVAS_W, CANVAS_H, SEATS, setSeatCount, GUEST_STATE,
   STATION_Y, SERVICE_MAT_Y, SEAT_Y,
   ACTION_DURATIONS, HIT_RADIUS,
   GAME_STATE, MOOD_MAX, BAR_TOP_Y,
@@ -131,6 +131,7 @@ export class Game {
 
   startLevel() {
     this.level = LEVELS[this.levelIndex];
+    setSeatCount(this.level.seats || 3);
 
     // Apply per-level setting overrides
     if (this.level.settings) {
@@ -1792,10 +1793,12 @@ export class Game {
 
     if (this.pos.mode === 'SELECT_SEAT') {
       // Seat buttons
+      const cols = Math.min(SEATS.length, 3);
+      const btnW = Math.floor((pw - 40 - (cols - 1) * 15) / cols);
       for (let i = 0; i < SEATS.length; i++) {
-        const bx = px + 20 + (i % 3) * 155;
-        const by = py + 70 + Math.floor(i / 3) * 55;
-        if (x > bx && x < bx + 140 && y > by && y < by + 42) {
+        const bx = px + 20 + (i % cols) * (btnW + 15);
+        const by = py + 70 + Math.floor(i / cols) * 55;
+        if (x > bx && x < bx + btnW && y > by && y < by + 42) {
           this.pos.mode = 'SEAT_VIEW';
           this.pos.selectedSeat = i;
           return;
