@@ -13,11 +13,24 @@ if (screen.orientation && screen.orientation.lock) {
 }
 
 function resize() {
-  // Lock to top and bottom of screen, maintain aspect ratio
+  const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const w = vh * (CANVAS_W / CANVAS_H);
-  canvas.style.height = `${vh}px`;
+  const gameAspect = CANVAS_W / CANVAS_H;
+  const screenAspect = vw / vh;
+
+  let w, h;
+  if (screenAspect > gameAspect) {
+    // Screen is wider than game — fit to height, letterbox sides
+    h = vh;
+    w = vh * gameAspect;
+  } else {
+    // Screen is taller than game — fit to width, letterbox top/bottom
+    w = vw;
+    h = vw / gameAspect;
+  }
+
   canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
 }
 
 window.addEventListener('resize', resize);
