@@ -40,10 +40,6 @@ export class Renderer {
       ctx.beginPath();
       ctx.roundRect(seat.x - 20, SEAT_Y, 40, 32, 4);
       ctx.fill();
-      ctx.fillStyle = '#777';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${seat.id + 1}`, seat.x, SEAT_Y + 44);
     }
   }
 

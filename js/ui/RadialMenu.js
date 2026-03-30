@@ -116,6 +116,24 @@ export class RadialMenu {
       ctx.lineWidth = isHovered ? 2.5 : 1.5;
       ctx.stroke();
 
+      // Single option: show label above the menu, icon on the slice
+      if (count === 1) {
+        // Label floats above
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(opt.label, this.cx, this.cy - this.outerRadius - 14);
+
+        // Icon centered in the donut ring
+        if (opt.icon) {
+          ctx.font = '26px serif';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(opt.icon, this.cx, this.cy - (this.innerRadius + this.outerRadius) / 2);
+        }
+        continue;
+      }
+
       // Label and icon positioned in the middle of the donut ring
       const labelR = (this.innerRadius + this.outerRadius) / 2 + (isHovered ? 4 : 0);
       const lx = this.cx + Math.cos(midAngle) * labelR;

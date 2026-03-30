@@ -373,13 +373,19 @@ export class Game {
         const available = this.getAvailableSeats();
         if (available.length > 0) {
           const seat = available[Math.floor(Math.random() * available.length)];
-          const guest = new Guest(seat.id, next.type, next.drinkPrefs);
+          const hasPrep = this.getStations().some(s => s.id === 'PREP');
+          const prefs = hasPrep ? next.drinkPrefs : next.drinkPrefs.filter(d => d !== 'WATER');
+          const guest = new Guest(seat.id, next.type, prefs.length > 0 ? prefs : next.drinkPrefs);
           guest.settings = this.settings;
+          if (!hasPrep) guest.wantsWater = false;
           this.guests.push(guest);
         } else {
           // No seat — guest waits behind the bar
-          const guest = new Guest(null, next.type, next.drinkPrefs);
+          const hasPrep = this.getStations().some(s => s.id === 'PREP');
+          const prefs = hasPrep ? next.drinkPrefs : next.drinkPrefs.filter(d => d !== 'WATER');
+          const guest = new Guest(null, next.type, prefs.length > 0 ? prefs : next.drinkPrefs);
           guest.settings = this.settings;
+          if (!hasPrep) guest.wantsWater = false;
           this.guests.push(guest);
           this.positionWaitingGuests();
         }
@@ -391,10 +397,8 @@ export class Game {
     const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
     if (waiting.length > 0) {
       if (barClosed) {
-        // Bar closed — waiting guests leave
-        for (const guest of waiting) {
-          guest.transitionTo(GUEST_STATE.LEAVING);
-        }
+        // Bar closed — waiting guests simply leave (remove directly, they never entered)
+        this.guests = this.guests.filter(g => g.state !== GUEST_STATE.WAITING_FOR_SEAT);
       } else {
         const available = this.getAvailableSeats();
         for (const guest of waiting) {
@@ -1098,6 +1102,38 @@ export class Game {
           options.push({ label: 'Give Check', icon: '🧾', action: () => this.giveCheck(guest) });
         }
         break;
+    }
+
+    // Take empty glass — available in any state if there are empties at this seat
+    if (guest.seatId !== null && (!bt.carrying || bt.carrying === 'DIRTY_GLASS')) {
+      const glasses = this.drinksAtSeats.get(guest.seatId);
+      if (glasses) {
+        const hasEmpty = glasses.some(g =>
+          g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
+        );
+        if (hasEmpty) {
+          options.push({
+            label: 'Take Glass', icon: '🫗', action: () => {
+              const seatX = SEATS[guest.seatId].x;
+              this.walkThenAct(seatX, () => {
+                this.bartender.startAction(0.3, 'Clearing...', () => {
+                  // Remove empty glasses only
+                  const remaining = glasses.filter(g =>
+                    g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
+                  );
+                  if (remaining.length > 0) {
+                    this.drinksAtSeats.set(guest.seatId, remaining);
+                  } else {
+                    this.drinksAtSeats.delete(guest.seatId);
+                  }
+                  this.bartender.carrying = 'DIRTY_GLASS';
+                  this.hud.showMessage('Cleared glass', 0.8);
+                });
+              });
+            },
+          });
+        }
+      }
     }
 
     if (options.length > 0) {
