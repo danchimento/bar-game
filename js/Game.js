@@ -41,6 +41,27 @@ export class Game {
     this.levelIndex = 0;
     this.level = LEVELS[0];
 
+    // Stats tracking
+    this.stats = {
+      drinksServedCorrect: 0,
+      drinksServedWithIssues: 0,
+      drinksRejected: 0,
+      drinksWasted: 0,        // dumped in sink or trashed
+      billsCorrect: 0,
+      billsOvercharged: 0,
+      billsUndercharged: 0,
+      guestsServed: 0,
+      guestsAngry: 0,         // left angry
+      anticipatedCorrect: 0,
+      anticipatedWrong: 0,
+      totalWaitTime: 0,       // sum of time guests waited for drinks
+      guestsWaited: 0,        // count for averaging
+      totalTips: 0,
+      peakGuests: 0,          // most guests at once
+    };
+
+    this._quitConfirm = false;
+
     // POS state
     this.pos = {
       visible: false,
@@ -149,6 +170,14 @@ export class Game {
     this.prepModal.visible = false;
     this.carriedGlass = null;
     this.activePour = null;
+
+    // Reset stats
+    this.stats = {
+      drinksServedCorrect: 0, drinksServedWithIssues: 0, drinksRejected: 0,
+      drinksWasted: 0, billsCorrect: 0, billsOvercharged: 0, billsUndercharged: 0,
+      guestsServed: 0, guestsAngry: 0, anticipatedCorrect: 0, anticipatedWrong: 0,
+      totalWaitTime: 0, guestsWaited: 0, totalTips: 0, peakGuests: 0,
+    };
   }
 
   /** Stations active in the current level */
@@ -199,6 +228,7 @@ export class Game {
       this.drinkModal.glassX += dx * Math.min(1, speed * dt);
     }
 
+    this.stats.peakGuests = Math.max(this.stats.peakGuests, this.guests.length);
     this.spawnGuests();
     this.bartender.update(dt);
 
@@ -271,6 +301,11 @@ export class Game {
     // Clean up done guests — cash stays on bar
     this.guests = this.guests.filter(g => {
       if (g.state === GUEST_STATE.DONE) {
+        if (g.wasAngry) {
+          this.stats.guestsAngry++;
+        } else if (g.drinksServed.length > 0) {
+          this.stats.guestsServed++;
+        }
         if (g.seatDirty && g.seatId !== null) this.dirtySeats.add(g.seatId);
         // Clear drink from bar when guest leaves
         this.drinksAtSeats.delete(g.seatId);
@@ -443,8 +478,15 @@ export class Game {
     this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab, this.getAvailableDrinks());
     this.renderer.drawPrepModal(this.prepModal, this.carriedGlass, this.activePour);
 
+    // Pause button (top-center)
+    this.renderer.drawPauseButton(this.ctx);
+
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      this.renderer.drawLevelComplete(this.hud, this.levelIndex, LEVELS.length);
+      this.renderer.drawLevelComplete(this.hud, this.levelIndex, LEVELS.length, this.stats);
+    }
+
+    if (this.gameState === GAME_STATE.PAUSED) {
+      this.renderer.drawPauseMenu(this._quitConfirm);
     }
   }
 
@@ -592,14 +634,13 @@ export class Game {
 
     // Level complete
     if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      // "Retry" button
-      if (x > CANVAS_W / 2 - 170 && x < CANVAS_W / 2 - 10 && y > 340 && y < 385) {
+      const btnY = 480;
+      if (x > CANVAS_W / 2 - 170 && x < CANVAS_W / 2 - 10 && y > btnY && y < btnY + 42) {
         this.startLevel();
         return;
       }
-      // "Next Day" button (if not last level)
       if (this.levelIndex < LEVELS.length - 1) {
-        if (x > CANVAS_W / 2 + 10 && x < CANVAS_W / 2 + 170 && y > 340 && y < 385) {
+        if (x > CANVAS_W / 2 + 10 && x < CANVAS_W / 2 + 170 && y > btnY && y < btnY + 42) {
           this.levelIndex++;
           this.startLevel();
           return;
@@ -608,7 +649,39 @@ export class Game {
       return;
     }
 
+    // Pause menu
+    if (this.gameState === GAME_STATE.PAUSED) {
+      const pw = 300, ph = 250;
+      const pmx = (CANVAS_W - pw) / 2;
+      const pmy = (CANVAS_H - ph) / 2;
+      // Resume
+      if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 75 && y < pmy + 119) {
+        this.gameState = GAME_STATE.PLAYING;
+        this._quitConfirm = false;
+        return;
+      }
+      // Quit
+      if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 135 && y < pmy + 179) {
+        if (this._quitConfirm) {
+          this.gameState = GAME_STATE.TITLE;
+          this._quitConfirm = false;
+          return;
+        }
+        this._quitConfirm = true;
+        return;
+      }
+      this._quitConfirm = false;
+      return;
+    }
+
     if (this.gameState !== GAME_STATE.PLAYING) return;
+
+    // Pause button (top-center)
+    if (x > CANVAS_W / 2 - 20 && x < CANVAS_W / 2 + 20 && y < 30) {
+      this.gameState = GAME_STATE.PAUSED;
+      this._quitConfirm = false;
+      return;
+    }
 
     // Glass modal
     if (this.glassModal.visible) {
@@ -730,6 +803,7 @@ export class Game {
         const glassTypes = Object.keys(GLASSES);
         for (const key of glassTypes) {
           options.push({
+            icon: '🥃',
             label: GLASSES[key].name,
             action: () => {
               this.walkThenAct(station.x, () => {
@@ -749,6 +823,7 @@ export class Game {
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
         for (const key of beers) {
           options.push({
+            icon: '🍺',
             label: DRINKS[key].name,
             pourKey: key,
             pourRate,
@@ -763,6 +838,7 @@ export class Game {
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
         for (const key of wines) {
           options.push({
+            icon: '🍷',
             label: DRINKS[key].name,
             pourKey: key,
             pourRate,
@@ -808,6 +884,7 @@ export class Game {
       case 'DISHWASHER': {
         if (bt.carrying === 'DIRTY_GLASS') {
           options.push({
+            icon: '🧽',
             label: 'Clean',
             action: () => {
               this.walkThenAct(station.x, () => {
@@ -825,10 +902,12 @@ export class Game {
       case 'SINK': {
         if (this.carriedGlass) {
           options.push({
+            icon: '🚰',
             label: 'Dump',
             action: () => {
               this.walkThenAct(station.x, () => {
                 bt.startAction(0.4, 'Dumping...', () => {
+                  this.stats.drinksWasted++;
                   this.carriedGlass = null;
                   bt.carrying = null;
                   this.hud.showMessage('Dumped', 1);
@@ -843,10 +922,12 @@ export class Game {
       case 'TRASH': {
         if (bt.carrying) {
           options.push({
+            icon: '🗑️',
             label: 'Trash',
             action: () => {
               this.walkThenAct(station.x, () => {
                 bt.startAction(0.3, 'Tossing...', () => {
+                  this.stats.drinksWasted++;
                   this.carriedGlass = null;
                   bt.carrying = null;
                   this.hud.showMessage('Trashed', 0.8);
@@ -947,13 +1028,20 @@ export class Game {
     switch (guest.state) {
       case GUEST_STATE.SEATED:
         if (!guest.greeted) {
-          options.push({ label: 'Greet', action: () => this.greetGuest(guest) });
-          options.push({ label: 'Greet & Order', action: () => this.greetAndOrder(guest) });
+          options.push({ label: 'Greet', icon: '👋', action: () => this.greetGuest(guest) });
+          options.push({ label: 'Greet & Order', icon: '📋', action: () => this.greetAndOrder(guest) });
+        }
+        // Anticipation: serve a drink before they even order
+        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
         }
         break;
 
       case GUEST_STATE.READY_TO_ORDER:
-        options.push({ label: 'Take Order', action: () => this.takeOrder(guest) });
+        options.push({ label: 'Take Order', icon: '📋', action: () => this.takeOrder(guest) });
+        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
+        }
         break;
 
       case GUEST_STATE.WAITING_FOR_DRINK:
@@ -962,24 +1050,24 @@ export class Game {
           const nextIdx = guest.currentOrder
             ? guest.fulfilledItems.length
             : 0;
-          options.push({ label: 'Serve', action: () => this.serveDrink(guest, nextIdx) });
+          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveDrink(guest, nextIdx) });
         }
         if (!guest.orderOnNotepad) {
-          options.push({ label: '📝 Write Down', action: () => this.writeDownOrder(guest) });
+          options.push({ label: 'Write Down', icon: '📝', action: () => this.writeDownOrder(guest) });
         }
         break;
 
       case GUEST_STATE.ENJOYING:
-        options.push({ label: 'Check In', action: () => this.checkIn(guest) });
+        options.push({ label: 'Check In', icon: '😊', action: () => this.checkIn(guest) });
         break;
 
       case GUEST_STATE.WANTS_ANOTHER:
-        options.push({ label: 'Another One', action: () => this.takeOrder(guest) });
+        options.push({ label: 'Another', icon: '🍺', action: () => this.takeOrder(guest) });
         break;
 
       case GUEST_STATE.READY_TO_PAY:
         if (bt.carrying && bt.carrying === `CHECK_${guest.seatId}`) {
-          options.push({ label: 'Give Check', action: () => this.giveCheck(guest) });
+          options.push({ label: 'Give Check', icon: '🧾', action: () => this.giveCheck(guest) });
         }
         break;
     }
@@ -1065,6 +1153,7 @@ export class Game {
           this.bartender.carrying = null;
           this.carriedGlass = null;
 
+          this.stats.drinksServedCorrect++;
           guest.drinksServed.push(wantedKey);
           guest.totalSpent += wantedDef.price;
           this.hud.revenue += wantedDef.price;
@@ -1091,6 +1180,7 @@ export class Game {
             const msg = issues.includes('wrong_glass') ? 'Wrong glass!' :
               issues.includes('wrong_drink') ? 'Wrong drink!' : 'Contaminated!';
             guest.mood -= issues.includes('wrong_drink') || issues.includes('contaminated') ? 25 : 15;
+            this.stats.drinksRejected++;
             this.hud.showMessage(msg, 1.5);
           } else {
             // Accepted with penalty — place drink on bar
@@ -1106,6 +1196,7 @@ export class Game {
             else if (issues.includes('missing_garnish')) { moodPenalty = 10; msg = 'Missing garnish!'; }
             else if (issues.includes('missing_ice')) { moodPenalty = 8; msg = 'No ice?!'; }
             guest.mood -= moodPenalty;
+            this.stats.drinksServedWithIssues++;
 
             guest.drinksServed.push(wantedKey);
             guest.totalSpent += wantedDef.price;
@@ -1120,6 +1211,58 @@ export class Game {
             }
             this.hud.showMessage(msg, 1.5);
           }
+        }
+      });
+    });
+  }
+
+  /** Serve a drink before the guest has ordered — anticipation play */
+  serveAnticipated(guest) {
+    const seatX = SEATS[guest.seatId].x;
+    this.walkThenAct(seatX, () => {
+      if (!this.carriedGlass || !this.carriedGlass.primaryDrink) {
+        this.hud.showMessage('Not carrying a drink!', 1.5);
+        return;
+      }
+
+      const drinkKey = this.carriedGlass.primaryDrink;
+      const glass = this.carriedGlass;
+
+      // Guest decides their drink now if they haven't yet
+      if (!guest.currentDrink) {
+        guest.chooseDrink();
+      }
+
+      const wantedKey = guest.currentDrink;
+      const wantedDef = DRINKS[wantedKey];
+      const result = glass.validate(wantedKey);
+
+      this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
+        if (result.valid || (!result.issues.includes('wrong_drink') &&
+            !result.issues.includes('wrong_glass') && !result.issues.includes('contaminated'))) {
+          // Correct drink (or close enough) — big mood boost for anticipation
+          if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
+          this.drinksAtSeats.get(guest.seatId).push(glass);
+          this.bartender.carrying = null;
+          this.carriedGlass = null;
+
+          guest.drinksServed.push(wantedKey);
+          guest.totalSpent += wantedDef.price;
+          this.hud.revenue += wantedDef.price;
+          guest.currentOrder = [wantedKey];
+          guest.fulfilledItems = [wantedKey];
+          guest.greeted = true;
+
+          // Mood bonus for reading their mind
+          guest.mood = Math.min(MOOD_MAX, guest.mood + 25);
+          guest.transitionTo(GUEST_STATE.ENJOYING);
+          this.hud.showMessage('Read their mind!', 1.5);
+          this.stats.anticipatedCorrect++;
+        } else {
+          // Wrong drink — rejected
+          guest.mood -= 15;
+          this.hud.showMessage('Not what they wanted!', 1.5);
+          this.stats.anticipatedWrong++;
         }
       });
     });
@@ -1151,14 +1294,17 @@ export class Game {
         if (tabTotal > servedTotal) {
           // Overcharged — guest notices, tip is gone
           guest.overcharged = true;
+          this.stats.billsOvercharged++;
           this.hud.showMessage('Overcharged!', 2);
         } else if (tabTotal < servedTotal) {
           // Undercharged — guest says nothing, you lose the difference
           const lost = servedTotal - tabTotal;
           this.hud.revenue -= lost;
           guest.totalSpent = tabTotal;
+          this.stats.billsUndercharged++;
           this.hud.showMessage('Check delivered', 1);
         } else {
+          this.stats.billsCorrect++;
           this.hud.showMessage('Check delivered', 1);
         }
 
@@ -1202,6 +1348,7 @@ export class Game {
         if (this.carriedGlass) {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.4, 'Dumping...', () => {
+              this.stats.drinksWasted++;
               this.carriedGlass = null;
               bt.carrying = null;
               this.hud.showMessage('Dumped', 1);
@@ -1234,6 +1381,7 @@ export class Game {
         if (bt.carrying) {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.3, 'Tossing...', () => {
+              this.stats.drinksWasted++;
               this.carriedGlass = null;
               bt.carrying = null;
               this.hud.showMessage('Trashed', 0.8);

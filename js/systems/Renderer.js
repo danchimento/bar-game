@@ -1462,52 +1462,152 @@ export class Renderer {
     ctx.fillText('X', px + pw - 25, py + 20);
   }
 
-  drawLevelComplete(hud, levelIndex, totalLevels) {
+  drawLevelComplete(hud, levelIndex, totalLevels, stats) {
     const ctx = this.ctx;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
+    // ─── Left side: Summary ───
+    const leftX = CANVAS_W / 2 - 220;
     ctx.fillStyle = '#e8c170';
-    ctx.font = 'bold 32px monospace';
+    ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Shift Complete!', CANVAS_W / 2, 160);
+    ctx.fillText('Shift Complete!', leftX, 50);
 
-    const total = Math.floor(hud.tips + hud.revenue);
+    ctx.font = '32px serif';
+    const starStr = '\u2B50'.repeat(hud.stars) + '\u2606'.repeat(3 - hud.stars);
+    ctx.fillText(starStr, leftX, 90);
+
     ctx.fillStyle = '#4caf50';
-    ctx.font = 'bold 22px monospace';
-    ctx.fillText(`Tips: $${Math.floor(hud.tips)}`, CANVAS_W / 2, 210);
+    ctx.font = 'bold 20px monospace';
+    ctx.fillText(`Tips: $${Math.floor(hud.tips)}`, leftX, 135);
 
     ctx.fillStyle = '#aaa';
-    ctx.font = '14px monospace';
-    ctx.fillText(`Revenue: $${Math.floor(hud.revenue)}`, CANVAS_W / 2, 245);
+    ctx.font = '13px monospace';
+    ctx.fillText(`Revenue: $${Math.floor(hud.revenue)}`, leftX, 165);
 
-    ctx.font = '40px serif';
-    const starStr = '\u2B50'.repeat(hud.stars) + '\u2606'.repeat(3 - hud.stars);
-    ctx.fillText(starStr, CANVAS_W / 2, 300);
+    // ─── Right side: Stats ───
+    const rightX = CANVAS_W / 2 + 180;
+    const s = stats || {};
+    const totalDrinks = (s.drinksServedCorrect || 0) + (s.drinksServedWithIssues || 0) + (s.drinksRejected || 0);
+    const drinkAcc = totalDrinks > 0 ? Math.round(((s.drinksServedCorrect || 0) / totalDrinks) * 100) : 100;
+    const totalBills = (s.billsCorrect || 0) + (s.billsOvercharged || 0) + (s.billsUndercharged || 0);
+    const billAcc = totalBills > 0 ? Math.round(((s.billsCorrect || 0) / totalBills) * 100) : 100;
+    const avgWait = (s.guestsWaited || 0) > 0 ? (s.totalWaitTime / s.guestsWaited).toFixed(1) : '0.0';
 
-    // Retry button (left)
+    ctx.fillStyle = '#e8c170';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Shift Report', rightX, 50);
+
+    const statRows = [
+      { label: 'Drink Accuracy', value: `${drinkAcc}%`, color: drinkAcc >= 80 ? '#4caf50' : '#f44336' },
+      { label: 'Bill Accuracy', value: `${billAcc}%`, color: billAcc >= 80 ? '#4caf50' : '#f44336' },
+      { label: 'Drinks Wasted', value: `${s.drinksWasted || 0}`, color: (s.drinksWasted || 0) === 0 ? '#4caf50' : '#ff9800' },
+      { label: 'Guests Served', value: `${s.guestsServed || 0}`, color: '#8bc34a' },
+      { label: 'Angry Walkouts', value: `${s.guestsAngry || 0}`, color: (s.guestsAngry || 0) === 0 ? '#4caf50' : '#f44336' },
+      { label: 'Avg Wait Time', value: `${avgWait}s`, color: parseFloat(avgWait) < 30 ? '#4caf50' : '#ff9800' },
+      { label: 'Peak Guests', value: `${s.peakGuests || 0}`, color: '#8bc34a' },
+      { label: 'Anticipations', value: `${s.anticipatedCorrect || 0}/${(s.anticipatedCorrect || 0) + (s.anticipatedWrong || 0)}`, color: '#e8c170' },
+    ];
+
+    const rowH = 24;
+    const startY = 80;
+    ctx.font = '12px monospace';
+    for (let i = 0; i < statRows.length; i++) {
+      const ry = startY + i * rowH;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#999';
+      ctx.fillText(statRows[i].label, rightX - 100, ry);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = statRows[i].color;
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(statRows[i].value, rightX + 100, ry);
+      ctx.font = '12px monospace';
+    }
+
+    // ─── Buttons at bottom center ───
+    const btnY = 480;
     const hasNext = levelIndex < totalLevels - 1;
     const retryX = hasNext ? CANVAS_W / 2 - 170 : CANVAS_W / 2 - 80;
-    const retryW = 160;
-    ctx.fillStyle = '#666';
+
+    ctx.fillStyle = '#555';
     ctx.beginPath();
-    ctx.roundRect(retryX, 340, retryW, 45, 6);
+    ctx.roundRect(retryX, btnY, 160, 42, 6);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 15px monospace';
-    ctx.fillText('Retry', retryX + retryW / 2, 363);
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Retry', retryX + 80, btnY + 21);
 
-    // Next Day button (right) — only if not last level
     if (hasNext) {
       ctx.fillStyle = '#e8c170';
       ctx.beginPath();
-      ctx.roundRect(CANVAS_W / 2 + 10, 340, 160, 45, 6);
+      ctx.roundRect(CANVAS_W / 2 + 10, btnY, 160, 42, 6);
       ctx.fill();
       ctx.fillStyle = '#1a1a2e';
-      ctx.font = 'bold 15px monospace';
-      ctx.fillText('Next Day', CANVAS_W / 2 + 90, 363);
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('Next Day', CANVAS_W / 2 + 90, btnY + 21);
+    }
+  }
+
+  drawPauseButton(ctx) {
+    // Small pause icon in top-center
+    const cx = CANVAS_W / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(cx - 7, 6, 5, 14);
+    ctx.fillRect(cx + 2, 6, 5, 14);
+  }
+
+  drawPauseMenu(quitConfirm) {
+    const ctx = this.ctx;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    const pw = 300;
+    const ph = 250;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2;
+
+    ctx.fillStyle = '#252540';
+    ctx.strokeStyle = '#e8c170';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#e8c170';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Paused', px + pw / 2, py + 35);
+
+    // Resume button
+    ctx.fillStyle = '#e8c170';
+    ctx.beginPath();
+    ctx.roundRect(px + 50, py + 75, pw - 100, 44, 6);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('Resume', px + pw / 2, py + 97);
+
+    // Quit button
+    ctx.fillStyle = quitConfirm ? '#c62828' : '#555';
+    ctx.beginPath();
+    ctx.roundRect(px + 50, py + 135, pw - 100, 44, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText(quitConfirm ? 'Tap to Confirm' : 'Quit Day', px + pw / 2, py + 157);
+
+    if (quitConfirm) {
+      ctx.fillStyle = '#999';
+      ctx.font = '11px monospace';
+      ctx.fillText('Progress will be lost', px + pw / 2, py + 195);
     }
   }
 

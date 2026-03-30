@@ -6,21 +6,20 @@ export class RadialMenu {
     this.cx = 0;
     this.cy = 0;
     this.options = [];
-    this.radius = 55;
-    this.itemRadius = 24;
-    this.hoveredIndex = -1;  // for drag highlight
-    this.dragging = false;   // true after pointerdown opened the menu
+    this.innerRadius = 40;
+    this.outerRadius = 120;
+    this.hoveredIndex = -1;
+    this.dragging = false;
   }
 
   open(x, y, options) {
-    // Clamp so the menu + items stay on screen
-    const margin = this.radius + this.itemRadius + 4;
+    const margin = this.outerRadius + 10;
     this.cx = Math.max(margin, Math.min(CANVAS_W - margin, x));
     this.cy = Math.max(margin, Math.min(CANVAS_H - margin, y));
     this.options = options;
     this.visible = true;
     this.hoveredIndex = -1;
-    this.dragging = true;  // opened via pointerdown, enable drag-release
+    this.dragging = true;
   }
 
   close() {
@@ -30,87 +29,135 @@ export class RadialMenu {
     this.dragging = false;
   }
 
+  /** Get the start and sweep angles for a slice */
+  _sliceAngles(index) {
+    const count = this.options.length;
+    const sliceAngle = (Math.PI * 2) / count;
+    const startAngle = -Math.PI / 2 + index * sliceAngle;
+    return { startAngle, endAngle: startAngle + sliceAngle, midAngle: startAngle + sliceAngle / 2 };
+  }
+
   updateHover(x, y) {
     if (!this.visible) return;
     this.hoveredIndex = -1;
-    for (let i = 0; i < this.options.length; i++) {
-      const pos = this.getOptionPos(i);
-      const dx = x - pos.x;
-      const dy = y - pos.y;
-      if (dx * dx + dy * dy < this.itemRadius * this.itemRadius) {
-        this.hoveredIndex = i;
-        return;
-      }
-    }
+    const dx = x - this.cx;
+    const dy = y - this.cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < this.innerRadius || dist > this.outerRadius + 15) return;
+
+    // Find which slice the pointer is in
+    let angle = Math.atan2(dy, dx);
+    const count = this.options.length;
+    const sliceAngle = (Math.PI * 2) / count;
+    // Shift so first slice starts at -PI/2
+    let normalized = angle + Math.PI / 2;
+    if (normalized < 0) normalized += Math.PI * 2;
+    const idx = Math.floor(normalized / sliceAngle) % count;
+    this.hoveredIndex = idx;
   }
 
   hitTest(x, y) {
     if (!this.visible) return -1;
-    for (let i = 0; i < this.options.length; i++) {
-      const pos = this.getOptionPos(i);
-      const dx = x - pos.x;
-      const dy = y - pos.y;
-      if (dx * dx + dy * dy < this.itemRadius * this.itemRadius) {
-        return i;
-      }
-    }
     const dx = x - this.cx;
     const dy = y - this.cy;
-    if (dx * dx + dy * dy > (this.radius + 50) * (this.radius + 50)) {
-      return -2;
-    }
-    return -1;
-  }
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
-  getOptionPos(index) {
-    const count = this.options.length;
-    if (count === 1) {
-      return { x: this.cx, y: this.cy - this.radius };
+    if (dist >= this.innerRadius && dist <= this.outerRadius + 15) {
+      let angle = Math.atan2(dy, dx);
+      const count = this.options.length;
+      const sliceAngle = (Math.PI * 2) / count;
+      let normalized = angle + Math.PI / 2;
+      if (normalized < 0) normalized += Math.PI * 2;
+      const idx = Math.floor(normalized / sliceAngle) % count;
+      return idx;
     }
-    const startAngle = -Math.PI / 2;
-    const angle = startAngle + (index / count) * Math.PI * 2;
-    return {
-      x: this.cx + Math.cos(angle) * this.radius,
-      y: this.cy + Math.sin(angle) * this.radius,
-    };
+
+    // Outside the menu entirely
+    if (dist > this.outerRadius + 50) return -2;
+    return -1;
   }
 
   draw(ctx) {
     if (!this.visible) return;
+    const count = this.options.length;
+    if (count === 0) return;
 
-    // Dim background
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Dim area around menu
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.arc(this.cx, this.cy, this.radius + 40, 0, Math.PI * 2);
+    ctx.arc(this.cx, this.cy, this.outerRadius + 50, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw options
-    for (let i = 0; i < this.options.length; i++) {
-      const pos = this.getOptionPos(i);
-      const opt = this.options[i];
+    const sliceAngle = (Math.PI * 2) / count;
 
+    for (let i = 0; i < count; i++) {
+      const opt = this.options[i];
+      const { startAngle, endAngle, midAngle } = this._sliceAngles(i);
       const isHovered = i === this.hoveredIndex && !opt.disabled;
-      ctx.fillStyle = opt.disabled ? '#555' : isHovered ? '#ffd54f' : '#e8c170';
+
+      // Draw donut slice
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, isHovered ? this.itemRadius + 3 : this.itemRadius, 0, Math.PI * 2);
+      ctx.arc(this.cx, this.cy, this.outerRadius + (isHovered ? 8 : 0), startAngle, endAngle);
+      ctx.arc(this.cx, this.cy, this.innerRadius, endAngle, startAngle, true);
+      ctx.closePath();
+
+      if (opt.disabled) {
+        ctx.fillStyle = '#3a3a3a';
+      } else if (isHovered) {
+        ctx.fillStyle = '#ffd54f';
+      } else {
+        ctx.fillStyle = '#e8c170';
+      }
       ctx.fill();
 
-      ctx.strokeStyle = isHovered ? '#ff8f00' : '#333';
-      ctx.lineWidth = isHovered ? 3 : 2;
+      // Slice border
+      ctx.strokeStyle = isHovered ? '#ff8f00' : 'rgba(30,20,10,0.6)';
+      ctx.lineWidth = isHovered ? 2.5 : 1.5;
       ctx.stroke();
 
-      ctx.fillStyle = opt.disabled ? '#888' : '#1a1a2e';
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      // Label and icon positioned in the middle of the donut ring
+      const labelR = (this.innerRadius + this.outerRadius) / 2 + (isHovered ? 4 : 0);
+      const lx = this.cx + Math.cos(midAngle) * labelR;
+      const ly = this.cy + Math.sin(midAngle) * labelR;
 
-      const words = opt.label.split(' ');
-      if (words.length > 1) {
-        ctx.fillText(words[0], pos.x, pos.y - 6);
-        ctx.fillText(words.slice(1).join(' '), pos.x, pos.y + 6);
+      // Icon (if present)
+      const hasIcon = opt.icon;
+      ctx.fillStyle = opt.disabled ? '#666' : '#1a1a2e';
+
+      if (hasIcon) {
+        ctx.font = '18px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(opt.icon, lx, ly - 8);
+
+        // Label text below icon
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(opt.label, lx, ly + 10);
       } else {
-        ctx.fillText(opt.label, pos.x, pos.y);
+        // Text only — split into lines if needed
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const words = opt.label.split(' ');
+        if (words.length > 1 && opt.label.length > 10) {
+          ctx.fillText(words[0], lx, ly - 7);
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText(words.slice(1).join(' '), lx, ly + 7);
+        } else {
+          ctx.fillText(opt.label, lx, ly);
+        }
       }
     }
+
+    // Center circle (dead zone)
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.arc(this.cx, this.cy, this.innerRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 }

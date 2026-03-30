@@ -63,6 +63,7 @@ export class Guest {
     this.sipDrinkIndex = 0;                          // alternates between drinks
     this.sipping = false;                            // true during sip animation
     this.sipAnimTimer = 0;                           // animation countdown
+    this.wasAngry = false;                           // true if left via ANGRY_LEAVING
   }
 
   getMoodLabel() {
@@ -148,6 +149,7 @@ export class Guest {
       case GUEST_STATE.ANGRY_LEAVING:
         this.targetY = -50;
         this.tipAmount = 0;
+        this.wasAngry = true;
         break;
     }
   }
