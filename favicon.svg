@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Glass body -->
+  <path d="M16 12 L14 56 Q14 60 18 60 L46 60 Q50 60 50 56 L48 12 Z" fill="#f5e6c8" stroke="#c8a96e" stroke-width="2"/>
+  <!-- Beer fill -->
+  <path d="M15.4 22 L14.2 54 Q14.2 58.5 18 58.5 L46 58.5 Q49.8 58.5 49.8 54 L48.6 22 Z" fill="#f0a830"/>
+  <!-- Beer highlight -->
+  <rect x="20" y="24" width="4" height="28" rx="2" fill="rgba(255,255,255,0.2)"/>
+  <!-- Foam -->
+  <ellipse cx="32" cy="22" rx="17" ry="4" fill="#fff8e0"/>
+  <ellipse cx="24" cy="19" rx="6" ry="5" fill="#fff8e0"/>
+  <ellipse cx="38" cy="18" rx="7" ry="5" fill="#fff8e0"/>
+  <ellipse cx="32" cy="16" rx="5" ry="4" fill="#fffdf0"/>
+  <!-- Handle -->
+  <path d="M48 20 Q58 20 58 32 Q58 44 48 44" fill="none" stroke="#c8a96e" stroke-width="4" stroke-linecap="round"/>
+</svg>
