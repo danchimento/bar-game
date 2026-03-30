@@ -1510,7 +1510,7 @@ export class Renderer {
       { label: 'Angry Walkouts', value: `${s.guestsAngry || 0}`, color: (s.guestsAngry || 0) === 0 ? '#4caf50' : '#f44336' },
       { label: 'Avg Wait Time', value: `${avgWait}s`, color: parseFloat(avgWait) < 30 ? '#4caf50' : '#ff9800' },
       { label: 'Peak Guests', value: `${s.peakGuests || 0}`, color: '#8bc34a' },
-      { label: 'Anticipations', value: `${s.anticipatedCorrect || 0}/${(s.anticipatedCorrect || 0) + (s.anticipatedWrong || 0)}`, color: '#e8c170' },
+      { label: 'Tips Earned', value: `$${s.totalTips || 0}`, color: '#4caf50' },
     ];
 
     const rowH = 24;
@@ -1554,11 +1554,16 @@ export class Renderer {
   }
 
   drawPauseButton(ctx) {
-    // Small pause icon in top-center
     const cx = CANVAS_W / 2;
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillRect(cx - 7, 6, 5, 14);
-    ctx.fillRect(cx + 2, 6, 5, 14);
+    // Tap target background
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath();
+    ctx.roundRect(cx - 22, 4, 44, 28, 6);
+    ctx.fill();
+    // Pause bars
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillRect(cx - 8, 8, 6, 18);
+    ctx.fillRect(cx + 2, 8, 6, 18);
   }
 
   drawPauseMenu(quitConfirm) {

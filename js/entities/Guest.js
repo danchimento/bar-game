@@ -64,6 +64,8 @@ export class Guest {
     this.sipping = false;                            // true during sip animation
     this.sipAnimTimer = 0;                           // animation countdown
     this.wasAngry = false;                           // true if left via ANGRY_LEAVING
+    this.waitStartTime = 0;                          // levelTimer when WAITING_FOR_DRINK began
+    this.totalWaitTime = 0;                          // accumulated wait time across all rounds
   }
 
   getMoodLabel() {
@@ -119,6 +121,7 @@ export class Guest {
         this.orderRevealTimer = this.settings?.orderRevealTime ?? ORDER_REVEAL_TIME;
         break;
       case GUEST_STATE.WAITING_FOR_DRINK:
+        this.waitStartTime = 0; // accumulates via dt in update
         break;
       case GUEST_STATE.ENJOYING: {
         const eMin = this.settings?.enjoyTimeMin ?? ENJOY_TIME_MIN;
@@ -127,6 +130,8 @@ export class Guest {
         this.stateTimer = baseTime * this.patience;
         this.enjoyTotal = this.stateTimer; // for drink progress indicator
         this.mood = Math.min(MOOD_MAX, this.mood + 15);
+        // Record wait time for this round
+        this.totalWaitTime += this.waitStartTime;
         break;
       }
       case GUEST_STATE.WANTS_ANOTHER:
@@ -238,6 +243,10 @@ export class Guest {
         if (this.stateTimer <= 0) {
           this.transitionTo(GUEST_STATE.WAITING_FOR_DRINK);
         }
+        break;
+
+      case GUEST_STATE.WAITING_FOR_DRINK:
+        this.waitStartTime += dt;
         break;
 
       case GUEST_STATE.ENJOYING:

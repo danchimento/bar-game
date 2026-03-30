@@ -284,9 +284,8 @@ export class Game {
         const allEmpty = !glasses || glasses.every(g =>
           g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
         );
-        if (allEmpty) {
-          // Clear empty glasses from bar
-          this.drinksAtSeats.delete(guest.seatId);
+        if (allEmpty && !guest._doneWithCurrentRound) {
+          guest._doneWithCurrentRound = true;
           guest.drinksHad++;
           const barClosed = this.levelTimer >= this.activeDuration;
           if (guest.drinksHad < guest.maxDrinks && !barClosed) {
@@ -296,9 +295,39 @@ export class Game {
           }
         }
       }
+
+      // Empty glasses stacking on counter annoy guests
+      if (guest.seatId !== null && guest.state !== GUEST_STATE.LEAVING &&
+          guest.state !== GUEST_STATE.ANGRY_LEAVING && guest.state !== GUEST_STATE.DONE) {
+        const seatGlasses = this.drinksAtSeats.get(guest.seatId);
+        if (seatGlasses) {
+          const emptyCount = seatGlasses.filter(g =>
+            g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
+          ).length;
+          if (emptyCount >= 2) {
+            guest.mood -= 1.5 * dt * emptyCount; // slow drain per empty glass
+          }
+        }
+      }
     }
 
-    // Clean up done guests — cash stays on bar
+    // Place cash and mark dirty seat as soon as guest starts leaving (not when DONE)
+    for (const g of this.guests) {
+      if ((g.state === GUEST_STATE.LEAVING || g.state === GUEST_STATE.ANGRY_LEAVING) && !g._itemsPlaced) {
+        g._itemsPlaced = true;
+        if (g.seatId !== null) {
+          this.dirtySeats.add(g.seatId);
+        }
+        if (g.cashOnBar && g.totalSpent > 0) {
+          this.cashOnBar.set(g.seatId, {
+            amount: g.totalSpent,
+            tipAmount: g.tipAmount,
+          });
+        }
+      }
+    }
+
+    // Clean up done guests
     this.guests = this.guests.filter(g => {
       if (g.state === GUEST_STATE.DONE) {
         if (g.wasAngry) {
@@ -306,15 +335,10 @@ export class Game {
         } else if (g.drinksServed.length > 0) {
           this.stats.guestsServed++;
         }
-        if (g.seatDirty && g.seatId !== null) this.dirtySeats.add(g.seatId);
-        // Clear drink from bar when guest leaves
-        this.drinksAtSeats.delete(g.seatId);
-        // If guest left cash, put it on bar
-        if (g.cashOnBar && g.totalSpent > 0) {
-          this.cashOnBar.set(g.seatId, {
-            amount: g.totalSpent,
-            tipAmount: g.tipAmount,
-          });
+        // Track wait time
+        if (g.totalWaitTime > 0) {
+          this.stats.totalWaitTime += g.totalWaitTime;
+          this.stats.guestsWaited++;
         }
         this.notepad.removeGuest(g.id);
         this.posTab.delete(g.seatId);
@@ -325,7 +349,7 @@ export class Game {
 
     // Check level end — also need cash to be collected and seats cleared
     if (this.levelTimer >= this.activeDuration && this.guests.length === 0 &&
-        this.cashOnBar.size === 0 && this.dirtySeats.size === 0) {
+        this.cashOnBar.size === 0 && this.dirtySeats.size === 0 && this.drinksAtSeats.size === 0) {
       this.gameState = GAME_STATE.LEVEL_COMPLETE;
     }
   }
@@ -676,8 +700,9 @@ export class Game {
 
     if (this.gameState !== GAME_STATE.PLAYING) return;
 
-    // Pause button (top-center)
-    if (x > CANVAS_W / 2 - 20 && x < CANVAS_W / 2 + 20 && y < 30) {
+    // Pause button (top-center) — generous hit area
+    if (x > CANVAS_W / 2 - 50 && x < CANVAS_W / 2 + 50 && y < 50) {
+      this.clearLongPress();
       this.gameState = GAME_STATE.PAUSED;
       this._quitConfirm = false;
       return;
@@ -1063,6 +1088,9 @@ export class Game {
 
       case GUEST_STATE.WANTS_ANOTHER:
         options.push({ label: 'Another', icon: '🍺', action: () => this.takeOrder(guest) });
+        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+          options.push({ label: 'Serve', icon: '🍻', action: () => this.serveAnticipated(guest) });
+        }
         break;
 
       case GUEST_STATE.READY_TO_PAY:
@@ -1150,6 +1178,7 @@ export class Game {
           // Place drink on bar in front of guest
           if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
           this.drinksAtSeats.get(guest.seatId).push(glass);
+          guest._doneWithCurrentRound = false;
           this.bartender.carrying = null;
           this.carriedGlass = null;
 
@@ -1186,6 +1215,7 @@ export class Game {
             // Accepted with penalty — place drink on bar
             if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
             this.drinksAtSeats.get(guest.seatId).push(glass);
+            guest._doneWithCurrentRound = false;
             this.bartender.carrying = null;
             this.carriedGlass = null;
 
@@ -1243,6 +1273,7 @@ export class Game {
           // Correct drink (or close enough) — big mood boost for anticipation
           if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
           this.drinksAtSeats.get(guest.seatId).push(glass);
+          guest._doneWithCurrentRound = false;
           this.bartender.carrying = null;
           this.carriedGlass = null;
 
@@ -1678,6 +1709,7 @@ export class Game {
           const cash = this.cashOnBar.get(seatId);
           if (cash) {
             this.hud.tips += cash.tipAmount;
+            this.stats.totalTips += cash.tipAmount;
             this.cashOnBar.delete(seatId);
             this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
           }
@@ -1686,6 +1718,7 @@ export class Game {
         bt.startAction(ACTION_DURATIONS.BUS, 'Clearing...', () => {
           bt.carrying = 'DIRTY_GLASS';
           this.dirtySeats.delete(seatId);
+          this.drinksAtSeats.delete(seatId);
           this.hud.showMessage('Cleared!', 1);
         });
       }
