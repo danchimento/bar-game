@@ -22,6 +22,7 @@ export class Guest {
     this.patienceMultiplier = 1 / this.patience; // inverse — patient guests decay slower
     this.tipMultiplier = guestType === 'quick' ? 1.0 : 1.2;
     this.wantsWater = drinkPrefs.includes('WATER') || (guestType === 'regular' && Math.random() < 0.25);
+    this.knowsOrder = guestType === 'quick' || Math.random() < 0.4; // some walk in knowing what they want
     this.settings = null; // set by game after creation
     this.mood = MOOD_MAX;
 
@@ -96,7 +97,7 @@ export class Guest {
     switch (this.state) {
       case GUEST_STATE.WAITING_FOR_SEAT: return '⏳';
       case GUEST_STATE.ARRIVING: return null;
-      case GUEST_STATE.SEATED: return null;
+      case GUEST_STATE.SEATED: return (this.greeted && this.orderRevealTimer > 0) ? '⏳' : null;
       case GUEST_STATE.LOOKING: return '👀';
       case GUEST_STATE.READY_TO_ORDER: return null;
       case GUEST_STATE.ORDER_TAKEN: return null;  // order text shown instead
@@ -114,7 +115,11 @@ export class Guest {
     this.state = newState;
     switch (newState) {
       case GUEST_STATE.SEATED:
-        this.stateTimer = (this.settings?.settleTime ?? SETTLE_TIME) * this.patience;
+        if (this.knowsOrder) {
+          this.stateTimer = 0.5 + Math.random() * 1.0; // quick decision
+        } else {
+          this.stateTimer = (this.settings?.settleTime ?? SETTLE_TIME) * this.patience;
+        }
         break;
       case GUEST_STATE.LOOKING:
         // lookingReason must be set before calling transitionTo

@@ -1058,12 +1058,6 @@ export class Game {
 
     switch (guest.state) {
       case GUEST_STATE.SEATED:
-        // Still settling — can serve anticipated drink
-        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
-          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
-        }
-        break;
-
       case GUEST_STATE.LOOKING:
         options.push({ label: 'Check In', icon: '👀', action: () => this.acknowledgeGuest(guest) });
         if (this.carriedGlass && this.carriedGlass.primaryDrink) {
@@ -1147,7 +1141,17 @@ export class Game {
         guest.greeted = true;
         guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
 
-        switch (guest.lookingReason) {
+        // SEATED guest who hasn't decided yet — they need more time
+        if (guest.state === GUEST_STATE.SEATED && guest.stateTimer > 0) {
+          guest.orderRevealTimer = 2.0; // shows ⏳ briefly
+          this.hud.showMessage('Still deciding...', 1);
+          return;
+        }
+
+        // Determine reason — LOOKING has it set, SEATED after timer means first_order
+        const reason = guest.lookingReason || 'first_order';
+
+        switch (reason) {
           case 'first_order':
             // Guest reveals their order
             guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
