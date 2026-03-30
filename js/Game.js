@@ -488,11 +488,11 @@ export class Game {
     this.renderer.drawBar();
     this.renderer.drawBackCounter(this.getStations(), this.getAvailableDrinks());
     this.renderer.drawDirtySeats(this.dirtySeats);
-    this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
     this.renderer.drawCashOnBar(this.cashOnBar);
     this.renderer.drawServiceMat(this.serviceMat);
     const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
     this.renderer.drawGuests(this.guests, waitingCount);
+    this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
     if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGlass);
     // Glass fill overlay — always visible when carrying a glass with contents or pouring
     if (this.carriedGlass && (!this.carriedGlass.isEmpty || this.activePour)) {

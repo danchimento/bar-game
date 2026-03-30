@@ -111,26 +111,41 @@ export class RadialMenu {
       }
       ctx.fill();
 
-      // Slice border
-      ctx.strokeStyle = isHovered ? '#ff8f00' : 'rgba(30,20,10,0.6)';
-      ctx.lineWidth = isHovered ? 2.5 : 1.5;
-      ctx.stroke();
+      // Slice border (skip for single option — full circle has no seams)
+      if (count > 1) {
+        ctx.strokeStyle = isHovered ? '#ff8f00' : 'rgba(30,20,10,0.6)';
+        ctx.lineWidth = isHovered ? 2.5 : 1.5;
+        ctx.stroke();
+      } else {
+        // Just an outer ring for the single slice
+        ctx.strokeStyle = isHovered ? '#ff8f00' : 'rgba(30,20,10,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(this.cx, this.cy, this.outerRadius + (isHovered ? 8 : 0), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(this.cx, this.cy, this.innerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-      // Single option: show label above the menu, icon on the slice
+      // Single option: icon in ring, label just below it — no separator line
       if (count === 1) {
-        // Label floats above
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(opt.label, this.cx, this.cy - this.outerRadius - 14);
+        const ringMid = (this.innerRadius + this.outerRadius) / 2;
 
-        // Icon centered in the donut ring
         if (opt.icon) {
           ctx.font = '26px serif';
+          ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(opt.icon, this.cx, this.cy - (this.innerRadius + this.outerRadius) / 2);
+          ctx.fillStyle = opt.disabled ? '#666' : '#1a1a2e';
+          ctx.fillText(opt.icon, this.cx, this.cy - ringMid);
         }
+
+        // Label directly below icon
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(opt.label, this.cx, this.cy - ringMid + 16);
         continue;
       }
 
