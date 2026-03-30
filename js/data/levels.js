@@ -16,6 +16,7 @@ const STATION_TEMPLATES = {
   WINE:        { id: 'WINE',       label: 'Wine',  width: 100 },
   PREP:        { id: 'PREP',       label: 'Prep',  width: 100 },
   POS:         { id: 'POS',        label: 'POS',   width: 80 },
+  TRASH:       { id: 'TRASH',      label: 'Trash', width: 60 },
 };
 
 /** Build a stations array with automatic x positions from an ordered list of IDs */
@@ -38,7 +39,7 @@ export const LEVELS = [
     name: 'Day 1 — Opening Night',
     day: 1,
     duration: 240,
-    stations: layoutStations(['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS']),
+    stations: layoutStations(['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -60,7 +61,7 @@ export const LEVELS = [
     name: 'Day 2 — Word Gets Around',
     day: 2,
     duration: 270,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS']),
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -84,7 +85,7 @@ export const LEVELS = [
     name: 'Day 3 — Happy Hour',
     day: 3,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS']),
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -110,7 +111,7 @@ export const LEVELS = [
     name: 'Day 4 — Regulars Night',
     day: 4,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS']),
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['HARVEST_MOON'] },
@@ -137,7 +138,7 @@ export const LEVELS = [
     name: 'Day 5 — Friday Rush',
     day: 5,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS']),
+    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 3,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },

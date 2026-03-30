@@ -74,6 +74,7 @@ export class Renderer {
         case 'TAPS':       this._drawTaps(ctx, st.x, counterTop, hw, availableDrinks); break;
         case 'WINE':       this._drawWineStation(ctx, st.x, counterTop, hw); break;
         case 'PREP':       this._drawPrepStation(ctx, st.x, counterTop, hw); break;
+        case 'TRASH':      this._drawTrash(ctx, st.x, counterTop, hw); break;
         case 'POS':        this._drawPOS(ctx, st.x, counterTop, hw); break;
       }
       // Label below counter
@@ -292,6 +293,41 @@ export class Renderer {
     ctx.arc(cx, y + 33, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+  }
+
+  _drawTrash(ctx, cx, top, hw) {
+    const w = hw * 2 - 14;
+    const x = cx - w / 2;
+    const y = top + 14;
+    const h = 50;
+    // Can body — tapered
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x + w - 4, y);
+    ctx.closePath();
+    ctx.fill();
+    // Lid
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.roundRect(x - 2, y - 6, w + 4, 8, 2);
+    ctx.fill();
+    // Lid handle
+    ctx.fillStyle = '#777';
+    ctx.beginPath();
+    ctx.roundRect(cx - 6, y - 10, 12, 5, 2);
+    ctx.fill();
+    // Vertical lines on can
+    ctx.strokeStyle = '#4a4a4a';
+    ctx.lineWidth = 1;
+    for (let lx = x + 8; lx < x + w - 6; lx += 9) {
+      ctx.beginPath();
+      ctx.moveTo(lx, y + 4);
+      ctx.lineTo(lx - 1, y + h - 4);
+      ctx.stroke();
+    }
   }
 
   _drawPOS(ctx, cx, top, hw) {
@@ -971,7 +1007,8 @@ export class Renderer {
       ctx.save();
       ctx.translate(glassX, glassY + glassH); // pivot at bottom of glass
       ctx.rotate(tiltAmount);
-      this.drawGlassVisual(0, -glassH, glassW, glassH, carriedGlass, isPouring, true);
+      // Don't draw internal pour stream — external stream from tap handles it
+      this.drawGlassVisual(0, -glassH, glassW, glassH, carriedGlass, false, true);
 
       // Overflow visual — beer running down the sides
       if (carriedGlass.overflow > 0) {

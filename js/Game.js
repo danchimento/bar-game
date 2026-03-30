@@ -258,7 +258,8 @@ export class Game {
           // Clear empty glasses from bar
           this.drinksAtSeats.delete(guest.seatId);
           guest.drinksHad++;
-          if (guest.drinksHad < guest.maxDrinks) {
+          const barClosed = this.levelTimer >= this.activeDuration;
+          if (guest.drinksHad < guest.maxDrinks && !barClosed) {
             guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
           } else {
             guest.transitionTo(GUEST_STATE.READY_TO_PAY);
@@ -838,6 +839,24 @@ export class Game {
         }
         break;
       }
+
+      case 'TRASH': {
+        if (bt.carrying) {
+          options.push({
+            label: 'Trash',
+            action: () => {
+              this.walkThenAct(station.x, () => {
+                bt.startAction(0.3, 'Tossing...', () => {
+                  this.carriedGlass = null;
+                  bt.carrying = null;
+                  this.hud.showMessage('Trashed', 0.8);
+                });
+              });
+            },
+          });
+        }
+        break;
+      }
     }
 
     return options;
@@ -1209,6 +1228,20 @@ export class Game {
         this.walkThenAct(station.x, () => {
           this.prepModal.visible = true;
         });
+        break;
+
+      case 'TRASH':
+        if (bt.carrying) {
+          this.walkThenAct(station.x, () => {
+            bt.startAction(0.3, 'Tossing...', () => {
+              this.carriedGlass = null;
+              bt.carrying = null;
+              this.hud.showMessage('Trashed', 0.8);
+            });
+          });
+        } else {
+          this.hud.showMessage('Nothing to toss', 1);
+        }
         break;
 
       case 'POS':
