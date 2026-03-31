@@ -370,10 +370,26 @@ export class Renderer {
     }
   }
 
-  drawDrinksAtSeats(drinksMap) {
+  drawDrinksAtSeats(drinksMap, guests) {
+    // Build a set of (seatId, glassIndex) pairs currently being sipped
+    const sipping = new Map();
+    if (guests) {
+      for (const g of guests) {
+        if (g.sipping && g.sipAnimTimer > 0 && g.seatId !== null) {
+          const glasses = drinksMap.get(g.seatId);
+          if (glasses && glasses.length > 0) {
+            const idx = (g.sipDrinkIndex - 1 + glasses.length) % glasses.length;
+            sipping.set(g.seatId, idx);
+          }
+        }
+      }
+    }
+
     for (const [seatId, glasses] of drinksMap) {
       const seat = SEATS[seatId];
       for (let i = 0; i < glasses.length; i++) {
+        // Skip glass that's currently animating to the guest's mouth
+        if (sipping.get(seatId) === i) continue;
         this.drawMiniGlass(seat.x + 14 + i * 20, BAR_TOP_Y + 5, 16, 22, glasses[i]);
       }
     }
@@ -440,7 +456,7 @@ export class Renderer {
       ctx.arc(x, y - 9, 9, Math.PI, 0);
       ctx.fill();
 
-      // Sip animation — glass lifts to mouth and back down
+      // Sip animation — the actual glass lifts from bar to mouth and back
       if (guest.sipping && guest.sipAnimTimer > 0 && guest.seatId !== null && drinksAtSeats) {
         const glasses = drinksAtSeats.get(guest.seatId);
         if (glasses && glasses.length > 0) {
@@ -449,11 +465,14 @@ export class Renderer {
           // Bell curve: 0 → 1 → 0 over the animation
           const t = 1 - guest.sipAnimTimer / 1.0;
           const lift = Math.sin(t * Math.PI);  // peaks at t=0.5
+          const seat = SEATS[guest.seatId];
+          const restX = seat.x + 14 + glassIdx * 20;
           const restY = BAR_TOP_Y + 5;
+          const mouthX = x;
           const mouthY = y - 16;
+          const animX = restX + (mouthX - restX) * lift;
           const animY = restY + (mouthY - restY) * lift;
-          const animX = x + (x - (SEATS[guest.seatId].x + 14)) * (1 - lift);
-          this.drawMiniGlass(x, animY, 14, 20, glass);
+          this.drawMiniGlass(animX, animY, 16, 22, glass);
         }
       }
 

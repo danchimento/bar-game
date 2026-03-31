@@ -494,7 +494,7 @@ export class Game {
     this.renderer.drawServiceMat(this.serviceMat);
     const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
     this.renderer.drawGuests(this.guests, waitingCount, this.drinksAtSeats);
-    this.renderer.drawDrinksAtSeats(this.drinksAtSeats);
+    this.renderer.drawDrinksAtSeats(this.drinksAtSeats, this.guests);
     if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGlass);
     // Glass fill overlay — always visible when carrying a glass with contents or pouring
     if (this.carriedGlass && (!this.carriedGlass.isEmpty || this.activePour)) {
