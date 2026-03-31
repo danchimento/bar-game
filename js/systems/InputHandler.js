@@ -58,7 +58,7 @@ export class InputHandler {
         const idx = game.radialMenu.hoveredIndex;
         const opt = idx >= 0 ? game.radialMenu.options[idx] : null;
         if (opt && opt.pourKey && !opt.disabled) {
-          if (!game.activePour || game.activePour.drinkKey !== opt.pourKey) {
+          if (!game.barState.activePour || game.barState.activePour.drinkKey !== opt.pourKey) {
             game.bartender.moveTo(opt.stationX);
             game.startPour(opt.pourKey, opt.pourRate);
             this._radialPouring = true;
@@ -84,7 +84,7 @@ export class InputHandler {
       this.clearLongPress();
 
       // Stop any active pour
-      if (game.activePour) {
+      if (game.barState.activePour) {
         game.stopPour();
       }
 
@@ -295,7 +295,7 @@ export class InputHandler {
   }
 
   hitTestServiceMat(x, y) {
-    for (const drink of this.game.serviceMat) {
+    for (const drink of this.game.barState.serviceMat) {
       const dx = x - drink.x;
       const dy = y - (SERVICE_MAT_Y + 12);
       if (Math.abs(dx) < 20 && Math.abs(dy) < 16) return drink;
@@ -304,7 +304,7 @@ export class InputHandler {
   }
 
   hitTestDirtySeat(x, y) {
-    for (const seatId of this.game.dirtySeats) {
+    for (const seatId of this.game.barState.dirtySeats) {
       const seat = SEATS[seatId];
       if (Math.abs(x - seat.x) < 35 && Math.abs(y - SEAT_Y - 16) < 30) return seatId;
     }
@@ -312,7 +312,7 @@ export class InputHandler {
   }
 
   hitTestCash(x, y) {
-    for (const [seatId] of this.game.cashOnBar) {
+    for (const [seatId] of this.game.barState.cashOnBar) {
       const seat = SEATS[seatId];
       const cashX = seat.x - 20;
       if (Math.abs(x - cashX) < 26 && Math.abs(y - (BAR_TOP_Y + 10)) < 18) return seatId;

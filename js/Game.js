@@ -13,6 +13,7 @@ import { GlassState } from './entities/GlassState.js';
 import { Renderer } from './systems/Renderer.js';
 import { RadialMenu } from './ui/RadialMenu.js';
 import { InputHandler } from './systems/InputHandler.js';
+import { BarState } from './systems/BarState.js';
 import { Notepad } from './ui/Notepad.js';
 import { HUD } from './ui/HUD.js';
 
@@ -31,10 +32,7 @@ export class Game {
     this.gameState = GAME_STATE.TITLE;
     this.bartender = null;
     this.guests = [];
-    this.dirtySeats = new Set();
-    this.cashOnBar = new Map(); // seatId → { amount, tipAmount }
-    this.posTab = new Map();    // seatId → [{ drink, price, fulfilled }]
-    this.serviceMat = [];
+    this.barState = new BarState();
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
@@ -92,12 +90,6 @@ export class Game {
       visible: false,
     };
 
-    // Glass state for the currently carried glass/drink
-    this.carriedGlass = null; // GlassState instance or null
-
-    // Active pour state — separate from modals so radial pour works too
-    this.activePour = null; // { drinkKey, pourRate } or null
-
     // Tunable settings — these override constants at runtime
     this.settings = {
       moodDecayMultiplier: 1.0,
@@ -139,11 +131,7 @@ export class Game {
 
     this.bartender = new Bartender();
     this.guests = [];
-    this.dirtySeats = new Set();
-    this.cashOnBar = new Map();
-    this.posTab = new Map();
-    this.serviceMat = [];
-    this.drinksAtSeats = new Map(); // seatId → [GlassState, ...]
+    this.barState.reset();
     this.pendingAction = null;
     this.levelTimer = 0;
     this.spawnIndex = 0;
@@ -158,8 +146,6 @@ export class Game {
     this.drinkModal.visible = false;
     this.glassModal.visible = false;
     this.prepModal.visible = false;
-    this.carriedGlass = null;
-    this.activePour = null;
 
     // Reset stats
     this.stats = {
@@ -207,9 +193,7 @@ export class Game {
     this.hud.update(dt);
 
     // Update active pour — works for modals AND radial-initiated pours
-    if (this.activePour && this.carriedGlass) {
-      this.carriedGlass.pour(this.activePour.drinkKey, this.activePour.pourRate * dt);
-    }
+    this.barState.updatePour(dt);
 
     // Animate glass slide in tap modal
     if (this.drinkModal.visible && this.drinkModal.type === 'beer') {
@@ -245,7 +229,7 @@ export class Game {
 
       // Sip-based drink depletion while enjoying
       if (guest.state === GUEST_STATE.ENJOYING) {
-        const glasses = this.drinksAtSeats.get(guest.seatId);
+        const glasses = this.barState.drinksAtSeats.get(guest.seatId);
         if (glasses && glasses.length > 0) {
           guest.sipTimer -= dt;
           if (guest.sipTimer <= 0) {
@@ -290,7 +274,7 @@ export class Game {
       // Empty glasses stacking on counter annoy guests
       if (guest.seatId !== null && guest.state !== GUEST_STATE.LEAVING &&
           guest.state !== GUEST_STATE.ANGRY_LEAVING && guest.state !== GUEST_STATE.DONE) {
-        const seatGlasses = this.drinksAtSeats.get(guest.seatId);
+        const seatGlasses = this.barState.drinksAtSeats.get(guest.seatId);
         if (seatGlasses) {
           const emptyCount = seatGlasses.filter(g =>
             g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
@@ -307,10 +291,10 @@ export class Game {
       if ((g.state === GUEST_STATE.LEAVING || g.state === GUEST_STATE.ANGRY_LEAVING) && !g._itemsPlaced) {
         g._itemsPlaced = true;
         if (g.seatId !== null) {
-          this.dirtySeats.add(g.seatId);
+          this.barState.dirtySeats.add(g.seatId);
         }
         if (g.cashOnBar && g.totalSpent > 0) {
-          this.cashOnBar.set(g.seatId, {
+          this.barState.cashOnBar.set(g.seatId, {
             amount: g.totalSpent,
             tipAmount: g.tipAmount,
           });
@@ -332,7 +316,7 @@ export class Game {
           this.stats.guestsWaited++;
         }
         this.notepad.removeGuest(g.id);
-        this.posTab.delete(g.seatId);
+        this.barState.posTab.delete(g.seatId);
         return false;
       }
       return true;
@@ -340,7 +324,7 @@ export class Game {
 
     // Check level end — also need cash to be collected and seats cleared
     if (this.levelTimer >= this.activeDuration && this.guests.length === 0 &&
-        this.cashOnBar.size === 0 && this.dirtySeats.size === 0 && this.drinksAtSeats.size === 0) {
+        this.barState.isEmpty) {
       this.gameState = GAME_STATE.LEVEL_COMPLETE;
     }
   }
@@ -350,7 +334,7 @@ export class Game {
       this.guests.filter(g => g.seatId !== null).map(g => g.seatId)
     );
     return SEATS.filter(s =>
-      !occupiedSeats.has(s.id) && !this.dirtySeats.has(s.id) && !this.cashOnBar.has(s.id)
+      !occupiedSeats.has(s.id) && !this.barState.dirtySeats.has(s.id) && !this.barState.cashOnBar.has(s.id)
     );
   }
 
@@ -518,7 +502,7 @@ export class Game {
   }
 
   stopPour() {
-    this.activePour = null;
+    this.barState.stopPour();
     if (this.drinkModal.visible) {
       this.drinkModal.pouringIndex = -1;
       if (this.drinkModal.type === 'beer') {
@@ -547,24 +531,24 @@ export class Game {
 
     this.renderer.drawBar();
     this.renderer.drawBackCounter(this.getStations(), this.getAvailableDrinks());
-    this.renderer.drawDirtySeats(this.dirtySeats);
-    this.renderer.drawCashOnBar(this.cashOnBar);
-    this.renderer.drawServiceMat(this.serviceMat);
+    this.renderer.drawDirtySeats(this.barState.dirtySeats);
+    this.renderer.drawCashOnBar(this.barState.cashOnBar);
+    this.renderer.drawServiceMat(this.barState.serviceMat);
     const waitingCount = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT).length;
-    this.renderer.drawGuests(this.guests, waitingCount, this.drinksAtSeats);
-    this.renderer.drawDrinksAtSeats(this.drinksAtSeats, this.guests);
-    if (this.bartender) this.renderer.drawBartender(this.bartender, this.carriedGlass);
+    this.renderer.drawGuests(this.guests, waitingCount, this.barState.drinksAtSeats);
+    this.renderer.drawDrinksAtSeats(this.barState.drinksAtSeats, this.guests);
+    if (this.bartender) this.renderer.drawBartender(this.bartender, this.barState.carriedGlass);
     // Glass fill overlay — always visible when carrying a glass with contents or pouring
-    if (this.carriedGlass && (!this.carriedGlass.isEmpty || this.activePour)) {
-      this.renderer.drawGlassFillOverlay(this.carriedGlass, this.activePour);
+    if (this.barState.carriedGlass && (!this.barState.carriedGlass.isEmpty || this.barState.activePour)) {
+      this.renderer.drawGlassFillOverlay(this.barState.carriedGlass, this.barState.activePour);
     }
     this.hud.draw(this.ctx, this.levelTimer, this.activeDuration);
     this.notepad.draw(this.ctx);
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
-    this.renderer.drawDrinkModal(this.drinkModal, this.carriedGlass, this.activePour);
-    this.renderer.drawPOSOverlay(this.pos, this.guests, this.posTab, this.getAvailableDrinks());
-    this.renderer.drawPrepModal(this.prepModal, this.carriedGlass, this.activePour);
+    this.renderer.drawDrinkModal(this.drinkModal, this.barState.carriedGlass, this.barState.activePour);
+    this.renderer.drawPOSOverlay(this.pos, this.guests, this.barState.posTab, this.getAvailableDrinks());
+    this.renderer.drawPrepModal(this.prepModal, this.barState.carriedGlass, this.barState.activePour);
 
     // Pause button (top-center)
     this.renderer.drawPauseButton(this.ctx);
@@ -594,7 +578,7 @@ export class Game {
               this.walkThenAct(station.x, () => {
                 bt.startAction(ACTION_DURATIONS.GLASS_RACK, 'Grabbing glass...', () => {
                   bt.carrying = `GLASS_${key}`;
-                  this.carriedGlass = new GlassState(key);
+                  this.barState.carriedGlass = new GlassState(key);
                 });
               });
             },
@@ -637,7 +621,7 @@ export class Game {
         // Ice option
         options.push({
           label: '🧊 Ice',
-          disabled: !this.carriedGlass || this.carriedGlass.ice > 0,
+          disabled: !this.barState.carriedGlass || this.barState.carriedGlass.ice > 0,
           action: () => {
             this.walkThenAct(station.x, () => { this.addIce(); });
           },
@@ -646,7 +630,7 @@ export class Game {
         for (const key of Object.keys(GARNISHES)) {
           options.push({
             label: GARNISHES[key].name,
-            disabled: this.carriedGlass && this.carriedGlass.garnishes.includes(key),
+            disabled: this.barState.carriedGlass && this.barState.carriedGlass.garnishes.includes(key),
             action: () => {
               this.walkThenAct(station.x, () => { this.addGarnish(key); });
             },
@@ -685,7 +669,7 @@ export class Game {
       }
 
       case 'SINK': {
-        if (this.carriedGlass) {
+        if (this.barState.carriedGlass) {
           options.push({
             icon: '🚰',
             label: 'Dump',
@@ -693,7 +677,7 @@ export class Game {
               this.walkThenAct(station.x, () => {
                 bt.startAction(0.4, 'Dumping...', () => {
                   this.stats.drinksWasted++;
-                  this.carriedGlass = null;
+                  this.barState.carriedGlass = null;
                   bt.carrying = null;
                   this.hud.showMessage('Dumped', 1);
                 });
@@ -713,7 +697,7 @@ export class Game {
               this.walkThenAct(station.x, () => {
                 bt.startAction(0.3, 'Tossing...', () => {
                   this.stats.drinksWasted++;
-                  this.carriedGlass = null;
+                  this.barState.carriedGlass = null;
                   bt.carrying = null;
                   this.hud.showMessage('Trashed', 0.8);
                 });
@@ -729,32 +713,16 @@ export class Game {
   }
 
   startPour(drinkKey, pourRate) {
-    if (!this.carriedGlass) return;
-    this.activePour = { drinkKey, pourRate };
-    // Update carrying label
-    this.bartender.carrying = `DRINK_${drinkKey}`;
+    this.barState.startPour(drinkKey, pourRate);
+    if (this.barState.activePour) {
+      this.bartender.carrying = `DRINK_${drinkKey}`;
+    }
   }
 
   // ─── PUT DOWN ───────────────────────────────────────
 
   putDownItem() {
-    const bt = this.bartender;
-    if (!bt.carrying) return;
-
-    if (bt.carrying.startsWith('DRINK_') || bt.carrying.startsWith('GLASS_')) {
-      const glass = this.carriedGlass;
-      if (glass && glass.primaryDrink) {
-        this.serviceMat.push({ drinkType: glass.primaryDrink, x: bt.x, glass });
-        this.hud.showMessage('Put down drink', 1);
-      } else if (glass) {
-        this.serviceMat.push({ drinkType: null, x: bt.x, glass });
-        this.hud.showMessage('Put down glass', 1);
-      }
-      bt.carrying = null;
-      this.carriedGlass = null;
-    } else if (bt.carrying.startsWith('CHECK_')) {
-      this.hud.showMessage("Can't put that down here", 1);
-    }
+    this.barState.putDownItem(this.bartender, this.hud);
   }
 
   // ─── GUEST INTERACTIONS ─────────────────────────────
@@ -767,13 +735,13 @@ export class Game {
       case GUEST_STATE.SEATED:
       case GUEST_STATE.LOOKING:
         options.push({ label: 'Check In', icon: '👀', action: () => this.acknowledgeGuest(guest) });
-        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+        if (this.barState.carriedGlass && this.barState.carriedGlass.primaryDrink) {
           options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
         }
         break;
 
       case GUEST_STATE.WAITING_FOR_DRINK:
-        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+        if (this.barState.carriedGlass && this.barState.carriedGlass.primaryDrink) {
           const nextIdx = guest.currentOrder
             ? guest.fulfilledItems.length
             : 0;
@@ -787,7 +755,7 @@ export class Game {
         break;
 
       case GUEST_STATE.WANTS_ANOTHER:
-        if (this.carriedGlass && this.carriedGlass.primaryDrink) {
+        if (this.barState.carriedGlass && this.barState.carriedGlass.primaryDrink) {
           options.push({ label: 'Serve', icon: '🍻', action: () => this.serveAnticipated(guest) });
         }
         break;
@@ -801,7 +769,7 @@ export class Game {
 
     // Take empty glass — available in any state if there are empties at this seat
     if (guest.seatId !== null && (!bt.carrying || bt.carrying === 'DIRTY_GLASS')) {
-      const glasses = this.drinksAtSeats.get(guest.seatId);
+      const glasses = this.barState.drinksAtSeats.get(guest.seatId);
       if (glasses) {
         const hasEmpty = glasses.some(g =>
           g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
@@ -817,9 +785,9 @@ export class Game {
                     g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
                   );
                   if (remaining.length > 0) {
-                    this.drinksAtSeats.set(guest.seatId, remaining);
+                    this.barState.drinksAtSeats.set(guest.seatId, remaining);
                   } else {
-                    this.drinksAtSeats.delete(guest.seatId);
+                    this.barState.drinksAtSeats.delete(guest.seatId);
                   }
                   this.bartender.carrying = 'DIRTY_GLASS';
                   this.hud.showMessage('Cleared glass', 0.8);
@@ -896,7 +864,7 @@ export class Game {
   serveDrink(guest, orderIndex = 0) {
     const seatX = SEATS[guest.seatId].x;
     this.walkThenAct(seatX, () => {
-      if (!this.carriedGlass) {
+      if (!this.barState.carriedGlass) {
         this.hud.showMessage('Not carrying a drink!', 1.5);
         return;
       }
@@ -904,17 +872,17 @@ export class Game {
       // Which drink is the guest waiting for?
       const wantedKey = guest.currentOrder ? guest.currentOrder[orderIndex] : guest.currentDrink;
       const wantedDef = DRINKS[wantedKey];
-      const glass = this.carriedGlass;
+      const glass = this.barState.carriedGlass;
       const result = glass.validate(wantedKey);
 
       this.bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
         if (result.valid) {
           // Place drink on bar in front of guest
-          if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
-          this.drinksAtSeats.get(guest.seatId).push(glass);
+          if (!this.barState.drinksAtSeats.has(guest.seatId)) this.barState.drinksAtSeats.set(guest.seatId, []);
+          this.barState.drinksAtSeats.get(guest.seatId).push(glass);
           guest._doneWithCurrentRound = false;
           this.bartender.carrying = null;
-          this.carriedGlass = null;
+          this.barState.carriedGlass = null;
 
           this.stats.drinksServedCorrect++;
           guest.drinksServed.push(wantedKey);
@@ -947,11 +915,11 @@ export class Game {
             this.hud.showMessage(msg, 1.5);
           } else {
             // Accepted with penalty — place drink on bar
-            if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
-            this.drinksAtSeats.get(guest.seatId).push(glass);
+            if (!this.barState.drinksAtSeats.has(guest.seatId)) this.barState.drinksAtSeats.set(guest.seatId, []);
+            this.barState.drinksAtSeats.get(guest.seatId).push(glass);
             guest._doneWithCurrentRound = false;
             this.bartender.carrying = null;
-            this.carriedGlass = null;
+            this.barState.carriedGlass = null;
 
             let moodPenalty = 0;
             let msg = '';
@@ -984,13 +952,13 @@ export class Game {
   serveAnticipated(guest) {
     const seatX = SEATS[guest.seatId].x;
     this.walkThenAct(seatX, () => {
-      if (!this.carriedGlass || !this.carriedGlass.primaryDrink) {
+      if (!this.barState.carriedGlass || !this.barState.carriedGlass.primaryDrink) {
         this.hud.showMessage('Not carrying a drink!', 1.5);
         return;
       }
 
-      const drinkKey = this.carriedGlass.primaryDrink;
-      const glass = this.carriedGlass;
+      const drinkKey = this.barState.carriedGlass.primaryDrink;
+      const glass = this.barState.carriedGlass;
 
       // Guest decides their drink now if they haven't yet
       if (!guest.currentDrink) {
@@ -1005,11 +973,11 @@ export class Game {
         if (result.valid || (!result.issues.includes('wrong_drink') &&
             !result.issues.includes('wrong_glass') && !result.issues.includes('contaminated'))) {
           // Correct drink (or close enough) — big mood boost for anticipation
-          if (!this.drinksAtSeats.has(guest.seatId)) this.drinksAtSeats.set(guest.seatId, []);
-          this.drinksAtSeats.get(guest.seatId).push(glass);
+          if (!this.barState.drinksAtSeats.has(guest.seatId)) this.barState.drinksAtSeats.set(guest.seatId, []);
+          this.barState.drinksAtSeats.get(guest.seatId).push(glass);
           guest._doneWithCurrentRound = false;
           this.bartender.carrying = null;
-          this.carriedGlass = null;
+          this.barState.carriedGlass = null;
 
           guest.drinksServed.push(wantedKey);
           guest.totalSpent += wantedDef.price;
@@ -1052,7 +1020,7 @@ export class Game {
         this.bartender.carrying = null;
 
         // Compare POS tab vs what guest actually received
-        const tab = this.posTab.get(guest.seatId) || [];
+        const tab = this.barState.posTab.get(guest.seatId) || [];
         const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
         const servedTotal = guest.totalSpent;
 
@@ -1110,11 +1078,11 @@ export class Game {
         break;
 
       case 'SINK':
-        if (this.carriedGlass) {
+        if (this.barState.carriedGlass) {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.4, 'Dumping...', () => {
               this.stats.drinksWasted++;
-              this.carriedGlass = null;
+              this.barState.carriedGlass = null;
               bt.carrying = null;
               this.hud.showMessage('Dumped', 1);
             });
@@ -1147,7 +1115,7 @@ export class Game {
           this.walkThenAct(station.x, () => {
             bt.startAction(0.3, 'Tossing...', () => {
               this.stats.drinksWasted++;
-              this.carriedGlass = null;
+              this.barState.carriedGlass = null;
               bt.carrying = null;
               this.hud.showMessage('Trashed', 0.8);
             });
@@ -1189,7 +1157,7 @@ export class Game {
         const glassKey = glassTypes[i];
         this.bartender.startAction(ACTION_DURATIONS.GLASS_RACK, 'Grabbing glass...', () => {
           this.bartender.carrying = `GLASS_${glassKey}`;
-          this.carriedGlass = new GlassState(glassKey);
+          this.barState.carriedGlass = new GlassState(glassKey);
         });
         this.glassModal.visible = false;
         return;
@@ -1315,11 +1283,11 @@ export class Game {
 
   closeDrinkModal() {
     this.drinkModal.pouringIndex = -1;
-    this.activePour = null;
+    this.barState.activePour = null;
 
     // Update carrying label based on glass contents
-    if (this.carriedGlass && this.carriedGlass.primaryDrink) {
-      this.bartender.carrying = `DRINK_${this.carriedGlass.primaryDrink}`;
+    if (this.barState.carriedGlass && this.barState.carriedGlass.primaryDrink) {
+      this.bartender.carrying = `DRINK_${this.barState.carriedGlass.primaryDrink}`;
     }
 
     this.drinkModal.visible = false;
@@ -1383,80 +1351,36 @@ export class Game {
   }
 
   addGarnish(garnishKey) {
-    if (!this.carriedGlass) return;
-    if (this.carriedGlass.garnishes.includes(garnishKey)) {
+    if (!this.barState.carriedGlass) return;
+    if (this.barState.carriedGlass.garnishes.includes(garnishKey)) {
       this.hud.showMessage('Already added!', 1);
       return;
     }
     this.bartender.startAction(ACTION_DURATIONS.GARNISH, 'Garnishing...', () => {
-      this.carriedGlass.addGarnish(garnishKey);
+      this.barState.carriedGlass.addGarnish(garnishKey);
       this.hud.showMessage(`Added ${GARNISHES[garnishKey].name}`, 1);
     });
     this.prepModal.visible = false;
   }
 
   addIce() {
-    if (!this.carriedGlass) return;
-    if (this.carriedGlass.ice > 0) {
+    if (!this.barState.carriedGlass) return;
+    if (this.barState.carriedGlass.ice > 0) {
       this.hud.showMessage('Already has ice!', 1);
       return;
     }
-    this.carriedGlass.addIce(0.3);
+    this.barState.carriedGlass.addIce(0.3);
     this.hud.showMessage('Ice added', 1);
   }
 
   // ─── SERVICE MAT (put-down drinks) ──────────────────
 
   pickUpDrink(drink) {
-    const bt = this.bartender;
-    if (bt.carrying) {
-      this.hud.showMessage('Hands full!', 1);
-      return;
-    }
-    this.walkThenAct(drink.x, () => {
-      this.carriedGlass = drink.glass || null;
-      if (drink.drinkType) {
-        bt.carrying = `DRINK_${drink.drinkType}`;
-      } else if (drink.glass) {
-        bt.carrying = `GLASS_${drink.glass.glassType}`;
-      }
-      this.serviceMat = this.serviceMat.filter(d => d !== drink);
-    });
+    this.barState.pickUpDrink(drink, this.bartender, this.hud, this.walkThenAct.bind(this));
   }
 
   handleSeatCleanup(seatId) {
-    const bt = this.bartender;
-    const hasCash = this.cashOnBar.has(seatId);
-    const hasDirty = this.dirtySeats.has(seatId);
-
-    if (!hasCash && !hasDirty) return;
-
-    if (hasDirty && bt.carrying && bt.carrying !== 'DIRTY_GLASS') {
-      this.hud.showMessage('Hands full!', 1);
-      return;
-    }
-
-    const seatX = SEATS[seatId].x;
-    this.walkThenAct(seatX, () => {
-      if (hasCash) {
-        bt.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {
-          const cash = this.cashOnBar.get(seatId);
-          if (cash) {
-            this.hud.tips += cash.tipAmount;
-            this.stats.totalTips += cash.tipAmount;
-            this.cashOnBar.delete(seatId);
-            this.hud.showMessage(`+$${cash.tipAmount.toFixed(0)} tip!`, 1.5);
-          }
-        });
-      } else if (hasDirty) {
-        bt.startAction(ACTION_DURATIONS.BUS, 'Clearing...', () => {
-          bt.carrying = 'DIRTY_GLASS';
-          this.dirtySeats.delete(seatId);
-          this.drinksAtSeats.delete(seatId);
-          this.hud.showMessage('Cleared!', 1);
-        });
-      }
-    });
+    this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats, this.walkThenAct.bind(this));
   }
 
   // ─── POS ────────────────────────────────────────────
@@ -1521,7 +1445,7 @@ export class Game {
       }
 
       // Print Check button
-      const tab = this.posTab.get(seatId) || [];
+      const tab = this.barState.posTab.get(seatId) || [];
       const printBx = px + pw - 160;
       const printBy = py + ph - 55;
       if (x > printBx && x < printBx + 140 && y > printBy && y < printBy + 40) {
@@ -1560,8 +1484,8 @@ export class Game {
         const bx = px + 20 + col * (btnW + gap);
         const by = drinksY + row * (btnH + gap);
         if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
-          if (!this.posTab.has(seatId)) this.posTab.set(seatId, []);
-          this.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
+          if (!this.barState.posTab.has(seatId)) this.barState.posTab.set(seatId, []);
+          this.barState.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
           this.hud.showMessage(`Added ${DRINKS[drinks[i]].name}`, 1);
           return;
         }
