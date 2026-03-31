@@ -61,12 +61,13 @@ export class Game {
 
     this._quitConfirm = false;
 
-    // POS state
+    // POS state — independent from bar state, like a real register
     this.pos = {
       visible: false,
       mode: 'SELECT_SEAT', // 'SELECT_SEAT', 'SEAT_VIEW'
       selectedSeat: null,
       seatOrders: [],  // orders for selected seat
+      tab: new Map(),  // seatId → [{ drink, price }] — what bartender entered
     };
 
     // Glass modal
@@ -146,6 +147,7 @@ export class Game {
     this.gameState = GAME_STATE.PLAYING;
     this.radialMenu.close();
     this.pos.visible = false;
+    this.pos.tab = new Map();
     this.drinkModal.visible = false;
     this.glassModal.visible = false;
     this.prepModal.visible = false;
@@ -167,6 +169,7 @@ export class Game {
       settings: this.settings,
       seats: this.seats,
       radialMenu: this.radialMenu,
+      posTab: this.pos.tab,
       walkThenAct: this.walkThenAct.bind(this),
       getStations: this.getStations.bind(this),
     });
@@ -408,7 +411,7 @@ export class Game {
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
     this.renderer.drawDrinkModal(this.drinkModal, this.barState.carriedGlass, this.barState.activePour);
-    this.renderer.drawPOSOverlay(this.pos, this.guests, this.barState.posTab, this.getAvailableDrinks());
+    this.renderer.drawPOSOverlay(this.pos, this.guests, this.getAvailableDrinks());
     this.renderer.drawPrepModal(this.prepModal, this.barState.carriedGlass, this.barState.activePour);
 
     // Pause button (top-center)
@@ -713,7 +716,7 @@ export class Game {
       }
 
       // Print Check button
-      const tab = this.barState.posTab.get(seatId) || [];
+      const tab = this.pos.tab.get(seatId) || [];
       const printBx = px + pw - 160;
       const printBy = py + ph - 55;
       if (x > printBx && x < printBx + 140 && y > printBy && y < printBy + 40) {
@@ -752,8 +755,8 @@ export class Game {
         const bx = px + 20 + col * (btnW + gap);
         const by = drinksY + row * (btnH + gap);
         if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
-          if (!this.barState.posTab.has(seatId)) this.barState.posTab.set(seatId, []);
-          this.barState.posTab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
+          if (!this.pos.tab.has(seatId)) this.pos.tab.set(seatId, []);
+          this.pos.tab.get(seatId).push({ drink: drinks[i], price: DRINKS[drinks[i]].price });
           this.hud.showMessage(`Added ${DRINKS[drinks[i]].name}`, 1);
           return;
         }

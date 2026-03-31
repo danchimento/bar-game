@@ -1238,8 +1238,9 @@ export class Renderer {
 
   // ─── POS OVERLAY ──────────────────────────────────
 
-  drawPOSOverlay(posState, guests, posTab, availableDrinks) {
+  drawPOSOverlay(posState, guests, availableDrinks) {
     if (!posState.visible) return;
+    const posTab = posState.tab;
     const ctx = this.ctx;
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';

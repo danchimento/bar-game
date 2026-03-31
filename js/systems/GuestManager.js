@@ -194,7 +194,7 @@ export class GuestManager {
           stats.guestsWaited++;
         }
         this.ctx.notepad.removeGuest(g.id);
-        barState.posTab.delete(g.seatId);
+        this.ctx.posTab.delete(g.seatId);
         return false;
       }
       return true;
@@ -462,14 +462,14 @@ export class GuestManager {
   }
 
   giveCheck(guest) {
-    const { bartender, barState, hud, stats, walkThenAct } = this.ctx;
+    const { bartender, hud, stats, posTab, walkThenAct } = this.ctx;
     const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       if (bartender.carrying !== `CHECK_${guest.seatId}`) return;
       bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
         bartender.carrying = null;
 
-        const tab = barState.posTab.get(guest.seatId) || [];
+        const tab = posTab.get(guest.seatId) || [];
         const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
         const servedTotal = guest.totalSpent;
 

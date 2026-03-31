@@ -43,7 +43,6 @@ describe('BarState', () => {
     it('starts empty', () => {
       expect(barState.dirtySeats.size).toBe(0);
       expect(barState.cashOnBar.size).toBe(0);
-      expect(barState.posTab.size).toBe(0);
       expect(barState.serviceMat).toEqual([]);
       expect(barState.drinksAtSeats.size).toBe(0);
       expect(barState.carriedGlass).toBeNull();
@@ -56,7 +55,6 @@ describe('BarState', () => {
     it('clears all state', () => {
       barState.dirtySeats.add(0);
       barState.cashOnBar.set(0, { amount: 10, tipAmount: 2 });
-      barState.posTab.set(0, [{ drink: 'GOLD_LAGER', price: 7 }]);
       barState.serviceMat.push({ drinkType: 'GOLD_LAGER', x: 300 });
       barState.drinksAtSeats.set(0, [new GlassState('PINT')]);
       barState.carriedGlass = new GlassState('PINT');
@@ -66,7 +64,6 @@ describe('BarState', () => {
 
       expect(barState.dirtySeats.size).toBe(0);
       expect(barState.cashOnBar.size).toBe(0);
-      expect(barState.posTab.size).toBe(0);
       expect(barState.serviceMat).toEqual([]);
       expect(barState.drinksAtSeats.size).toBe(0);
       expect(barState.carriedGlass).toBeNull();

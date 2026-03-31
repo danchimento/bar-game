@@ -1,15 +1,17 @@
 import { SEATS, ACTION_DURATIONS } from '../constants.js';
 
 /**
- * BarState — owns the bar's world state and operations on it.
- * Consolidates: dirtySeats, cashOnBar, posTab, serviceMat, drinksAtSeats,
+ * BarState — owns the bar's physical world state and operations on it.
+ * Consolidates: dirtySeats, cashOnBar, serviceMat, drinksAtSeats,
  * and the carry state (carriedGlass + activePour).
+ *
+ * Note: POS tab lives on Game.pos.tab — the POS is an independent register
+ * with no knowledge of actual bar state, just like a real POS.
  */
 export class BarState {
   constructor() {
     this.dirtySeats = new Set();
     this.cashOnBar = new Map();   // seatId → { amount, tipAmount }
-    this.posTab = new Map();      // seatId → [{ drink, price }]
     this.serviceMat = [];
     this.drinksAtSeats = new Map(); // seatId → [GlassState, ...]
 
@@ -31,7 +33,6 @@ export class BarState {
   reset() {
     this.dirtySeats.clear();
     this.cashOnBar.clear();
-    this.posTab.clear();
     this.serviceMat = [];
     this.drinksAtSeats.clear();
     this.carriedGlass = null;

@@ -57,6 +57,7 @@ function makeContext(overrides = {}) {
     stats: makeStats(),
     settings: { moodDecayMultiplier: 1, gracePeriod: 30, orderRevealTime: 4 },
     seats: setSeatCount(3),
+    posTab: new Map(),
     radialMenu: makeRadialMenu(),
     walkThenAct: (x, cb) => cb(),
     getStations: () => [
@@ -460,7 +461,7 @@ describe('GuestManager', () => {
       guest.totalSpent = 7;
       const sid = guest.seatId;
       ctx.bartender.carrying = `CHECK_${sid}`;
-      ctx.barState.posTab.set(sid, [{ drink: 'GOLD_LAGER', price: 7 }]);
+      ctx.posTab.set(sid, [{ drink: 'GOLD_LAGER', price: 7 }]);
 
       gm.giveCheck(guest);
 
@@ -476,7 +477,7 @@ describe('GuestManager', () => {
       guest.totalSpent = 7;
       const sid = guest.seatId;
       ctx.bartender.carrying = `CHECK_${sid}`;
-      ctx.barState.posTab.set(sid, [
+      ctx.posTab.set(sid, [
         { drink: 'GOLD_LAGER', price: 7 },
         { drink: 'HAZY_IPA', price: 8 }, // extra
       ]);
@@ -496,7 +497,7 @@ describe('GuestManager', () => {
       ctx.hud.revenue = 15;
       const sid = guest.seatId;
       ctx.bartender.carrying = `CHECK_${sid}`;
-      ctx.barState.posTab.set(sid, [{ drink: 'GOLD_LAGER', price: 7 }]);
+      ctx.posTab.set(sid, [{ drink: 'GOLD_LAGER', price: 7 }]);
 
       gm.giveCheck(guest);
 
