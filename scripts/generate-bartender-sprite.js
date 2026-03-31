@@ -1,7 +1,6 @@
 /**
  * Generates a placeholder pixel-art bartender sprite (32x48, 3x scaled to 96x144 PNG).
- * Full head-to-toe character: dark hair, white dress shirt, black vest, green apron,
- * dark pants, shoes, bar towel over shoulder.
+ * Full head-to-toe character: dark hair, white dress shirt, black vest, dark pants, shoes.
  */
 const { createCanvas } = require('canvas');
 const fs = require('fs');
@@ -36,16 +35,10 @@ const SHRT = '#eeeade';  // shirt
 const SRTS = '#d8d0c0';  // shirt shadow
 const VST  = '#1e1e1e';  // vest
 const VSTH = '#333333';  // vest highlight
-const APRN = '#2d6a27';  // apron
-const APRH = '#3d8a37';  // apron highlight
-const APRD = '#1e4a1a';  // apron dark
-const STRP = '#d4c9a8';  // apron strings
 const PNT  = '#14142a';  // pants
 const PNTH = '#24243a';  // pants highlight
 const SHOE = '#0e0e0e';  // shoes
 const SHOH = '#222222';  // shoe highlight
-const TWL  = '#f0ede6';  // towel
-const TWLS = '#d8d4cc';  // towel shadow
 const BKLE = '#c8a840';  // belt buckle
 
 // ============ HAIR TOP (rows 0-3) ============
@@ -118,48 +111,36 @@ for (let y = 16; y <= 21; y += 2) px(16, y, SRTS);
 row(14, 9, 10, VSTH);
 row(14, 21, 22, VSTH);
 
-// ============ ARMS (rows 15-24) ============
-// Left arm (shirt sleeves then skin)
-for (let y = 15; y <= 18; y++) { px(7, y, SHRT); px(8, y, SHRT); }
-px(7, 15, SRTS); px(7, 16, SRTS); // sleeve shadow
-for (let y = 19; y <= 23; y++) { px(7, y, SK); px(8, y, SK); }
-px(7, 24, SK); px(8, 24, SKS); // hand
+// ============ ARMS (rows 15-26) ============
+// Left arm (vest sleeve then skin)
+for (let y = 15; y <= 19; y++) { px(7, y, VST); px(8, y, VST); }
+px(8, 15, VSTH); px(8, 16, VSTH); // sleeve highlight
+for (let y = 20; y <= 25; y++) { px(7, y, SK); px(8, y, SK); }
+px(7, 20, SKS); // shadow at sleeve cuff
+px(7, 26, SK); px(8, 26, SKS); // hand
 
 // Right arm
-for (let y = 15; y <= 18; y++) { px(23, y, SHRT); px(24, y, SHRT); }
-px(24, 15, SRTS); px(24, 16, SRTS);
-for (let y = 19; y <= 23; y++) { px(23, y, SK); px(24, y, SK); }
-px(23, 24, SKS); px(24, 24, SK);
+for (let y = 15; y <= 19; y++) { px(23, y, VST); px(24, y, VST); }
+px(23, 15, VSTH); px(23, 16, VSTH);
+for (let y = 20; y <= 25; y++) { px(23, y, SK); px(24, y, SK); }
+px(24, 20, SKS);
+px(23, 26, SKS); px(24, 26, SK);
 
-// ============ BAR TOWEL on left shoulder (rows 15-22) ============
-for (let y = 15; y <= 21; y++) {
-  px(8, y, (y % 2 === 0) ? TWL : TWLS);
-  px(9, y, (y % 2 === 0) ? TWLS : TWL);
+// ============ EXTENDED SHIRT + VEST (rows 23-34) ============
+// Shirt and vest continue below the shoulder area down to the belt
+for (let y = 23; y <= 34; y++) row(y, 9, 22, SHRT);
+for (let y = 23; y <= 34; y++) {
+  row(y, 9, 12, VST);
+  row(y, 19, 22, VST);
 }
-// Towel end hangs down
-px(8, 22, TWL); px(9, 22, TWLS);
-px(9, 23, TWL);
-
-// ============ APRON (rows 22-34) ============
-// Waistband / strings
-row(22, 10, 21, STRP);
-// Tie strings hanging on sides
-for (let y = 23; y <= 25; y++) { px(9, y, STRP); px(22, y, STRP); }
-
-// Apron body
-for (let y = 23; y <= 34; y++) row(y, 10, 21, APRN);
-// Apron side highlights
-for (let y = 23; y <= 33; y++) { px(11, y, APRH); px(20, y, APRH); }
-// Apron center fold shadow
-for (let y = 24; y <= 33; y++) px(16, y, APRD);
-
-// Apron pocket
-for (let y = 27; y <= 30; y++) row(y, 13, 18, APRH);
-row(27, 13, 18, APRD); // pocket top edge
-px(13, 28, APRD); px(13, 29, APRD); px(13, 30, APRD); // pocket left edge
-px(18, 28, APRD); px(18, 29, APRD); px(18, 30, APRD); // pocket right edge
-// Pen in pocket
-px(14, 26, '#3344aa'); px(14, 27, '#3344aa');
+for (let y = 23; y <= 33; y++) {
+  px(12, y, VSTH);
+  px(19, y, VSTH);
+}
+// Continue shirt buttons
+for (let y = 22; y <= 33; y += 2) px(16, y, SRTS);
+// Shirt tuck / slight shadow near waist
+row(34, 13, 18, SRTS);
 
 // ============ PANTS (rows 35-42) ============
 // Left leg
