@@ -1238,7 +1238,7 @@ export class Renderer {
 
   // ─── POS OVERLAY ──────────────────────────────────
 
-  drawPOSOverlay(posState, guests, availableDrinks) {
+  drawPOSOverlay(posState, availableDrinks) {
     if (!posState.visible) return;
     const posTab = posState.tab;
     const ctx = this.ctx;
@@ -1308,14 +1308,13 @@ export class Renderer {
         const sx = barLeft + t * barW;
         const tab = posTab.get(i) || [];
         const hasTab = tab.length > 0;
-        const guest = guests.find(g => g.seatId === i && g.state !== 'DONE' && g.state !== 'LEAVING' && g.state !== 'ANGRY_LEAVING');
 
-        // Seat circle
-        ctx.fillStyle = guest ? (hasTab ? '#2a4a2a' : '#2a3a3a') : '#2a2a2a';
+        // Seat circle — only distinguishes "has tab" vs "no tab"
+        ctx.fillStyle = hasTab ? '#2a4a2a' : '#2a2a2a';
         ctx.beginPath();
         ctx.arc(sx, seatCy, seatR, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = hasTab ? '#4caf50' : (guest ? '#888' : '#555');
+        ctx.strokeStyle = hasTab ? '#4caf50' : '#555';
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -1329,7 +1328,7 @@ export class Renderer {
         // Tab info
         ctx.fillStyle = hasTab ? '#4caf50' : '#666';
         ctx.font = '9px monospace';
-        ctx.fillText(hasTab ? `${tab.length} item${tab.length > 1 ? 's' : ''}` : guest ? '—' : 'empty', sx, seatCy + 12);
+        ctx.fillText(hasTab ? `${tab.length} item${tab.length > 1 ? 's' : ''}` : '—', sx, seatCy + 12);
       }
     } else if (posState.mode === 'SEAT_VIEW') {
       const seatId = posState.selectedSeat;

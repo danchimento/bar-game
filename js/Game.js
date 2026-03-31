@@ -411,7 +411,7 @@ export class Game {
     this.radialMenu.draw(this.ctx);
     this.renderer.drawGlassModal(this.glassModal);
     this.renderer.drawDrinkModal(this.drinkModal, this.barState.carriedGlass, this.barState.activePour);
-    this.renderer.drawPOSOverlay(this.pos, this.guests, this.getAvailableDrinks());
+    this.renderer.drawPOSOverlay(this.pos, this.getAvailableDrinks());
     this.renderer.drawPrepModal(this.prepModal, this.barState.carriedGlass, this.barState.activePour);
 
     // Pause button (top-center)
