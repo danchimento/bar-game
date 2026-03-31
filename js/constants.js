@@ -39,7 +39,8 @@ export const SEATS = [
   { id: 2, x: 760 },
 ];
 
-/** Reconfigure SEATS in-place for N seats, evenly spaced across the bar */
+/** Reconfigure SEATS for N seats, evenly spaced across the bar.
+ *  Mutates the global SEATS array (backward compat) and returns it. */
 export function setSeatCount(n) {
   SEATS.length = 0;
   const margin = 120;
@@ -48,6 +49,7 @@ export function setSeatCount(n) {
   for (let i = 0; i < n; i++) {
     SEATS.push({ id: i, x: Math.round(margin + gap * (i + 1)) });
   }
+  return SEATS;
 }
 
 // Station definitions

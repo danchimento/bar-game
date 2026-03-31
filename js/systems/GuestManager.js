@@ -1,4 +1,4 @@
-import { SEATS, GUEST_STATE, ACTION_DURATIONS, MOOD_MAX } from '../constants.js';
+import { GUEST_STATE, ACTION_DURATIONS, MOOD_MAX } from '../constants.js';
 import { DRINKS } from '../data/menu.js';
 import { Guest } from '../entities/Guest.js';
 
@@ -77,7 +77,7 @@ export class GuestManager {
     const occupiedSeats = new Set(
       this.guests.filter(g => g.seatId !== null).map(g => g.seatId)
     );
-    return SEATS.filter(s =>
+    return this.ctx.seats.filter(s =>
       !occupiedSeats.has(s.id) && !barState.dirtySeats.has(s.id) && !barState.cashOnBar.has(s.id)
     );
   }
@@ -251,7 +251,7 @@ export class GuestManager {
         if (hasEmpty) {
           options.push({
             label: 'Take Glass', icon: '🫗', action: () => {
-              const seatX = SEATS[guest.seatId].x;
+              const seatX = guest.seat.x;
               walkThenAct(seatX, () => {
                 bartender.startAction(0.3, 'Clearing...', () => {
                   const remaining = glasses.filter(g =>
@@ -279,7 +279,7 @@ export class GuestManager {
 
   acknowledgeGuest(guest) {
     const { bartender, hud, settings, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       bartender.startAction(ACTION_DURATIONS.GREET, 'Checking in...', () => {
         guest.greeted = true;
@@ -316,7 +316,7 @@ export class GuestManager {
 
   askOrder(guest) {
     const { bartender, hud, settings, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       bartender.startAction(0.4, 'Asking...', () => {
         guest.orderRevealTimer = settings?.orderRevealTime ?? 4;
@@ -327,7 +327,7 @@ export class GuestManager {
 
   serveDrink(guest, orderIndex = 0) {
     const { bartender, barState, hud, stats, notepad, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       if (!barState.carriedGlass) {
         hud.showMessage('Not carrying a drink!', 1.5);
@@ -407,7 +407,7 @@ export class GuestManager {
 
   serveAnticipated(guest) {
     const { bartender, barState, hud, stats, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       if (!barState.carriedGlass || !barState.carriedGlass.primaryDrink) {
         hud.showMessage('Not carrying a drink!', 1.5);
@@ -451,7 +451,7 @@ export class GuestManager {
 
   checkIn(guest) {
     const { bartender, hud, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       bartender.startAction(ACTION_DURATIONS.CHECK_IN, 'Checking in...', () => {
         guest.mood = Math.min(MOOD_MAX, guest.mood + 8);
@@ -463,7 +463,7 @@ export class GuestManager {
 
   giveCheck(guest) {
     const { bartender, barState, hud, stats, walkThenAct } = this.ctx;
-    const seatX = SEATS[guest.seatId].x;
+    const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
       if (bartender.carrying !== `CHECK_${guest.seatId}`) return;
       bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {

@@ -116,7 +116,7 @@ export class Game {
 
   startLevel() {
     this.level = LEVELS[this.levelIndex];
-    setSeatCount(this.level.seats || 3);
+    this.seats = setSeatCount(this.level.seats || 3);
 
     // Apply per-level setting overrides
     if (this.level.settings) {
@@ -165,6 +165,7 @@ export class Game {
       notepad: this.notepad,
       stats: this.stats,
       settings: this.settings,
+      seats: this.seats,
       radialMenu: this.radialMenu,
       walkThenAct: this.walkThenAct.bind(this),
       getStations: this.getStations.bind(this),
