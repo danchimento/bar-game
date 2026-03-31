@@ -1247,33 +1247,55 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.fillText('Select a seat:', px + pw / 2, py + 55);
 
-      const cols = Math.min(SEATS.length, 3);
-      const btnW = Math.floor((pw - 40 - (cols - 1) * 15) / cols);
-      for (let i = 0; i < SEATS.length; i++) {
-        const bx = px + 20 + (i % cols) * (btnW + 15);
-        const by = py + 70 + Math.floor(i / cols) * 55;
+      // Mini bar diagram — seats mirror their real positions
+      const barMargin = 40;
+      const barLeft = px + barMargin;
+      const barRight = px + pw - barMargin;
+      const barW = barRight - barLeft;
+      const barY = py + 160;
 
+      // Draw mini bar counter
+      ctx.fillStyle = '#3a2a1a';
+      ctx.beginPath();
+      ctx.roundRect(barLeft - 10, barY, barW + 20, 12, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#5a4a2a';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Map real seat x positions to POS space
+      const realMin = BAR_LEFT;
+      const realMax = BAR_RIGHT;
+      const seatR = 28;
+      const seatCy = barY - seatR - 10;
+
+      for (let i = 0; i < SEATS.length; i++) {
+        const t = (SEATS[i].x - realMin) / (realMax - realMin);
+        const sx = barLeft + t * barW;
         const tab = posTab.get(i) || [];
         const hasTab = tab.length > 0;
+        const guest = guests.find(g => g.seatId === i && g.state !== 'DONE' && g.state !== 'LEAVING' && g.state !== 'ANGRY_LEAVING');
 
-        ctx.fillStyle = hasTab ? '#2a3a2a' : '#2a2a2a';
+        // Seat circle
+        ctx.fillStyle = guest ? (hasTab ? '#2a4a2a' : '#2a3a3a') : '#2a2a2a';
         ctx.beginPath();
-        ctx.roundRect(bx, by, btnW, 42, 4);
+        ctx.arc(sx, seatCy, seatR, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = hasTab ? '#4caf50' : (guest ? '#888' : '#555');
+        ctx.lineWidth = 2;
         ctx.stroke();
 
+        // Seat number
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px monospace';
-        ctx.textAlign = 'left';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`Seat ${i + 1}`, bx + 12, by + 14);
+        ctx.fillText(`${i + 1}`, sx, seatCy - 6);
 
-        ctx.fillStyle = '#aaa';
-        ctx.font = '10px monospace';
-        ctx.fillText(hasTab ? `${tab.length} item${tab.length > 1 ? 's' : ''}` : 'No tab', bx + 12, by + 32);
+        // Tab info
+        ctx.fillStyle = hasTab ? '#4caf50' : '#666';
+        ctx.font = '9px monospace';
+        ctx.fillText(hasTab ? `${tab.length} item${tab.length > 1 ? 's' : ''}` : guest ? '—' : 'empty', sx, seatCy + 12);
       }
     } else if (posState.mode === 'SEAT_VIEW') {
       const seatId = posState.selectedSeat;
