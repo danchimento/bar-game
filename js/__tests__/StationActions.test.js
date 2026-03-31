@@ -4,8 +4,6 @@ import { BarState } from '../systems/BarState.js';
 import { GlassState } from '../entities/GlassState.js';
 import { setSeatCount } from '../constants.js';
 
-setSeatCount(3);
-
 function makeBartender(x = 480) {
   return {
     x,
@@ -62,6 +60,7 @@ describe('StationActions', () => {
   let ctx;
 
   beforeEach(() => {
+    setSeatCount(3);
     sa = new StationActions();
     ctx = makeContext();
     sa.setContext(ctx);

@@ -177,5 +177,74 @@ describe('GlassState', () => {
       const result = glass.validate('GOLD_LAGER');
       expect(result.issues).not.toContain('contaminated');
     });
+
+    it('contamination exactly at threshold (0.05) is not flagged', () => {
+      glass.pour('GOLD_LAGER', 0.85);
+      glass.pour('HAZY_IPA', 0.05);
+      const result = glass.validate('GOLD_LAGER');
+      expect(result.issues).not.toContain('contaminated');
+    });
+
+    it('contamination just above threshold (0.06) is flagged', () => {
+      glass.pour('GOLD_LAGER', 0.84);
+      glass.pour('HAZY_IPA', 0.06);
+      const result = glass.validate('GOLD_LAGER');
+      expect(result.issues).toContain('contaminated');
+    });
+
+    it('empty glass reports wrong_drink and underfilled', () => {
+      const result = glass.validate('GOLD_LAGER');
+      expect(result.valid).toBe(false);
+      expect(result.issues).toContain('wrong_drink');
+      expect(result.issues).toContain('underfilled');
+    });
+
+    it('exact capacity with no overflow is valid', () => {
+      glass.pour('GOLD_LAGER', 1.0);
+      const result = glass.validate('GOLD_LAGER');
+      expect(result.issues).not.toContain('overfilled');
+      expect(glass.overflow).toBe(0);
+    });
+
+    it('overflow just above threshold (0.02) is flagged', () => {
+      glass.pour('GOLD_LAGER', 1.0);
+      glass.pour('GOLD_LAGER', 0.02); // spills
+      const result = glass.validate('GOLD_LAGER');
+      expect(result.issues).toContain('overfilled');
+      expect(glass.overflow).toBeCloseTo(0.02);
+    });
+
+    it('unknown drink returns invalid', () => {
+      const result = glass.validate('NONEXISTENT_DRINK');
+      expect(result.valid).toBe(false);
+      expect(result.issues).toContain('Unknown drink');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('pour with zero amount adds nothing', () => {
+      glass.pour('GOLD_LAGER', 0);
+      expect(glass.totalFill).toBe(0);
+      expect(glass.layers.length).toBe(0);
+    });
+
+    it('remainingCapacity is zero when full', () => {
+      glass.pour('GOLD_LAGER', 1.0);
+      expect(glass.remainingCapacity).toBe(0);
+    });
+
+    it('multiple garnishes coexist', () => {
+      glass.addGarnish('ORANGE');
+      glass.addGarnish('LIME');
+      glass.addGarnish('CHERRY');
+      expect(glass.garnishes).toEqual(['ORANGE', 'LIME', 'CHERRY']);
+    });
+
+    it('ice + pour respects total capacity', () => {
+      glass.addIce(0.3);
+      glass.pour('GOLD_LAGER', 0.8); // only 0.7 fits
+      expect(glass.totalFill).toBeCloseTo(1.0);
+      expect(glass.ice).toBeCloseTo(0.3);
+    });
   });
 });

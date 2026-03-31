@@ -3,8 +3,6 @@ import { BarState } from '../systems/BarState.js';
 import { GlassState } from '../entities/GlassState.js';
 import { setSeatCount } from '../constants.js';
 
-setSeatCount(3);
-
 /** Minimal bartender stub */
 function makeBartender(x = 480) {
   return {
@@ -37,6 +35,7 @@ describe('BarState', () => {
   let barState;
 
   beforeEach(() => {
+    setSeatCount(3);
     barState = new BarState();
   });
 

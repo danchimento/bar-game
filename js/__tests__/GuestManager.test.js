@@ -4,8 +4,6 @@ import { BarState } from '../systems/BarState.js';
 import { GlassState } from '../entities/GlassState.js';
 import { GUEST_STATE, setSeatCount, MOOD_MAX } from '../constants.js';
 
-const seats = setSeatCount(3);
-
 function makeBartender(x = 480) {
   return {
     x,
@@ -58,7 +56,7 @@ function makeContext(overrides = {}) {
     notepad: makeNotepad(),
     stats: makeStats(),
     settings: { moodDecayMultiplier: 1, gracePeriod: 30, orderRevealTime: 4 },
-    seats,
+    seats: setSeatCount(3),
     radialMenu: makeRadialMenu(),
     walkThenAct: (x, cb) => cb(),
     getStations: () => [
@@ -79,7 +77,6 @@ describe('GuestManager', () => {
   let ctx;
 
   beforeEach(() => {
-    setSeatCount(3);
     gm = new GuestManager();
     ctx = makeContext();
     gm.setContext(ctx);
@@ -549,6 +546,218 @@ describe('GuestManager', () => {
 
       const labels = ctx.radialMenu.lastOptions.map(o => o.label);
       expect(labels).toContain('Give Check');
+    });
+
+    it('shows Take Glass when empty glasses at seat', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.ENJOYING;
+
+      const glass = new GlassState('PINT');
+      glass.pour('GOLD_LAGER', 0.005); // nearly empty (< 0.01 threshold)
+      ctx.barState.drinksAtSeats.set(guest.seatId, [glass]);
+
+      gm.openGuestMenu(guest);
+
+      const labels = ctx.radialMenu.lastOptions.map(o => o.label);
+      expect(labels).toContain('Take Glass');
+    });
+
+    it('Take Glass action removes empties and sets DIRTY_GLASS', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.ENJOYING;
+
+      const emptyGlass = new GlassState('PINT');
+      emptyGlass.pour('GOLD_LAGER', 0.005);
+      const fullGlass = new GlassState('PINT');
+      fullGlass.pour('GOLD_LAGER', 0.9);
+      ctx.barState.drinksAtSeats.set(guest.seatId, [emptyGlass, fullGlass]);
+
+      gm.openGuestMenu(guest);
+
+      const takeOpt = ctx.radialMenu.lastOptions.find(o => o.label === 'Take Glass');
+      takeOpt.action();
+
+      // Empty removed, full remains
+      const remaining = ctx.barState.drinksAtSeats.get(guest.seatId);
+      expect(remaining.length).toBe(1);
+      expect(remaining[0]).toBe(fullGlass);
+      expect(ctx.bartender.carrying).toBe('DIRTY_GLASS');
+    });
+
+    it('no Take Glass when no empties', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.ENJOYING;
+
+      const glass = new GlassState('PINT');
+      glass.pour('GOLD_LAGER', 0.9); // full
+      ctx.barState.drinksAtSeats.set(guest.seatId, [glass]);
+
+      gm.openGuestMenu(guest);
+
+      const labels = ctx.radialMenu.lastOptions.map(o => o.label);
+      expect(labels).not.toContain('Take Glass');
+    });
+
+    it('shows Check In for ENJOYING guest', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.ENJOYING;
+
+      gm.openGuestMenu(guest);
+
+      const labels = ctx.radialMenu.lastOptions.map(o => o.label);
+      expect(labels).toContain('Check In');
+    });
+
+    it('shows Serve for WANTS_ANOTHER when carrying drink', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.WANTS_ANOTHER;
+
+      const glass = new GlassState('PINT');
+      glass.pour('GOLD_LAGER', 0.9);
+      ctx.barState.carriedGlass = glass;
+
+      gm.openGuestMenu(guest);
+
+      const labels = ctx.radialMenu.lastOptions.map(o => o.label);
+      expect(labels).toContain('Serve');
+    });
+  });
+
+  describe('multi-item orders', () => {
+    it('serves first item and waits for second', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.y = guest.targetY;
+      guest.state = GUEST_STATE.WAITING_FOR_DRINK;
+      guest.currentDrink = 'GOLD_LAGER';
+      guest.currentOrder = ['GOLD_LAGER', 'WATER'];
+      guest.fulfilledItems = [];
+
+      const glass = new GlassState('PINT');
+      glass.pour('GOLD_LAGER', 0.9);
+      ctx.barState.carriedGlass = glass;
+      ctx.bartender.carrying = 'DRINK_GOLD_LAGER';
+
+      gm.serveDrink(guest, 0);
+
+      expect(guest.fulfilledItems).toEqual(['GOLD_LAGER']);
+      // Not yet ENJOYING — still waiting for water
+      expect(guest.state).toBe(GUEST_STATE.WAITING_FOR_DRINK);
+      expect(ctx.hud.messages).toContain('Served! More items left');
+    });
+
+    it('completes multi-item order when all fulfilled', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.y = guest.targetY;
+      guest.state = GUEST_STATE.WAITING_FOR_DRINK;
+      guest.currentDrink = 'GOLD_LAGER';
+      guest.currentOrder = ['GOLD_LAGER', 'WATER'];
+      guest.fulfilledItems = ['GOLD_LAGER']; // first already served
+
+      const cup = new GlassState('PLASTIC_CUP');
+      cup.addIce(0.1);
+      cup.pour('WATER', 0.85);
+      ctx.barState.carriedGlass = cup;
+      ctx.bartender.carrying = 'DRINK_WATER';
+
+      gm.serveDrink(guest, 1); // serving second item
+
+      expect(guest.fulfilledItems).toEqual(['GOLD_LAGER', 'WATER']);
+      expect(guest.state).toBe(GUEST_STATE.ENJOYING);
+      expect(ctx.hud.messages).toContain('Order complete!');
+    });
+  });
+
+  describe('checkIn', () => {
+    it('boosts mood and sets checkedIn flag', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.y = guest.targetY;
+      guest.state = GUEST_STATE.ENJOYING;
+      guest.mood = 70;
+
+      gm.checkIn(guest);
+
+      expect(guest.checkedIn).toBe(true);
+      expect(guest.mood).toBe(78); // +8
+      expect(ctx.hud.messages).toContain('Checked in!');
+    });
+  });
+
+  describe('askOrder', () => {
+    it('re-reveals order and shows message', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.y = guest.targetY;
+      guest.state = GUEST_STATE.WAITING_FOR_DRINK;
+      guest.currentDrink = 'GOLD_LAGER';
+      guest.orderRevealTimer = 0; // expired
+
+      gm.askOrder(guest);
+
+      expect(guest.orderRevealTimer).toBeGreaterThan(0);
+      expect(ctx.hud.messages.some(m => m.includes('Order:'))).toBe(true);
+    });
+  });
+
+  describe('updateGuests — empty glass mood penalty', () => {
+    it('drains mood when 2+ empty glasses at seat', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.WAITING_FOR_DRINK;
+      guest.mood = 80;
+
+      const empty1 = new GlassState('PINT');
+      empty1.pour('GOLD_LAGER', 0.005);
+      const empty2 = new GlassState('PINT');
+      empty2.pour('HAZY_IPA', 0.005);
+      ctx.barState.drinksAtSeats.set(guest.seatId, [empty1, empty2]);
+
+      gm.updateGuests(1.0, 60, 300);
+
+      // Mood should drop from both regular decay AND empty glass penalty
+      expect(guest.mood).toBeLessThan(80);
+    });
+
+    it('no extra penalty for 0-1 empty glasses', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.state = GUEST_STATE.WAITING_FOR_DRINK;
+
+      const oneEmpty = new GlassState('PINT');
+      oneEmpty.pour('GOLD_LAGER', 0.005);
+      ctx.barState.drinksAtSeats.set(guest.seatId, [oneEmpty]);
+
+      const moodBefore = guest.mood;
+      // Disable normal decay to isolate empty glass effect
+      gm.updateGuests(0, 60, 300); // dt=0 means no decay at all
+
+      expect(guest.mood).toBe(moodBefore); // no penalty with just 1 empty
+    });
+  });
+
+  describe('giveCheck — edge cases', () => {
+    it('treats missing POS tab as undercharged', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      guest.y = guest.targetY;
+      guest.state = GUEST_STATE.READY_TO_PAY;
+      guest.totalSpent = 7;
+      ctx.hud.revenue = 7;
+      const sid = guest.seatId;
+      ctx.bartender.carrying = `CHECK_${sid}`;
+      // No posTab entry at all
+
+      gm.giveCheck(guest);
+
+      expect(ctx.stats.billsUndercharged).toBe(1);
+      expect(ctx.hud.revenue).toBe(0);
     });
   });
 });

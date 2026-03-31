@@ -2,13 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Guest } from '../entities/Guest.js';
 import { GUEST_STATE, MOOD_MAX, setSeatCount } from '../constants.js';
 
-// Ensure SEATS is set up before tests
-setSeatCount(3);
-
 describe('Guest', () => {
   let guest;
 
   beforeEach(() => {
+    setSeatCount(3);
     guest = new Guest(0, 'regular', ['GOLD_LAGER', 'HAZY_IPA']);
   });
 
@@ -222,6 +220,20 @@ describe('Guest', () => {
       guest.checkedIn = true;
       guest.calculateTip();
       expect(guest.tipAmount).toBeGreaterThan(baseTip);
+    });
+
+    it('zero spend yields zero tip', () => {
+      guest.totalSpent = 0;
+      guest.mood = MOOD_MAX;
+      guest.calculateTip();
+      expect(guest.tipAmount).toBe(0);
+    });
+
+    it('zero mood yields zero tip', () => {
+      guest.totalSpent = 20;
+      guest.mood = 0;
+      guest.calculateTip();
+      expect(guest.tipAmount).toBe(0);
     });
   });
 
