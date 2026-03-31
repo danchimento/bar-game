@@ -169,7 +169,7 @@ export class GuestManager {
     for (const g of this.guests) {
       if ((g.state === GUEST_STATE.LEAVING || g.state === GUEST_STATE.ANGRY_LEAVING) && !g._itemsPlaced) {
         g._itemsPlaced = true;
-        if (g.seatId !== null) {
+        if (g.seatId !== null && barState.drinksAtSeats.has(g.seatId)) {
           barState.dirtySeats.add(g.seatId);
         }
         if (g.cashOnBar && g.totalSpent > 0) {

@@ -215,20 +215,40 @@ describe('GuestManager', () => {
       expect(ctx.stats.guestsServed).toBe(1);
     });
 
-    it('places cash and marks dirty on LEAVING', () => {
+    it('places cash and marks dirty on LEAVING when glasses remain', () => {
       gm.spawnFromSchedule(0, simpleSchedule, 300);
       const guest = gm.guests[0];
-      guest.seatId = 0;
+      const sid = guest.seatId;
       guest.state = GUEST_STATE.LEAVING;
       guest.cashOnBar = true;
       guest.totalSpent = 10;
       guest.tipAmount = 2;
 
+      // Glasses still at seat
+      ctx.barState.drinksAtSeats.set(sid, [new GlassState('PINT')]);
+
       gm.updateGuests(0.1, 60, 300);
 
-      expect(ctx.barState.dirtySeats.has(0)).toBe(true);
-      expect(ctx.barState.cashOnBar.has(0)).toBe(true);
-      expect(ctx.barState.cashOnBar.get(0).tipAmount).toBe(2);
+      expect(ctx.barState.dirtySeats.has(sid)).toBe(true);
+      expect(ctx.barState.cashOnBar.has(sid)).toBe(true);
+      expect(ctx.barState.cashOnBar.get(sid).tipAmount).toBe(2);
+    });
+
+    it('does not mark dirty on LEAVING when glasses already cleared', () => {
+      gm.spawnFromSchedule(0, simpleSchedule, 300);
+      const guest = gm.guests[0];
+      const sid = guest.seatId;
+      guest.state = GUEST_STATE.LEAVING;
+      guest.cashOnBar = true;
+      guest.totalSpent = 10;
+      guest.tipAmount = 2;
+
+      // No glasses at seat — already cleared
+      gm.updateGuests(0.1, 60, 300);
+
+      expect(ctx.barState.dirtySeats.has(sid)).toBe(false);
+      // Cash still placed
+      expect(ctx.barState.cashOnBar.has(sid)).toBe(true);
     });
 
     it('depletes drinks via sipping during ENJOYING', () => {
