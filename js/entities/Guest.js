@@ -80,37 +80,6 @@ export class Guest {
     return 'LEAVING';
   }
 
-  getMoodColor() {
-    const label = this.getMoodLabel();
-    switch (label) {
-      case 'ENTERTAINED': return '#4caf50';
-      case 'CONTENT': return '#8bc34a';
-      case 'IDLE': return '#ffc107';
-      case 'LOOKING': return '#ff9800';
-      case 'FRUSTRATED': return '#f44336';
-      case 'LEAVING': return '#b71c1c';
-      default: return '#888';
-    }
-  }
-
-  getIndicator() {
-    switch (this.state) {
-      case GUEST_STATE.WAITING_FOR_SEAT: return '⏳';
-      case GUEST_STATE.ARRIVING: return null;
-      case GUEST_STATE.SEATED: return (this.greeted && this.orderRevealTimer > 0) ? '⏳' : null;
-      case GUEST_STATE.LOOKING: return '👀';
-      case GUEST_STATE.READY_TO_ORDER: return null;
-      case GUEST_STATE.ORDER_TAKEN: return null;  // order text shown instead
-      case GUEST_STATE.WAITING_FOR_DRINK: return '⏳';
-      case GUEST_STATE.ENJOYING: return null;
-      case GUEST_STATE.WANTS_ANOTHER: return '🍺';
-      case GUEST_STATE.READY_TO_PAY: return '💵';
-      case GUEST_STATE.REVIEWING_CHECK: return '🧾';
-      case GUEST_STATE.ANGRY_LEAVING: return '😡';
-      default: return null;
-    }
-  }
-
   transitionTo(newState) {
     this.state = newState;
     switch (newState) {

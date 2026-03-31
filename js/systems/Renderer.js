@@ -6,6 +6,39 @@ import {
 } from '../constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
 
+/** Guest mood → color (moved from Guest.js to keep rendering out of entities) */
+function guestMoodColor(guest) {
+  const label = guest.getMoodLabel();
+  switch (label) {
+    case 'ENTERTAINED': return '#4caf50';
+    case 'CONTENT': return '#8bc34a';
+    case 'IDLE': return '#ffc107';
+    case 'LOOKING': return '#ff9800';
+    case 'FRUSTRATED': return '#f44336';
+    case 'LEAVING': return '#b71c1c';
+    default: return '#888';
+  }
+}
+
+/** Guest state → indicator emoji (moved from Guest.js) */
+function guestIndicator(guest) {
+  switch (guest.state) {
+    case GUEST_STATE.WAITING_FOR_SEAT: return '\u23F3';
+    case GUEST_STATE.ARRIVING: return null;
+    case GUEST_STATE.SEATED: return (guest.greeted && guest.orderRevealTimer > 0) ? '\u23F3' : null;
+    case GUEST_STATE.LOOKING: return '\uD83D\uDC40';
+    case GUEST_STATE.READY_TO_ORDER: return null;
+    case GUEST_STATE.ORDER_TAKEN: return null;
+    case GUEST_STATE.WAITING_FOR_DRINK: return '\u23F3';
+    case GUEST_STATE.ENJOYING: return null;
+    case GUEST_STATE.WANTS_ANOTHER: return '\uD83C\uDF7A';
+    case GUEST_STATE.READY_TO_PAY: return '\uD83D\uDCB5';
+    case GUEST_STATE.REVIEWING_CHECK: return '\uD83E\uDDFE';
+    case GUEST_STATE.ANGRY_LEAVING: return '\uD83D\uDE21';
+    default: return null;
+  }
+}
+
 export class Renderer {
   constructor(ctx) {
     this.ctx = ctx;
@@ -447,7 +480,7 @@ export class Renderer {
       ctx.arc(x, y, 18, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = guest.getMoodColor();
+      ctx.strokeStyle = guestMoodColor(guest);
       ctx.lineWidth = 3;
       ctx.stroke();
 
@@ -476,7 +509,7 @@ export class Renderer {
         }
       }
 
-      const indicator = guest.getIndicator();
+      const indicator = guestIndicator(guest);
       if (indicator) {
         ctx.font = '18px serif';
         ctx.textAlign = 'center';
@@ -550,7 +583,7 @@ export class Renderer {
       const barY = y + 22;
       ctx.fillStyle = '#333';
       ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = guest.getMoodColor();
+      ctx.fillStyle = guestMoodColor(guest);
       ctx.fillRect(barX, barY, barW * (guest.mood / MOOD_MAX), barH);
     }
   }
