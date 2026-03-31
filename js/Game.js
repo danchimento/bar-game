@@ -2,7 +2,7 @@ import {
   CANVAS_W, CANVAS_H, SEATS, setSeatCount, GUEST_STATE,
   STATION_Y, SERVICE_MAT_Y, SEAT_Y,
   ACTION_DURATIONS, HIT_RADIUS,
-  GAME_STATE, MOOD_MAX, BAR_TOP_Y,
+  GAME_STATE, MOOD_MAX, BAR_TOP_Y, BAR_LEFT, BAR_RIGHT,
   MOOD_DECAY, MOOD_GRACE_PERIOD, SETTLE_TIME,
   ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from './constants.js';
@@ -1782,13 +1782,21 @@ export class Game {
     }
 
     if (this.pos.mode === 'SELECT_SEAT') {
-      // Seat buttons
-      const cols = Math.min(SEATS.length, 3);
-      const btnW = Math.floor((pw - 40 - (cols - 1) * 15) / cols);
+      // Mini bar diagram — match Renderer layout
+      const barMargin = 40;
+      const barLeft = px + barMargin;
+      const barRight = px + pw - barMargin;
+      const barW = barRight - barLeft;
+      const barY = py + 160;
+      const seatR = 28;
+      const seatCy = barY - seatR - 10;
+
       for (let i = 0; i < SEATS.length; i++) {
-        const bx = px + 20 + (i % cols) * (btnW + 15);
-        const by = py + 70 + Math.floor(i / cols) * 55;
-        if (x > bx && x < bx + btnW && y > by && y < by + 42) {
+        const t = (SEATS[i].x - BAR_LEFT) / (BAR_RIGHT - BAR_LEFT);
+        const sx = barLeft + t * barW;
+        const dx = x - sx;
+        const dy = y - seatCy;
+        if (dx * dx + dy * dy <= seatR * seatR) {
           this.pos.mode = 'SEAT_VIEW';
           this.pos.selectedSeat = i;
           return;
