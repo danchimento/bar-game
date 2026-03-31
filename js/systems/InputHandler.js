@@ -64,7 +64,7 @@ export class InputHandler {
             this._radialPouring = true;
           }
         } else if (this._radialPouring) {
-          game.activePour = null;
+          game.stopPour();
           this._radialPouring = false;
         }
       }
@@ -85,19 +85,7 @@ export class InputHandler {
 
       // Stop any active pour
       if (game.activePour) {
-        game.activePour = null;
-        if (game.drinkModal.visible) {
-          game.drinkModal.pouringIndex = -1;
-          // Slide glass back to rest position
-          if (game.drinkModal.type === 'beer') {
-            const items = game.drinkModal.items;
-            const tapSpacing = 80;
-            const totalTapsW = (items.length - 1) * tapSpacing;
-            const pw = Math.max(totalTapsW + 160, 340);
-            const px = (CANVAS_W - pw) / 2;
-            game.drinkModal.glassTargetX = px + 50;
-          }
-        }
+        game.stopPour();
       }
 
       // Drag-release on radial menu — always close on release

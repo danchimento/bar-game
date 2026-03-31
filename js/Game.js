@@ -1,8 +1,7 @@
 import {
   CANVAS_W, CANVAS_H, SEATS, setSeatCount, GUEST_STATE,
-  STATION_Y, SERVICE_MAT_Y, SEAT_Y,
-  ACTION_DURATIONS, HIT_RADIUS,
-  GAME_STATE, MOOD_MAX, BAR_TOP_Y, BAR_LEFT, BAR_RIGHT,
+  ACTION_DURATIONS,
+  GAME_STATE, MOOD_MAX, BAR_LEFT, BAR_RIGHT,
   MOOD_DECAY, MOOD_GRACE_PERIOD, SETTLE_TIME,
   ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from './constants.js';
@@ -13,6 +12,7 @@ import { Guest } from './entities/Guest.js';
 import { GlassState } from './entities/GlassState.js';
 import { Renderer } from './systems/Renderer.js';
 import { RadialMenu } from './ui/RadialMenu.js';
+import { InputHandler } from './systems/InputHandler.js';
 import { Notepad } from './ui/Notepad.js';
 import { HUD } from './ui/HUD.js';
 
@@ -113,18 +113,7 @@ export class Game {
     // Settings screen scroll
     this.settingsScroll = 0;
 
-    // Double-tap tracking
-    this.lastTap = { x: 0, y: 0, time: 0 };
-
-    // Long-press tracking — works for ALL stations
-    this.longPressTimer = null;
-    this.longPressThreshold = 250; // ms
-    this.longPressFired = false;   // suppress tap when long-press fires
-    this.pendingStationTap = null; // deferred station tap for tap-vs-longpress
-    this._radialPouring = false;   // true when pouring via radial hover
-    this.pointerDownPos = { x: 0, y: 0 };
-
-    this.setupInput();
+    this.inputHandler = new InputHandler(canvas, this);
     this.lastTime = performance.now();
     this.loop(this.lastTime);
   }
@@ -474,6 +463,75 @@ export class Game {
     }
   }
 
+  handleTitleTap(x, y) {
+    const btnW = 160;
+    const btnH = 44;
+    const gap = 12;
+    const startY = 240;
+    for (let i = 0; i < LEVELS.length; i++) {
+      const by = startY + i * (btnH + gap);
+      const bx = CANVAS_W / 2 - btnW / 2;
+      if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
+        this.levelIndex = i;
+        this.startLevel();
+        return;
+      }
+    }
+  }
+
+  handleLevelCompleteTap(x, y) {
+    const btnY = 480;
+    if (x > CANVAS_W / 2 - 170 && x < CANVAS_W / 2 - 10 && y > btnY && y < btnY + 42) {
+      this.startLevel();
+      return;
+    }
+    if (this.levelIndex < LEVELS.length - 1) {
+      if (x > CANVAS_W / 2 + 10 && x < CANVAS_W / 2 + 170 && y > btnY && y < btnY + 42) {
+        this.levelIndex++;
+        this.startLevel();
+        return;
+      }
+    }
+  }
+
+  handlePauseTap(x, y) {
+    const pw = 300, ph = 250;
+    const pmx = (CANVAS_W - pw) / 2;
+    const pmy = (CANVAS_H - ph) / 2;
+    // Resume
+    if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 75 && y < pmy + 119) {
+      this.gameState = GAME_STATE.PLAYING;
+      this._quitConfirm = false;
+      return;
+    }
+    // Quit
+    if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 135 && y < pmy + 179) {
+      if (this._quitConfirm) {
+        this.gameState = GAME_STATE.TITLE;
+        this._quitConfirm = false;
+        return;
+      }
+      this._quitConfirm = true;
+      return;
+    }
+    this._quitConfirm = false;
+  }
+
+  stopPour() {
+    this.activePour = null;
+    if (this.drinkModal.visible) {
+      this.drinkModal.pouringIndex = -1;
+      if (this.drinkModal.type === 'beer') {
+        const items = this.drinkModal.items;
+        const tapSpacing = 80;
+        const totalTapsW = (items.length - 1) * tapSpacing;
+        const pw = Math.max(totalTapsW + 160, 340);
+        const px = (CANVAS_W - pw) / 2;
+        this.drinkModal.glassTargetX = px + 50;
+      }
+    }
+  }
+
   render() {
     this.renderer.clear();
 
@@ -518,310 +576,6 @@ export class Game {
     if (this.gameState === GAME_STATE.PAUSED) {
       this.renderer.drawPauseMenu(this._quitConfirm);
     }
-  }
-
-  // ─── INPUT ──────────────────────────────────────────
-
-  setupInput() {
-    for (const evt of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
-      this.canvas.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
-    }
-
-    this.canvas.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      const rect = this.canvas.getBoundingClientRect();
-      const scaleX = CANVAS_W / rect.width;
-      const scaleY = CANVAS_H / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-      this.pointerDownPos = { x, y };
-      this.longPressFired = false;
-
-      // Start long-press timer for stations
-      this.clearLongPress();
-      this.longPressTimer = setTimeout(() => {
-        this.longPressTimer = null;
-        if (this.handleLongPress(x, y)) {
-          this.longPressFired = true;
-        }
-      }, this.longPressThreshold);
-
-      // Handle immediate interactions (modals, radial, guests, etc.)
-      // but NOT stations — those wait for tap-vs-longpress resolution
-      this.handlePointerDown(x, y);
-    });
-
-    this.canvas.addEventListener('pointermove', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const scaleX = CANVAS_W / rect.width;
-      const scaleY = CANVAS_H / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-
-      if (this.radialMenu.visible && this.radialMenu.dragging) {
-        this.radialMenu.updateHover(x, y);
-        // Hover-pour: start/stop pouring based on hovered radial option
-        const idx = this.radialMenu.hoveredIndex;
-        const opt = idx >= 0 ? this.radialMenu.options[idx] : null;
-        if (opt && opt.pourKey && !opt.disabled) {
-          if (!this.activePour || this.activePour.drinkKey !== opt.pourKey) {
-            this.bartender.moveTo(opt.stationX);
-            this.startPour(opt.pourKey, opt.pourRate);
-            this._radialPouring = true;
-          }
-        } else if (this._radialPouring) {
-          this.activePour = null;
-          this._radialPouring = false;
-        }
-      }
-
-      // Cancel long-press if finger moves too far
-      if (this.longPressTimer) {
-        const dx = x - this.pointerDownPos.x;
-        const dy = y - this.pointerDownPos.y;
-        if (dx * dx + dy * dy > 20 * 20) {
-          this.clearLongPress();
-        }
-      }
-    });
-
-    this.canvas.addEventListener('pointerup', (e) => {
-      this.clearLongPress();
-
-      // Stop any active pour
-      if (this.activePour) {
-        this.activePour = null;
-        if (this.drinkModal.visible) {
-          this.drinkModal.pouringIndex = -1;
-          // Slide glass back to rest position
-          if (this.drinkModal.type === 'beer') {
-            const items = this.drinkModal.items;
-            const tapSpacing = 80;
-            const totalTapsW = (items.length - 1) * tapSpacing;
-            const pw = Math.max(totalTapsW + 160, 340);
-            const px = (CANVAS_W - pw) / 2;
-            this.drinkModal.glassTargetX = px + 50;
-          }
-        }
-      }
-
-      // Drag-release on radial menu — always close on release
-      if (this.radialMenu.visible && this.radialMenu.dragging) {
-        this.radialMenu.dragging = false;
-        this._radialPouring = false;
-        const idx = this.radialMenu.hoveredIndex;
-        if (idx >= 0) {
-          const option = this.radialMenu.options[idx];
-          // Pour options are handled via hover — don't fire action on release
-          if (option.action && !option.disabled && !option.pourKey) {
-            option.action();
-          }
-        }
-        this.radialMenu.close();
-        // Radial was active — don't also fire station tap
-        this.pendingStationTap = null;
-      }
-
-      // Deferred station tap — only fire if long-press didn't activate
-      if (this.pendingStationTap && !this.longPressFired) {
-        this.handleStationTap(this.pendingStationTap);
-      }
-      this.pendingStationTap = null;
-      this.longPressFired = false;
-    });
-  }
-
-  handlePointerDown(x, y) {
-    const now = performance.now();
-    const isDoubleTap = (now - this.lastTap.time < 350) &&
-      Math.abs(x - this.lastTap.x) < 30 && Math.abs(y - this.lastTap.y) < 30;
-    this.lastTap = { x, y, time: now };
-
-    // Title screen — level select buttons
-    if (this.gameState === GAME_STATE.TITLE) {
-      const btnW = 160;
-      const btnH = 44;
-      const gap = 12;
-      const totalH = LEVELS.length * (btnH + gap) - gap;
-      const startY = 240;
-      for (let i = 0; i < LEVELS.length; i++) {
-        const by = startY + i * (btnH + gap);
-        const bx = CANVAS_W / 2 - btnW / 2;
-        if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
-          this.levelIndex = i;
-          this.startLevel();
-          return;
-        }
-      }
-      return;
-    }
-
-    // Settings screen
-    if (this.gameState === GAME_STATE.SETTINGS) {
-      this.handleSettingsTap(x, y);
-      return;
-    }
-
-    // Level complete
-    if (this.gameState === GAME_STATE.LEVEL_COMPLETE) {
-      const btnY = 480;
-      if (x > CANVAS_W / 2 - 170 && x < CANVAS_W / 2 - 10 && y > btnY && y < btnY + 42) {
-        this.startLevel();
-        return;
-      }
-      if (this.levelIndex < LEVELS.length - 1) {
-        if (x > CANVAS_W / 2 + 10 && x < CANVAS_W / 2 + 170 && y > btnY && y < btnY + 42) {
-          this.levelIndex++;
-          this.startLevel();
-          return;
-        }
-      }
-      return;
-    }
-
-    // Pause menu
-    if (this.gameState === GAME_STATE.PAUSED) {
-      const pw = 300, ph = 250;
-      const pmx = (CANVAS_W - pw) / 2;
-      const pmy = (CANVAS_H - ph) / 2;
-      // Resume
-      if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 75 && y < pmy + 119) {
-        this.gameState = GAME_STATE.PLAYING;
-        this._quitConfirm = false;
-        return;
-      }
-      // Quit
-      if (x > pmx + 50 && x < pmx + pw - 50 && y > pmy + 135 && y < pmy + 179) {
-        if (this._quitConfirm) {
-          this.gameState = GAME_STATE.TITLE;
-          this._quitConfirm = false;
-          return;
-        }
-        this._quitConfirm = true;
-        return;
-      }
-      this._quitConfirm = false;
-      return;
-    }
-
-    if (this.gameState !== GAME_STATE.PLAYING) return;
-
-    // Pause button (top-center) — large tap zone
-    if (x > CANVAS_W / 2 - 80 && x < CANVAS_W / 2 + 80 && y < 60) {
-      this.clearLongPress();
-      this.gameState = GAME_STATE.PAUSED;
-      this._quitConfirm = false;
-      return;
-    }
-
-    // Glass modal
-    if (this.glassModal.visible) {
-      this.handleGlassModalTap(x, y);
-      return;
-    }
-
-    // Drink modal — hold to pour
-    if (this.drinkModal.visible) {
-      this.handleDrinkModalTap(x, y);
-      return;
-    }
-
-    // Prep/Garnish modal — soda gun buttons start pouring directly
-    if (this.prepModal.visible) {
-      this.handlePrepModalTap(x, y);
-      return;
-    }
-
-    // POS overlay
-    if (this.pos.visible) {
-      this.handlePOSTap(x, y);
-      return;
-    }
-
-    // Radial menu
-    if (this.radialMenu.visible) {
-      const hit = this.radialMenu.hitTest(x, y);
-      if (hit >= 0) {
-        const option = this.radialMenu.options[hit];
-        if (option.action && !option.disabled) {
-          option.action();
-        }
-        this.radialMenu.close();
-      } else if (hit === -2) {
-        this.radialMenu.close();
-      }
-      return;
-    }
-
-    // Double-tap to put down carried item
-    if (isDoubleTap && this.bartender.carrying) {
-      this.putDownItem();
-      return;
-    }
-
-    // Hit test guests
-    const guest = this.hitTestGuest(x, y);
-    if (guest) {
-      this.clearLongPress(); // guest tap is immediate
-      this.openGuestMenu(guest);
-      return;
-    }
-
-    // Hit test dirty seats & cash
-    const dirtySeat = this.hitTestDirtySeat(x, y);
-    const cashSeat = this.hitTestCash(x, y);
-    if (dirtySeat !== null || cashSeat !== null) {
-      this.clearLongPress();
-      const seatId = dirtySeat !== null ? dirtySeat : cashSeat;
-      this.handleSeatCleanup(seatId);
-      return;
-    }
-
-    // Hit test service mat drinks
-    const drink = this.hitTestServiceMat(x, y);
-    if (drink) {
-      this.clearLongPress();
-      this.pickUpDrink(drink);
-      return;
-    }
-
-    // Hit test stations — defer to pointerup for tap vs long-press
-    // (long-press will open radial via handleLongPress)
-    const station = this.hitTestStation(x, y);
-    if (station) {
-      this.pendingStationTap = station;
-      return;
-    }
-
-    // Tap on bar area to move
-    if (y > BAR_TOP_Y && y < STATION_Y + 40) {
-      this.clearLongPress();
-      this.bartender.moveTo(x);
-      this.pendingAction = null;
-    }
-  }
-
-  clearLongPress() {
-    if (this.longPressTimer) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
-  }
-
-  handleLongPress(x, y) {
-    if (this.gameState !== GAME_STATE.PLAYING) return false;
-    if (this.radialMenu.visible || this.prepModal.visible || this.pos.visible ||
-        this.glassModal.visible || this.drinkModal.visible) return false;
-
-    // Check if long-press is on any station
-    const station = this.hitTestStation(x, y);
-    if (!station) return false;
-
-    const options = this.getStationRadialOptions(station);
-    if (options.length === 0) return false;
-
-    this.radialMenu.open(station.x, STATION_Y - 40, options);
-    return true;
   }
 
   getStationRadialOptions(station) {
@@ -979,53 +733,6 @@ export class Game {
     this.activePour = { drinkKey, pourRate };
     // Update carrying label
     this.bartender.carrying = `DRINK_${drinkKey}`;
-  }
-
-  hitTestGuest(x, y) {
-    for (const g of this.guests) {
-      if (g.state === GUEST_STATE.DONE || g.state === GUEST_STATE.LEAVING ||
-          g.state === GUEST_STATE.ANGRY_LEAVING) continue;
-      const dx = x - g.x;
-      const dy = y - g.y;
-      if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) return g;
-    }
-    return null;
-  }
-
-  hitTestStation(x, y) {
-    for (const st of this.getStations()) {
-      const dx = x - st.x;
-      const dy = y - STATION_Y;
-      if (Math.abs(dx) < (st.width / 2 + 5) && Math.abs(dy) < 44) return st;
-    }
-    return null;
-  }
-
-  hitTestServiceMat(x, y) {
-    for (const drink of this.serviceMat) {
-      const dx = x - drink.x;
-      const dy = y - (SERVICE_MAT_Y + 12);
-      if (Math.abs(dx) < 20 && Math.abs(dy) < 16) return drink;
-    }
-    return null;
-  }
-
-  hitTestDirtySeat(x, y) {
-    for (const seatId of this.dirtySeats) {
-      const seat = SEATS[seatId];
-      if (Math.abs(x - seat.x) < 35 && Math.abs(y - SEAT_Y - 16) < 30) return seatId;
-    }
-    return null;
-  }
-
-  hitTestCash(x, y) {
-    for (const [seatId] of this.cashOnBar) {
-      const seat = SEATS[seatId];
-      // Cash appears on the bar in front of seat (offset left)
-      const cashX = seat.x - 20;
-      if (Math.abs(x - cashX) < 26 && Math.abs(y - (BAR_TOP_Y + 10)) < 18) return seatId;
-    }
-    return null;
   }
 
   // ─── PUT DOWN ───────────────────────────────────────
