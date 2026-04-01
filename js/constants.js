@@ -20,13 +20,13 @@ export const COLORS = {
 };
 
 // Layout Y positions — guests sit right at the bar
-export const GUEST_Y = 200;
-export const SEAT_Y = 210;
-export const BAR_TOP_Y = 225;
-export const SERVICE_MAT_Y = 250;
-export const WALK_TRACK_Y = 300;
-export const STATION_Y = 410;
-export const STATION_LABEL_Y = 460;
+export const GUEST_Y = 260;
+export const SEAT_Y = 275;
+export const BAR_TOP_Y = 290;
+export const SERVICE_MAT_Y = 330;
+export const WALK_TRACK_Y = 380;
+export const STATION_Y = 475;
+export const STATION_LABEL_Y = 515;
 
 // Bar edges
 export const BAR_LEFT = 30;

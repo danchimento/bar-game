@@ -18,7 +18,8 @@ export class DrinkModal {
     this.drinkButtons = [];
     this.glassGfx = scene.add.graphics().setDepth(72);
     this.pourStreamGfx = scene.add.graphics().setDepth(71);
-    this._fillLabel = null;
+    this._overflowGfx = scene.add.graphics().setDepth(72);
+    this._overflowDrops = []; // particles for overflow animation
 
     // Glass slide state
     this._glassCurrentX = 0;  // animated X position
@@ -51,7 +52,8 @@ export class DrinkModal {
     this._pouringDrinkKey = null;
     this.glassGfx.clear();
     this.pourStreamGfx.clear();
-    if (this._fillLabel) { this._fillLabel.destroy(); this._fillLabel = null; }
+    this._overflowGfx.clear();
+    this._overflowDrops = [];
   }
 
   get visible() { return this.container.visible; }
@@ -60,6 +62,7 @@ export class DrinkModal {
   update(barState, drinkModalState) {
     this.glassGfx.clear();
     this.pourStreamGfx.clear();
+    this._overflowGfx.clear();
     if (!this.container.visible) return;
 
     const glass = barState.carriedGlass;
@@ -115,22 +118,137 @@ export class DrinkModal {
     }
 
     // ── Draw glass at current animated position (only if carrying one) ──
-    if (!glass) {
-      if (this._fillLabel) this._fillLabel.setVisible(false);
-      return;
-    }
+    if (!glass) return;
 
     const fillPct = glass.totalFill;
     const liquidColor = getLiquidColor(glass.layers);
     drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
 
-    // Fill label
-    if (!this._fillLabel || !this._fillLabel.active) {
-      this._fillLabel = this.scene.add.text(gx, gy + 8, '', {
-        fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(73);
+    // ── Green zone indicator on glass ──
+    this._drawGreenZone(gx, gy, glass, fillPct);
+
+    // ── Overflow animation ──
+    if (glass.overflow > 0) {
+      this._drawOverflow(gx, gy, glass, liquidColor);
     }
-    this._fillLabel.setText(`${Math.round(fillPct * 100)}%`).setPosition(gx, gy + 8).setVisible(true);
+  }
+
+  // ─── GREEN ZONE + OVERFLOW ──────────────────────────
+
+  _drawGreenZone(gx, gy, glass, fillPct) {
+    // Find fill range for current drink being poured
+    let fillRange = null;
+    if (this._pouringDrinkKey && DRINKS[this._pouringDrinkKey]) {
+      fillRange = DRINKS[this._pouringDrinkKey].fillRange;
+    } else if (glass.layers.length > 0) {
+      // Use the drink already in the glass
+      const drinkKey = glass.layers[0].drinkKey;
+      if (drinkKey && DRINKS[drinkKey]) fillRange = DRINKS[drinkKey].fillRange;
+    }
+    if (!fillRange) return;
+
+    const s = 2.0; // matches glass scale
+    const [minFill, maxFill] = fillRange;
+
+    // Get glass height for position calculation
+    let glassH;
+    if (glass.glassType === 'WINE_GLASS') {
+      glassH = (14 + 8 + 3) * s; // bowlH + stemH + base
+    } else if (glass.glassType === 'PLASTIC_CUP') {
+      glassH = 22 * s;
+    } else {
+      glassH = 28 * s;
+    }
+
+    // For wine, zone is relative to bowl only
+    const bowlH = glass.glassType === 'WINE_GLASS' ? 14 * s : glassH;
+    const bowlTop = glass.glassType === 'WINE_GLASS' ? gy - glassH : gy - glassH;
+
+    const zoneTopY = gy - bowlH * maxFill + (glass.glassType === 'WINE_GLASS' ? (glassH - bowlH) : 0);
+    const zoneBotY = gy - bowlH * minFill + (glass.glassType === 'WINE_GLASS' ? (glassH - bowlH) : 0);
+    const zoneH = zoneBotY - zoneTopY;
+
+    // Draw green zone markers on the right side of the glass
+    const markerX = gx + 22 * s;
+    const markerW = 3 * s;
+
+    // Determine color based on current fill
+    let zoneColor, zoneAlpha;
+    if (fillPct >= minFill && fillPct <= maxFill) {
+      zoneColor = 0x4caf50; // green — in range
+      zoneAlpha = 0.9;
+    } else if (fillPct > maxFill) {
+      zoneColor = 0xf44336; // red — overfilled
+      zoneAlpha = 0.9;
+    } else if (fillPct > 0) {
+      zoneColor = 0xff9800; // amber — underfilled but pouring
+      zoneAlpha = 0.7;
+    } else {
+      zoneColor = 0x4caf50; // green — hasn't started
+      zoneAlpha = 0.5;
+    }
+
+    // Green zone bracket lines
+    this.glassGfx.lineStyle(2, zoneColor, zoneAlpha);
+    // Top tick
+    this.glassGfx.lineBetween(markerX, zoneTopY, markerX + markerW, zoneTopY);
+    // Bottom tick
+    this.glassGfx.lineBetween(markerX, zoneBotY, markerX + markerW, zoneBotY);
+    // Vertical connector
+    this.glassGfx.lineBetween(markerX + markerW, zoneTopY, markerX + markerW, zoneBotY);
+
+    // Fill the zone area with translucent green
+    this.glassGfx.fillStyle(zoneColor, 0.15);
+    this.glassGfx.fillRect(markerX, zoneTopY, markerW + 1, zoneH);
+  }
+
+  _drawOverflow(gx, gy, glass, liquidColor) {
+    const s = 2.0;
+    const glassH = glass.glassType === 'WINE_GLASS' ? (14 + 8 + 3) * s
+      : glass.glassType === 'PLASTIC_CUP' ? 22 * s : 28 * s;
+    const glassW = glass.glassType === 'WINE_GLASS' ? 14 * s
+      : glass.glassType === 'PLASTIC_CUP' ? 16 * s : 18 * s;
+    const rimY = gy - glassH;
+    const time = this.scene.time.now;
+
+    // Spawn new drip particles
+    const spawnRate = Math.min(glass.overflow * 10, 3); // more overflow = more drips
+    if (Math.random() < spawnRate * (1 / 60)) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      this._overflowDrops.push({
+        x: gx + side * (glassW / 2 - 2),
+        y: rimY,
+        vx: side * (0.3 + Math.random() * 0.5),
+        vy: 0.5 + Math.random() * 0.8,
+        life: 1.0,
+        size: 1.5 + Math.random() * 1.5,
+      });
+    }
+
+    // Update and draw drip particles
+    const gfx = this._overflowGfx;
+    for (let i = this._overflowDrops.length - 1; i >= 0; i--) {
+      const drop = this._overflowDrops[i];
+      drop.x += drop.vx;
+      drop.y += drop.vy;
+      drop.vy += 0.15; // gravity
+      drop.life -= 0.02;
+
+      if (drop.life <= 0 || drop.y > gy + 30) {
+        this._overflowDrops.splice(i, 1);
+        continue;
+      }
+
+      gfx.fillStyle(liquidColor, drop.life * 0.8);
+      gfx.fillCircle(drop.x, drop.y, drop.size);
+    }
+
+    // Liquid bulge at rim (pooling over the edge)
+    const bulgeAmount = Math.min(glass.overflow * 2, 1);
+    gfx.fillStyle(liquidColor, 0.6 * bulgeAmount);
+    const bulgeW = glassW + 4 * bulgeAmount;
+    const bulgeH = 3 * s * bulgeAmount;
+    gfx.fillEllipse(gx, rimY, bulgeW, bulgeH);
   }
 
   // ─── REBUILD ────────────────────────────────────────
@@ -421,6 +539,6 @@ export class DrinkModal {
     this.container.destroy(true);
     this.glassGfx.destroy();
     this.pourStreamGfx.destroy();
-    if (this._fillLabel) this._fillLabel.destroy();
+    this._overflowGfx.destroy();
   }
 }

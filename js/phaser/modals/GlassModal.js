@@ -52,7 +52,9 @@ export class GlassModal {
     const dim = this.scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.6)
       .setInteractive();
     dim.on('pointerdown', (ptr) => {
-      if (ptr.x < px || ptr.x > px + pw || ptr.y < py || ptr.y > py + ph) this.hide();
+      if (ptr.x < px || ptr.x > px + pw || ptr.y < py || ptr.y > py + ph) {
+        this.scene.events.emit('glass-modal-close');
+      }
     });
     this.container.add(dim);
 
@@ -70,7 +72,7 @@ export class GlassModal {
     // Close button
     const closeBtn = this.scene.add.rectangle(px + pw - 22, py + 16, 26, 22, 0xf44336)
       .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => this.hide());
+    closeBtn.on('pointerdown', () => this.scene.events.emit('glass-modal-close'));
     this.container.add(closeBtn);
     this.container.add(this.scene.add.text(px + pw - 22, py + 16, 'X', {
       fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',

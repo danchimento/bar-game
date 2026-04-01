@@ -20,19 +20,19 @@ export class BarLayer {
     // Walk track shadow
     scene.add.rectangle(CANVAS_W / 2, WALK_TRACK_Y, 900, 30, 0x3c3228, 0.3).setDepth(0);
 
-    // Bar top surface (tiled)
+    // Bar top surface (tiled) — depth 6: in front of guests (depth 5)
     const barY = BAR_TOP_Y + 4;
     for (let x = 20; x < CANVAS_W; x += 192) {
-      scene.add.image(x, barY, 'bar_top').setOrigin(0, 0).setDepth(1);
+      scene.add.image(x, barY, 'bar_top').setOrigin(0, 0).setDepth(6);
     }
 
-    // Bar front edge
-    scene.add.rectangle(CANVAS_W / 2, BAR_TOP_Y + 26, 920, 10, 0x6b3410).setDepth(1);
+    // Bar front edge — depth 6
+    scene.add.rectangle(CANVAS_W / 2, BAR_TOP_Y + 26, 920, 10, 0x6b3410).setDepth(6);
 
-    // Stools at seat positions
+    // Stools at seat positions — depth 4: behind guests (depth 5)
     this.stools = [];
     for (const seat of seats) {
-      const stool = scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(1);
+      const stool = scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(4);
       this.stools.push(stool);
     }
 
@@ -99,7 +99,7 @@ export class BarLayer {
     this.stools.forEach(s => s.destroy());
     this.stools = [];
     for (const seat of seats) {
-      const stool = this.scene.add.image(seat.x, SEAT_Y + 10, 'stool').setDepth(1);
+      const stool = this.scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(4);
       this.stools.push(stool);
     }
   }

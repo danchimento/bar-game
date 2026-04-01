@@ -289,6 +289,11 @@ export class GamePlayScene extends Phaser.Scene {
       this.barState.carriedGlass = new GlassState(glassKey);
     });
 
+    // Glass modal close (X button or click outside)
+    this.events.on('glass-modal-close', () => {
+      this.glassModalState.visible = false;
+    });
+
     // Drink modal events
     this.events.on('drink-pour-start', (drinkKey, index, pourRate) => {
       this.drinkModalState.pouringIndex = index;
