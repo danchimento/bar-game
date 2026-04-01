@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+/* global Phaser */
 import { CANVAS_W, CANVAS_H } from './constants.js';
 import { BootScene } from './phaser/BootScene.js';
 import { TitleScene } from './phaser/TitleScene.js';

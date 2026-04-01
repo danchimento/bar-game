@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+/* global Phaser */
 import {
   CANVAS_W, CANVAS_H, SEATS, setSeatCount, GUEST_STATE,
   ACTION_DURATIONS, BAR_TOP_Y, STATION_Y,

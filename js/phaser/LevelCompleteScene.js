@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+/* global Phaser */
 import { CANVAS_W, CANVAS_H } from '../constants.js';
 import { LEVELS } from '../data/levels.js';
 
