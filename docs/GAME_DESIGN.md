@@ -53,7 +53,7 @@ Y=540 └───────────────────────�
 | Long-press station | No modal open | Radial menu opens with station options |
 | Tap guest | No modal open | Radial menu opens with context-sensitive guest options |
 | Tap empty bar area | No modal/menu open | Bartender walks to tapped X position |
-| Hold tap handle in drink modal | Drink modal open + carrying glass | Pour starts, glass fills visually |
+| Hold tap handle / wine bottle | Drink modal open + carrying glass | Glass slides under tap/bottle, pour starts, glass fills visually |
 | Release anywhere | Pour active | Pour stops |
 | Release on radial menu | Menu open, finger on option | Executes hovered option, menu closes |
 | Release outside radial menu | Menu open | Menu closes, no action |

@@ -148,18 +148,38 @@ All glasses show:
   - Chrome pipe connector
   - Chrome spout/nozzle
   - Drip tray below each tap
-- **Glass preview:** Bottom-left of panel, labeled "Your Glass"
-  - Shows the carried glass with real-time fill level
-  - Fill percentage label below glass
-  - Pour stream animation (dripping liquid) while actively pouring
+- **Glass behavior:**
+  - Glass starts to the **left of all taps** in a resting position (tilted at the pour angle for beer: ~15°)
+  - When player holds down on a tap: glass **slides under that tap** with a quick tween (~150ms)
+  - While pouring, glass stays tilted at the appropriate angle under the active spout
+  - Pour stream animates from spout down into the glass
+  - Fill percentage label shown below glass
+  - When player releases: pour stops, glass stays at last position
+  - If player holds a different tap: glass slides to new tap position
   - "Pick up a glass first!" warning in red if no glass carried
-- **Interactive zones:** Cover entire tap area (60×140px), cursor becomes pointer
+- **Interactive zones:** Cover entire tap area, cursor becomes pointer
 - **Visual feedback:** Handle border turns gold while pressed
 
-### Drink Modal Visual (Wine/Mixer Mode)
-- Rectangular buttons instead of taps
-- Color swatch at bottom of each button
-- Same hold-to-pour mechanic
+### Drink Modal Visual (Wine Mode)
+- Panel background: dark red (#2a1020), burgundy border
+- Title: "Wines"
+- Subtitle: "Hold to pour, release to stop"
+- **Wine bottles:** Rendered as tall colored bottles with labels
+  - Dark bottle body with colored label band
+  - Bottle neck narrowing at top
+  - Wine type color visible through bottle
+- **Glass behavior:**
+  - Wine glass starts to the **left of all bottles** in a resting position
+  - When player holds down on a bottle: wine glass **slides under that bottle** (~150ms tween)
+  - Bottle tilts to pouring angle, pour stream flows into glass
+  - Fill level updates in real-time
+  - When released: pour stops, bottle returns upright
+- Same "no glass" warning behavior as beer mode
+
+### Drink Modal Visual (Mixer/Soda Mode)
+- Panel background: dark blue (#0a1a2a), blue border
+- Soda gun nozzle buttons
+- Same glass-slide behavior as beer/wine
 
 ---
 

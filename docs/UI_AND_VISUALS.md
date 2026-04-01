@@ -161,11 +161,12 @@ During ENJOYING state when `guest.sipping` is true (1.0s duration):
   - Returns to counter over 0.3s
 - Glass shows amber liquid fill at ~60%
 
-### Waiting Badge
-When guests are waiting for seats:
-- Text at (480, 82): "[N] waiting"
-- Yellow text (#ffc107) on dark background
+### Queued Guests
+Queued guests (WAITING_FOR_SEAT) are **NOT shown as sprites**. They are invisible — only represented by a count badge:
+- Text at (480, 82): "[N] queued"
+- Yellow text (#ffc107) on dark semi-transparent background
 - 13px monospace bold
+- Hidden when queue is empty
 
 ---
 

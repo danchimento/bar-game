@@ -184,7 +184,7 @@ export class GuestLayer {
           padding: { x: 10, y: 4 },
         }).setOrigin(0.5).setDepth(6);
       }
-      this.waitingText.setText(`${count} waiting`).setVisible(true);
+      this.waitingText.setText(`${count} queued`).setVisible(true);
     } else if (this.waitingText) {
       this.waitingText.setVisible(false);
     }

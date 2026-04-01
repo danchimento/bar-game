@@ -55,7 +55,8 @@ WAITING_FOR_SEAT ──→ ARRIVING ──→ SEATED ──→ LOOKING ──→
 ## State Details
 
 ### WAITING_FOR_SEAT
-- Guest stands in queue at Y=70, positioned horizontally around X=480
+- Queued guests are **NOT rendered as sprites** in the bar area
+- A badge at top-center of the bar shows "[N] queued" when guests are waiting
 - Mood decays at 0.25/s
 - Auto-seats when a clean, empty seat becomes available
 
