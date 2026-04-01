@@ -236,7 +236,7 @@ export class GuestManager {
         break;
 
       case GUEST_STATE.READY_TO_PAY:
-        if (bartender.carrying && bartender.carrying === `CHECK_${guest.seatId}`) {
+        if (bartender.carrying && bartender.carrying.startsWith('CHECK_')) {
           options.push({ label: 'Give Check', icon: 'icon_receipt', action: () => this.giveCheck(guest) });
         }
         break;
@@ -244,7 +244,7 @@ export class GuestManager {
 
     // Allow giving check in any seated state (early delivery)
     if (guest.state !== GUEST_STATE.READY_TO_PAY && guest.state !== GUEST_STATE.REVIEWING_CHECK) {
-      if (bartender.carrying && bartender.carrying === `CHECK_${guest.seatId}`) {
+      if (bartender.carrying && bartender.carrying.startsWith('CHECK_')) {
         options.push({ label: 'Give Check', icon: 'icon_receipt', action: () => this.giveCheck(guest) });
       }
     }
@@ -479,14 +479,21 @@ export class GuestManager {
     const { bartender, hud, stats, posTab, walkThenAct } = this.ctx;
     const seatX = guest.seat.x;
     walkThenAct(seatX, () => {
-      if (bartender.carrying !== `CHECK_${guest.seatId}`) return;
+      if (!bartender.carrying || !bartender.carrying.startsWith('CHECK_')) return;
       bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
+        const checkSeatId = parseInt(bartender.carrying.replace('CHECK_', ''), 10);
         bartender.carrying = null;
+
+        // Wrong check — guest rejects it
+        if (checkSeatId !== guest.seatId) {
+          guest.mood = Math.max(0, guest.mood - 15);
+          hud.showMessage('Wrong check!', 1.5);
+          return;
+        }
 
         // Early check penalty: guest didn't ask for it yet
         const earlyCheck = guest.state !== GUEST_STATE.READY_TO_PAY;
         if (earlyCheck) {
-          // After last call, guests understand — no penalty
           if (!this._barClosed) {
             guest.mood = Math.max(0, guest.mood - 20);
             hud.showMessage('Wants to stay longer...', 1.5);
