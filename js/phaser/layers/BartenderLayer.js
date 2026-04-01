@@ -2,8 +2,8 @@ import { WALK_TRACK_Y } from '../../constants.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
- * Bartender sprite + carried glass graphic + busy progress bar.
- * Syncs position from Bartender logic each frame.
+ * Bartender sprite + carried item graphic + busy progress bar.
+ * Swaps to carry sprite when holding something, with the item drawn to the side.
  */
 export class BartenderLayer {
   constructor(scene) {
@@ -23,7 +23,7 @@ export class BartenderLayer {
       fontFamily: 'monospace', fontSize: '10px', color: '#e0e0e0',
     }).setOrigin(0.5).setDepth(11).setVisible(false);
 
-    // Carry indicator — Graphics object for drawing glass
+    // Carry indicator — Graphics for drawing glass to the side
     this.carryGfx = scene.add.graphics().setDepth(12);
     // Fallback icon for non-glass items (check, dirty glass)
     this.carryIcon = scene.add.image(480, WALK_TRACK_Y - 45, 'icon_dirty_glass')
@@ -35,35 +35,36 @@ export class BartenderLayer {
     if (!bartender) return;
 
     const x = bartender.x;
+    const carry = bartender.carrying;
+    const isCarrying = !!carry;
+
+    // Swap between normal and carry sprite
+    this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
     this.sprite.x = x;
     this.sprite.setFlipX(!bartender.facingRight);
 
-    // Carry indicator
+    // Carry indicator — drawn to the right side of the bartender
+    // (flipX mirrors the whole visual, so the extended arm + item follows)
     this.carryGfx.clear();
     this.carryIcon.setVisible(false);
 
-    const carry = bartender.carrying;
     if (carry) {
-      const glassY = WALK_TRACK_Y - 28;
+      // Item position: offset to the right of the sprite (arm extends right in art)
+      // When flipped, Phaser mirrors everything, so always use positive offset
+      const sideOffset = bartender.facingRight ? 22 : -22;
+      const itemX = x + sideOffset;
+      const itemY = WALK_TRACK_Y - 18;
 
       if (carry === 'DIRTY_GLASS') {
-        this.carryIcon.setTexture('icon_dirty_glass').setPosition(x, WALK_TRACK_Y - 42).setVisible(true);
+        this.carryIcon.setTexture('icon_dirty_glass').setPosition(itemX, itemY - 8).setVisible(true);
       } else if (carry.startsWith('CHECK_')) {
-        this.carryIcon.setTexture('icon_receipt').setPosition(x, WALK_TRACK_Y - 42).setVisible(true);
+        this.carryIcon.setTexture('icon_receipt').setPosition(itemX, itemY - 8).setVisible(true);
       } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
-        // Draw the actual glass with fill level
         const glass = barState.carriedGlass;
         if (glass) {
           const fillPct = glass.totalFill;
           const liquidColor = getLiquidColor(glass.layers);
-          drawGlass(this.carryGfx, x, glassY, glass.glassType, fillPct, liquidColor, 0.9);
-        } else {
-          // Fallback: empty glass sprite
-          const glassKey = carry.startsWith('GLASS_')
-            ? `glass_${carry.replace('GLASS_', '').toLowerCase()}`
-            : 'glass_pint';
-          this.carryIcon.setTexture(glassKey).setPosition(x, WALK_TRACK_Y - 42)
-            .setVisible(true).setScale(0.4);
+          drawGlass(this.carryGfx, itemX, itemY, glass.glassType, fillPct, liquidColor, 0.7);
         }
       }
     }

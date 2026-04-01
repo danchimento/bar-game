@@ -284,10 +284,9 @@ export class GamePlayScene extends Phaser.Scene {
     // Glass modal selection
     this.events.on('glass-selected', (glassKey) => {
       this.glassModalState.visible = false;
-      this.bartender.startAction(ACTION_DURATIONS.GLASS_RACK, 'Grabbing glass...', () => {
-        this.bartender.carrying = `GLASS_${glassKey}`;
-        this.barState.carriedGlass = new GlassState(glassKey);
-      });
+      // Animation in the modal already covers the pickup time — no extra delay
+      this.bartender.carrying = `GLASS_${glassKey}`;
+      this.barState.carriedGlass = new GlassState(glassKey);
     });
 
     // Drink modal events

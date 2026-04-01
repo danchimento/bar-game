@@ -148,7 +148,7 @@ export class GlassModal {
       shelfIdx, glassIdx,
       startY: glass.y,
       timer: 0,
-      duration: 0.35,
+      duration: 0.4,
       glassKey,
     };
   }

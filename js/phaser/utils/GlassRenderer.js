@@ -34,15 +34,16 @@ export function drawGlass(gfx, x, y, glassType, fillPct, fillColor, scale = 1) {
 
 function _drawPint(gfx, x, y, fill, color, s) {
   const w = 18 * s, h = 28 * s;
+  const taper = 2 * s; // bottom is narrower than top
   const top = y - h;
 
-  // Glass outline
+  // Glass outline — wider at top, narrower at bottom
   gfx.lineStyle(1.5 * s, 0xc8d8e8, 1);
   gfx.beginPath();
-  gfx.moveTo(x - w / 2 + 2 * s, top);
-  gfx.lineTo(x - w / 2, y);
-  gfx.lineTo(x + w / 2, y);
-  gfx.lineTo(x + w / 2 - 2 * s, top);
+  gfx.moveTo(x - w / 2, top);            // top left (wide)
+  gfx.lineTo(x - w / 2 + taper, y);      // bottom left (narrow)
+  gfx.lineTo(x + w / 2 - taper, y);      // bottom right (narrow)
+  gfx.lineTo(x + w / 2, top);            // top right (wide)
   gfx.closePath();
   gfx.strokePath();
 
@@ -54,10 +55,10 @@ function _drawPint(gfx, x, y, fill, color, s) {
   if (fill > 0 && color !== undefined) {
     const fillH = h * fill;
     const fillTop = y - fillH;
-    // Interpolate width at fill level
+    // Interpolate width at fill level (narrower at bottom, wider at top)
     const pctFromBottom = fill;
-    const topW = w - 4 * s;
-    const botW = w;
+    const botW = w - taper * 2;  // narrow bottom
+    const topW = w;               // wide top
     const fillBotW = botW;
     const fillTopW = botW + (topW - botW) * pctFromBottom;
 
@@ -81,8 +82,8 @@ function _drawPint(gfx, x, y, fill, color, s) {
   // Rim highlight
   gfx.lineStyle(1 * s, 0xe0eaf4, 0.6);
   gfx.beginPath();
-  gfx.moveTo(x - w / 2 + 2 * s, top);
-  gfx.lineTo(x + w / 2 - 2 * s, top);
+  gfx.moveTo(x - w / 2, top);
+  gfx.lineTo(x + w / 2, top);
   gfx.strokePath();
 }
 
