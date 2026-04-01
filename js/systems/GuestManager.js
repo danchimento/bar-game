@@ -296,6 +296,9 @@ export class GuestManager {
           case 'first_order':
             guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
             guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
+            if (this.ctx.notepad) {
+              this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
+            }
             hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
             break;
           case 'another':
@@ -303,6 +306,9 @@ export class GuestManager {
             guest.fulfilledItems = [];
             guest.orderRevealTimer = settings?.orderRevealTime ?? 4;
             guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
+            if (this.ctx.notepad) {
+              this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
+            }
             hud.showMessage('Another one!', 1);
             break;
           case 'check':

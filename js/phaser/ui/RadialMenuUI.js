@@ -59,7 +59,31 @@ export class RadialMenuUI {
       this.gfx.slice(cx, cy, r, startA, endA, false);
       this.gfx.fillPath();
 
-      // Cut out inner circle per-slice (draw over with dark center later)
+      // Single option: draw full ring and place label at top
+      if (count === 1) {
+        // Outer ring stroke
+        this.gfx.lineStyle(1.5, hovered ? 0xff8f00 : 0x3a2a1a, hovered ? 1 : 0.4);
+        this.gfx.strokeCircle(cx, cy, r);
+        this.gfx.strokeCircle(cx, cy, inner);
+
+        const ringMid = (inner + outer) / 2;
+
+        if (opt.icon) {
+          const icon = this.scene.add.text(cx, cy - ringMid - 2, opt.icon, {
+            fontFamily: 'serif', fontSize: '26px',
+          }).setOrigin(0.5).setDepth(61);
+          this.container.add(icon);
+          this.texts.push(icon);
+        }
+
+        const label = this.scene.add.text(cx, cy - ringMid + (opt.icon ? 18 : 0), opt.label, {
+          fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold',
+          color: opt.disabled ? '#666666' : '#ffffff',
+        }).setOrigin(0.5).setDepth(61);
+        this.container.add(label);
+        this.texts.push(label);
+        continue;
+      }
 
       // Label
       const labelR = (inner + outer) / 2 + (hovered ? 4 : 0);

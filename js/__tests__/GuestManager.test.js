@@ -28,6 +28,7 @@ function makeNotepad() {
     entries: [],
     removeGuest(id) { this.entries = this.entries.filter(e => e.id !== id); },
     markFulfilled(id) {},
+    addOrder(guestId, seatId, drink) { this.entries.push({ guestId, seatId, drink }); },
   };
 }
 

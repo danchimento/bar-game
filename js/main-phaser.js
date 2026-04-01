@@ -20,11 +20,13 @@ const config = {
   height: CANVAS_H,
   parent: document.body,
   backgroundColor: '#1a1a2e',
+  audio: { noAudio: true },
   scale: {
     mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: CANVAS_W,
     height: CANVAS_H,
+    orientation: Phaser.Scale.Orientation.LANDSCAPE,
   },
   scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene],
 };
