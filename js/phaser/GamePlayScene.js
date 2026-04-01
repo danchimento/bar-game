@@ -185,8 +185,8 @@ export class GamePlayScene extends Phaser.Scene {
 
     // Sync visuals
     this.bartenderLayer.update(this.bartender, this.barState);
-    this.guestLayer.update(this.guestManager.guests);
-    this.barItemsLayer.update(this.barState);
+    this.guestLayer.update(this.guestManager.guests, this.barState.drinksAtSeats);
+    this.barItemsLayer.update(this.barState, this.guestLayer._sippingMap);
     this.hudUI.update(this.hud, this.levelTimer, this.activeDuration);
     this.barLayer.updateClock(this.levelTimer, this.activeDuration);
 
@@ -198,8 +198,11 @@ export class GamePlayScene extends Phaser.Scene {
     }
 
     // Check modals
-    if (this.glassModalState.visible && !this.glassModal.visible) this.glassModal.show();
+    if (this.glassModalState.visible && !this.glassModal.visible) {
+      this.glassModal.show(this.level?.drinks || Object.keys(DRINKS));
+    }
     if (!this.glassModalState.visible && this.glassModal.visible) this.glassModal.hide();
+    if (this.glassModal.visible) this.glassModal.update();
 
     if (this.drinkModalState.visible && !this.drinkModal.visible) {
       this.drinkModal.show(this.drinkModalState);

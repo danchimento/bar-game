@@ -1,5 +1,6 @@
-import { GUEST_Y, GUEST_STATE, MOOD_MAX, BAR_TOP_Y } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, BAR_TOP_Y } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
+import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
 
@@ -15,8 +16,11 @@ export class GuestLayer {
     this.waitingText = null;
   }
 
-  /** Call every frame with current guests array */
-  update(guests) {
+  /** Call every frame with current guests array and drinks at seats */
+  update(guests, drinksAtSeats) {
+    this._drinksAtSeats = drinksAtSeats || new Map();
+    // Build sipping set: seatId → glass index being sipped
+    this._sippingMap = new Map();
     const activeIds = new Set();
     let waitingCount = 0;
 
@@ -28,6 +32,15 @@ export class GuestLayer {
         continue;
       }
       if (guest.state === GUEST_STATE.DONE) continue;
+
+      // Track which glass is being sipped so BarItemsLayer can hide it
+      if (guest.sipping && guest.seatId !== null && guest.seatId !== undefined) {
+        const glasses = this._drinksAtSeats.get(guest.seatId);
+        if (glasses && glasses.length > 0) {
+          const idx = (guest.sipDrinkIndex - 1 + glasses.length) % glasses.length;
+          this._sippingMap.set(guest.seatId, idx);
+        }
+      }
 
       let vis = this.guestVisuals.get(guest.id);
       if (!vis) {
@@ -59,10 +72,6 @@ export class GuestLayer {
       scene.events.emit('guest-tap', guest);
     });
 
-    // Mood bar
-    const moodBar = scene.add.rectangle(0, 18, 32, 4, 0x333333).setDepth(6);
-    const moodFill = scene.add.rectangle(0, 18, 32, 4, 0x4caf50).setOrigin(0, 0.5).setDepth(6);
-
     // Thought bubble behind indicator
     const bubble = scene.add.graphics().setDepth(14);
 
@@ -83,7 +92,7 @@ export class GuestLayer {
     const moodPopup = scene.add.image(0, 0, 'icon_angry')
       .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
 
-    return { sprite, moodBar, moodFill, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood };
+    return { sprite, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood };
   }
 
   _syncVisual(vis, guest) {
@@ -91,12 +100,6 @@ export class GuestLayer {
     const y = guest.y || GUEST_Y;
 
     vis.sprite.setPosition(x, y);
-    vis.moodBar.setPosition(x, y + 18);
-
-    // Mood fill
-    const moodPct = Math.max(0, guest.mood / MOOD_MAX);
-    vis.moodFill.setPosition(x - 16, y + 18).setSize(32 * moodPct, 4);
-    vis.moodFill.setFillStyle(this._moodColor(moodPct));
 
     // Indicator icon + thought bubble (raised higher to avoid head overlap)
     const iconKey = this._indicatorIcon(guest);
@@ -163,13 +166,23 @@ export class GuestLayer {
       return;
     }
 
+    // Find the actual glass being sipped
+    const glasses = this._drinksAtSeats.get(guest.seatId);
+    if (!glasses || glasses.length === 0) {
+      vis.sipGlass.setVisible(false);
+      return;
+    }
+    const idx = (guest.sipDrinkIndex - 1 + glasses.length) % glasses.length;
+    const glass = glasses[idx];
+    if (!glass) {
+      vis.sipGlass.setVisible(false);
+      return;
+    }
+
     vis.sipGlass.setVisible(true);
 
     // sipAnimTimer goes from 1.0 → 0.0 over 1 second
-    // Animation phases:
-    //   0.0–0.3: glass lifts from counter to mouth (progress 0→1)
-    //   0.3–0.7: glass at mouth (tilted)
-    //   0.7–1.0: glass returns to counter (progress 1→0)
+    // Phases: 0.0–0.3 lift, 0.3–0.7 at mouth, 0.7–1.0 return
     const elapsed = 1.0 - guest.sipAnimTimer;
     let liftProgress;
     if (elapsed < 0.3) {
@@ -193,28 +206,10 @@ export class GuestLayer {
     const glassX = counterX + (mouthX - counterX) * liftProgress;
     const glassY = counterY + (mouthY - counterY) * liftProgress;
 
-    // Draw a small glass shape
-    const gfx = vis.sipGlass;
-    const s = 0.55;
-    const w = 12 * s, h = 18 * s;
-
-    // Tilt when at mouth
-    const tilt = liftProgress > 0.8 ? (liftProgress - 0.8) * 5 * 0.3 : 0;
-
-    gfx.lineStyle(1.5, 0xc8d8e8, 0.9);
-    // Simple glass rectangle (small, just visual indicator)
-    gfx.strokeRect(glassX - w / 2, glassY - h, w, h);
-
-    // Fill with amber color
-    gfx.fillStyle(0xf0c040, 0.7);
-    const fillH = h * 0.6; // partially filled
-    gfx.fillRect(glassX - w / 2 + 0.5, glassY - fillH, w - 1, fillH);
-  }
-
-  _moodColor(pct) {
-    if (pct > 0.6) return 0x4caf50;
-    if (pct > 0.3) return 0xffc107;
-    return 0xf44336;
+    // Draw the actual glass using GlassRenderer at the same scale as bar glasses
+    const fillPct = glass.totalFill;
+    const liquidColor = getLiquidColor(glass.layers);
+    drawGlass(vis.sipGlass, glassX, glassY, glass.glassType, fillPct, liquidColor, 0.65);
   }
 
   _indicatorIcon(guest) {
@@ -247,8 +242,6 @@ export class GuestLayer {
 
   _destroyVisual(vis) {
     vis.sprite.destroy();
-    vis.moodBar.destroy();
-    vis.moodFill.destroy();
     vis.bubble.destroy();
     vis.indicator.destroy();
     vis.orderText.destroy();

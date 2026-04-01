@@ -26,9 +26,9 @@ export class POSModal {
   _rebuild(posState, availableDrinks) {
     this.container.removeAll(true);
 
-    const pw = 510, ph = 460;
+    const pw = 510, ph = 420;
     const px = (CANVAS_W - pw) / 2;
-    const py = (CANVAS_H - ph) / 2;
+    const py = (CANVAS_H - ph) / 2 + 20;
 
     // Dim
     const dim = this.scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.6)
@@ -41,7 +41,7 @@ export class POSModal {
     this.container.add(dim);
 
     // Panel
-    this.container.add(this.scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, pw, ph, 0x1a2a1a)
+    this.container.add(this.scene.add.rectangle(CANVAS_W / 2, py + ph / 2, pw, ph, 0x1a2a1a)
       .setStrokeStyle(2, 0x4caf50));
 
     // Title

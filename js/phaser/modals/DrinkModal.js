@@ -18,7 +18,6 @@ export class DrinkModal {
     this.drinkButtons = [];
     this.glassGfx = scene.add.graphics().setDepth(72);
     this.pourStreamGfx = scene.add.graphics().setDepth(71);
-    this.noGlassText = null;
     this._fillLabel = null;
 
     // Glass slide state
@@ -52,7 +51,6 @@ export class DrinkModal {
     this._pouringDrinkKey = null;
     this.glassGfx.clear();
     this.pourStreamGfx.clear();
-    if (this.noGlassText) { this.noGlassText.destroy(); this.noGlassText = null; }
     if (this._fillLabel) { this._fillLabel.destroy(); this._fillLabel = null; }
   }
 
@@ -116,22 +114,12 @@ export class DrinkModal {
       }
     }
 
-    // ── No glass message ──
+    // ── Draw glass at current animated position (only if carrying one) ──
     if (!glass) {
-      if (!this.noGlassText || !this.noGlassText.active) {
-        this.noGlassText = this.scene.add.text(this._glassRestX, gy - 30, 'Pick up a glass first!', {
-          fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ff6666',
-          backgroundColor: '#1a1a2e', padding: { x: 6, y: 3 },
-        }).setOrigin(0.5).setDepth(73);
-      }
-      this.noGlassText.setPosition(this._glassRestX, gy - 30).setVisible(true);
       if (this._fillLabel) this._fillLabel.setVisible(false);
       return;
     }
 
-    if (this.noGlassText) this.noGlassText.setVisible(false);
-
-    // ── Draw glass at current animated position ──
     const fillPct = glass.totalFill;
     const liquidColor = getLiquidColor(glass.layers);
     drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
@@ -433,7 +421,6 @@ export class DrinkModal {
     this.container.destroy(true);
     this.glassGfx.destroy();
     this.pourStreamGfx.destroy();
-    if (this.noGlassText) this.noGlassText.destroy();
     if (this._fillLabel) this._fillLabel.destroy();
   }
 }

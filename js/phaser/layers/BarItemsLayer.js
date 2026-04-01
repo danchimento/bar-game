@@ -15,8 +15,9 @@ export class BarItemsLayer {
     this.matZones = [];
   }
 
-  /** Call every frame with barState */
-  update(barState) {
+  /** Call every frame with barState and optional sipping map from GuestLayer */
+  update(barState, sippingMap) {
+    this._sippingMap = sippingMap || new Map();
     this._syncDirtySeats(barState.dirtySeats);
     this._syncCash(barState.cashOnBar);
     this._drawDrinksAtSeats(barState.drinksAtSeats);
@@ -68,8 +69,9 @@ export class BarItemsLayer {
       const seat = SEATS[seatId];
       if (!seat) continue;
 
-      // Draw each glass at the seat, offset slightly for multiple
+      // Draw each glass at the seat, skip if being sipped
       for (let i = 0; i < glasses.length; i++) {
+        if (this._sippingMap.get(seatId) === i) continue;
         const glass = glasses[i];
         const offsetX = (i - (glasses.length - 1) / 2) * 14;
         const gx = seat.x + offsetX;
