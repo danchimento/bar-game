@@ -45,6 +45,37 @@ export class TitleScene extends Phaser.Scene {
       });
     });
 
+    // ── Components Menu ──
+    const compY = startY + LEVELS.length * (btnH + gap) + 30;
+
+    this.add.text(cx, compY, 'Components', {
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#888888',
+    }).setOrigin(0.5);
+
+    const components = [
+      { key: 'beer_taps', label: 'Beer Taps' },
+      { key: 'wine_bottles', label: 'Wine Bottles' },
+    ];
+    const compBtnW = 140, compBtnH = 34, compGap = 10;
+    const totalCompW = components.length * compBtnW + (components.length - 1) * compGap;
+    const compStartX = cx - totalCompW / 2 + compBtnW / 2;
+
+    components.forEach((comp, i) => {
+      const bx = compStartX + i * (compBtnW + compGap);
+      const by = compY + 24;
+      const btn = this.add.rectangle(bx, by, compBtnW, compBtnH, 0x3a3a5a)
+        .setInteractive({ useHandCursor: true })
+        .setStrokeStyle(1, 0x6a6a8a);
+      this.add.text(bx, by, comp.label, {
+        fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#aaaacc',
+      }).setOrigin(0.5);
+      btn.on('pointerover', () => btn.setFillStyle(0x5a5a7a));
+      btn.on('pointerout', () => btn.setFillStyle(0x3a3a5a));
+      btn.on('pointerdown', () => {
+        this.scene.start('ComponentViewer', { component: comp.key });
+      });
+    });
+
     // Instructions
     this.add.text(cx, CANVAS_H - 30, 'Tap guests and stations to serve drinks', {
       fontFamily: 'monospace', fontSize: '11px', color: '#666666',

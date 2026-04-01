@@ -110,9 +110,9 @@ export class DrinkModal {
       // Save, translate, rotate, draw, restore via graphics transform
       // Phaser Graphics doesn't support rotation directly, so we draw at a slight visual offset
       // to simulate tilt: offset the top of the glass slightly right
-      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 1.15);
+      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 1.6);
     } else {
-      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.15);
+      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.6);
     }
 
     // Fill label
@@ -129,8 +129,8 @@ export class DrinkModal {
         (DRINKS[barState.activePour.drinkKey]?.color || '#f0c040').replace('#', ''), 16
       );
       const spoutX = this._spoutPositions[this._pouringIndex] || gx;
-      const spoutY = this._isBeer ? (gy - 30) : (gy - 48);
-      const glassTopY = gy - 25;
+      const spoutY = this._isBeer ? (gy - 55) : (gy - 48);
+      const glassTopY = gy - 40;
       const time = this.scene.time.now;
 
       this.pourStreamGfx.fillStyle(pourColor, 0.85);
@@ -167,7 +167,7 @@ export class DrinkModal {
     const spacing = this._isBeer ? 90 : 100;
     const totalW = items.length * spacing;
     const pw = Math.max(totalW + 140, 380); // extra room for glass on left
-    const ph = this._isBeer ? 360 : 320;
+    const ph = this._isBeer ? 420 : 320;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -237,28 +237,34 @@ export class DrinkModal {
 
   _buildBeerTaps(items, modal, startX, py, spacing) {
     const TAP_COUNT = 3;
-    const frameScale = 1.8;
+    const frameScale = 2.2;
     const frameCX = CANVAS_W / 2;
-    const frameTopY = py + 52;
+    const frameTopY = py + 50;
 
     // ── Tap frame sprite (U-frame with 3 cylinder taps) ──
+    // Sprite is 60x40 pixel-art at 3x = 180x120 PNG
+    const frameImgW = 180; // actual PNG width
+    const frameImgH = 120; // actual PNG height
     const frame = this.scene.add.image(frameCX, frameTopY, 'tap_frame')
       .setOrigin(0.5, 0).setScale(frameScale);
     this.container.add(frame);
 
-    // Tap positions (matching the 3 cylinders in the sprite at x=15,30,45 out of 60)
-    const frameLeft = frameCX - (60 * frameScale) / 2;
-    const tapXPositions = [15, 30, 45].map(tx => frameLeft + tx * frameScale);
-    // Spout Y: bottom of cylinder taps in the sprite (y≈13 in sprite coords)
-    const spoutY = frameTopY + 13 * frameScale;
-    // Crossbar Y center: y≈4 in sprite coords
-    const crossbarY = frameTopY + 4 * frameScale;
+    // Tap positions: pixels 15,30,45 in art space → 45,90,135 in PNG space
+    const scaledW = frameImgW * frameScale;
+    const frameLeft = frameCX - scaledW / 2;
+    const tapXPositions = [45, 90, 135].map(px => frameLeft + px * frameScale);
+
+    // Key Y positions (in art-pixel coords, multiplied by SCALE*frameScale)
+    const pxToScreen = 3 * frameScale; // art pixel → screen pixel
+    const crossbarY = frameTopY + 3 * pxToScreen;  // crossbar center ~y=3 in art
+    const spoutY = frameTopY + 12 * pxToScreen;     // spout bottom ~y=12 in art
+    const frameBottomY = frameTopY + frameImgH * frameScale; // bottom of frame image
 
     // Drip trays under each tap
     for (let i = 0; i < TAP_COUNT; i++) {
       const tx = tapXPositions[i];
       this.container.add(
-        this.scene.add.rectangle(tx, spoutY + 18, 44, 5, 0x444444).setStrokeStyle(1, 0x666666)
+        this.scene.add.rectangle(tx, spoutY + 14, 50, 5, 0x444444).setStrokeStyle(1, 0x666666)
       );
       this._spoutPositions.push(tx);
     }
@@ -275,28 +281,27 @@ export class DrinkModal {
         const handlePulledKey = `handle_${drinkKey.toLowerCase()}_pulled`;
 
         // Upright handle sits on top of the tap cylinder
-        const handleY = crossbarY - 28;
-        const handle = this.scene.add.image(tx, handleY, handleKey)
-          .setOrigin(0.5, 0).setScale(1.6);
+        const handleScale = 2.0;
+        const handle = this.scene.add.image(tx, crossbarY - 8, handleKey)
+          .setOrigin(0.5, 1).setScale(handleScale);
         this.container.add(handle);
-        this._handles.push({ handle, handleKey, handlePulledKey, x: tx, y: handleY });
+        this._handles.push({ handle, handleKey, handlePulledKey, x: tx });
 
         // Name + price below drip tray
-        const labelY = spoutY + 30;
+        const labelY = spoutY + 28;
         this.container.add(this.scene.add.text(tx, labelY, drink.name, {
-          fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
-          wordWrap: { width: 80 }, align: 'center',
+          fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#cccccc',
+          wordWrap: { width: 90 }, align: 'center',
         }).setOrigin(0.5));
-        this.container.add(this.scene.add.text(tx, labelY + 13, `$${drink.price}`, {
-          fontFamily: 'monospace', fontSize: '8px', color: '#999999',
+        this.container.add(this.scene.add.text(tx, labelY + 14, `$${drink.price}`, {
+          fontFamily: 'monospace', fontSize: '9px', color: '#999999',
         }).setOrigin(0.5));
 
         // Interactive zone covering handle + tap area
-        const zone = this.scene.add.zone(tx, crossbarY, 55, 100)
+        const zone = this.scene.add.zone(tx, crossbarY - 20, 65, 120)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => {
           this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
-          // Swap to pulled handle
           handle.setTexture(handlePulledKey);
         });
         zone.on('pointerup', () => handle.setTexture(handleKey));
@@ -308,8 +313,8 @@ export class DrinkModal {
       }
     }
 
-    // Glass Y sits below the drip trays
-    this._glassY = spoutY + 50;
+    // Glass Y: bottom-aligned with frame bottom
+    this._glassY = frameBottomY;
   }
 
   // ─── WINE BOTTLES ───────────────────────────────────

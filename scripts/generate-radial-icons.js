@@ -253,7 +253,7 @@ createSprite(60, 40, ({ px, row, rect, col }) => {
   // Top crossbar
   rect(4, 2, 52, 4, METAL);
   row(2, 4, 55, METALL);    // top highlight
-  row(5, 4, 55, METALD);    // bottom shadow
+  row(4, 4, 55, METALD);    // subtle bottom edge
   // Chrome accent on crossbar
   row(3, 5, 54, CHROME);
 
@@ -261,13 +261,15 @@ createSprite(60, 40, ({ px, row, rect, col }) => {
   // Tap positions: 15, 30, 45 (evenly spaced)
   for (const tx of [15, 30, 45]) {
     // Cylinder tap body — extends above and below crossbar
-    rect(tx - 2, 0, 4, 10, METALD);
+    rect(tx - 2, 0, 5, 12, METAL);
     // Highlight
-    col(tx - 1, 0, 9, METAL);
-    col(tx, 0, 9, METALL);
-    // Spout nozzle at bottom
-    rect(tx - 1, 10, 3, 3, CHROME);
-    px(tx, 12, METALL);
+    col(tx - 1, 0, 11, METALL);
+    col(tx, 0, 11, CHROME);
+    // Dark edges
+    col(tx - 2, 0, 11, METALD);
+    col(tx + 2, 0, 11, METALD);
+    // Nozzle tip
+    rect(tx - 1, 12, 3, 1, METALD);
   }
 
   // Subtle base/feet

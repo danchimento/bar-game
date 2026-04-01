@@ -4,6 +4,7 @@ import { BootScene } from './phaser/BootScene.js';
 import { TitleScene } from './phaser/TitleScene.js';
 import { GamePlayScene } from './phaser/GamePlayScene.js';
 import { LevelCompleteScene } from './phaser/LevelCompleteScene.js';
+import { ComponentViewerScene } from './phaser/ComponentViewerScene.js';
 
 // Prevent context menus and selection on long-press
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -28,7 +29,7 @@ const config = {
     height: CANVAS_H,
     orientation: Phaser.Scale.Orientation.LANDSCAPE,
   },
-  scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene],
+  scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene, ComponentViewerScene],
 };
 
 new Phaser.Game(config);
