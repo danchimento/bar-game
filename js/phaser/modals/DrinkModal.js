@@ -110,9 +110,9 @@ export class DrinkModal {
       // Save, translate, rotate, draw, restore via graphics transform
       // Phaser Graphics doesn't support rotation directly, so we draw at a slight visual offset
       // to simulate tilt: offset the top of the glass slightly right
-      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 1.6);
+      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 2.0);
     } else {
-      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.6);
+      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
     }
 
     // Fill label
@@ -195,9 +195,6 @@ export class DrinkModal {
     this.container.add(this.scene.add.text(CANVAS_W / 2, py + 18, titleText, {
       fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold', color: titleColor,
     }).setOrigin(0.5));
-    this.container.add(this.scene.add.text(CANVAS_W / 2, py + 36, 'Hold to pour, release to stop', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#888888',
-    }).setOrigin(0.5));
 
     // Taps/bottles area starts offset to make room for glass rest area
     const tapsAreaLeft = px + 90;
@@ -208,11 +205,6 @@ export class DrinkModal {
     this._glassY = py + ph - 45;
     this._glassCurrentX = this._glassRestX;
     this._glassTargetX = this._glassRestX;
-
-    // "Your Glass" label
-    this.container.add(this.scene.add.text(px + 50, py + ph - 22, 'Your Glass', {
-      fontFamily: 'monospace', fontSize: '8px', color: '#666666',
-    }).setOrigin(0.5));
 
     // Build taps or bottles
     if (this._isBeer) {
@@ -239,7 +231,7 @@ export class DrinkModal {
     const TAP_COUNT = 3;
     const frameScale = 2.2;
     const frameCX = CANVAS_W / 2;
-    const frameTopY = py + 50;
+    const frameTopY = py + 34; // moved up so handles are visible
 
     // ── Tap frame sprite (U-frame with 3 cylinder taps) ──
     // Sprite is 60x40 pixel-art at 3x = 180x120 PNG
@@ -257,16 +249,11 @@ export class DrinkModal {
     // Key Y positions (in art-pixel coords, multiplied by SCALE*frameScale)
     const pxToScreen = 3 * frameScale; // art pixel → screen pixel
     const crossbarY = frameTopY + 3 * pxToScreen;  // crossbar center ~y=3 in art
-    const spoutY = frameTopY + 12 * pxToScreen;     // spout bottom ~y=12 in art
     const frameBottomY = frameTopY + frameImgH * frameScale; // bottom of frame image
 
-    // Drip trays under each tap
+    // Record spout positions (no drip trays — keep it clean)
     for (let i = 0; i < TAP_COUNT; i++) {
-      const tx = tapXPositions[i];
-      this.container.add(
-        this.scene.add.rectangle(tx, spoutY + 14, 50, 5, 0x444444).setStrokeStyle(1, 0x666666)
-      );
-      this._spoutPositions.push(tx);
+      this._spoutPositions.push(tapXPositions[i]);
     }
 
     // ── Handles (only on active taps) ──
@@ -287,8 +274,8 @@ export class DrinkModal {
         this.container.add(handle);
         this._handles.push({ handle, handleKey, handlePulledKey, x: tx });
 
-        // Name + price below drip tray
-        const labelY = spoutY + 28;
+        // Name + price below frame
+        const labelY = frameBottomY + 6;
         this.container.add(this.scene.add.text(tx, labelY, drink.name, {
           fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#cccccc',
           wordWrap: { width: 90 }, align: 'center',
@@ -313,7 +300,7 @@ export class DrinkModal {
       }
     }
 
-    // Glass Y: bottom-aligned with frame bottom
+    // Glass Y: bottom of glass aligned with bottom of frame
     this._glassY = frameBottomY;
   }
 

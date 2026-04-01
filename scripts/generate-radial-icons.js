@@ -268,8 +268,7 @@ createSprite(60, 40, ({ px, row, rect, col }) => {
     // Dark edges
     col(tx - 2, 0, 11, METALD);
     col(tx + 2, 0, 11, METALD);
-    // Nozzle tip
-    rect(tx - 1, 12, 3, 1, METALD);
+    // Nozzle tip (removed — caused visible grey line)
   }
 
   // Subtle base/feet

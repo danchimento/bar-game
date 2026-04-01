@@ -14,18 +14,18 @@ export class TitleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#1a1a2e');
 
     // Title
-    this.add.text(cx, 120, 'BAR RUSH', {
-      fontFamily: 'monospace', fontSize: '48px', fontStyle: 'bold', color: '#e8c170',
+    this.add.text(cx, 80, 'BAR RUSH', {
+      fontFamily: 'monospace', fontSize: '42px', fontStyle: 'bold', color: '#e8c170',
     }).setOrigin(0.5);
 
     // Subtitle
-    this.add.text(cx, 170, 'A bartending time-management game', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
+    this.add.text(cx, 120, 'A bartending time-management game', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
     }).setOrigin(0.5);
 
     // Level buttons
-    const btnW = 200, btnH = 44, gap = 12;
-    const startY = 240;
+    const btnW = 200, btnH = 36, gap = 8;
+    const startY = 160;
 
     LEVELS.forEach((level, i) => {
       const by = startY + i * (btnH + gap);
@@ -35,7 +35,7 @@ export class TitleScene extends Phaser.Scene {
         .setStrokeStyle(2, 0xc8a150);
 
       this.add.text(cx, by + btnH / 2, `Day ${level.day}`, {
-        fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold', color: '#1a1a2e',
+        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#1a1a2e',
       }).setOrigin(0.5);
 
       btn.on('pointerover', () => btn.setFillStyle(0xffd54f));
