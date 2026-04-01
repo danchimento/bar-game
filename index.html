@@ -12,13 +12,19 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "phaser": "./node_modules/phaser/dist/phaser.esm.js"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="rotate-notice">
     <div class="icon">📱</div>
     <p>Please rotate your device to landscape</p>
   </div>
-  <canvas id="game"></canvas>
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main-phaser.js"></script>
 </body>
 </html>
