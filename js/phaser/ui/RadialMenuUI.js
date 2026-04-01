@@ -69,9 +69,7 @@ export class RadialMenuUI {
         const ringMid = (inner + outer) / 2;
 
         if (opt.icon) {
-          const icon = this.scene.add.text(cx, cy - ringMid - 2, opt.icon, {
-            fontFamily: 'serif', fontSize: '26px',
-          }).setOrigin(0.5).setDepth(61);
+          const icon = this._createIcon(opt.icon, cx, cy - ringMid - 2, 1.2);
           this.container.add(icon);
           this.texts.push(icon);
         }
@@ -91,9 +89,7 @@ export class RadialMenuUI {
       const ly = cy + Math.sin(midA) * labelR;
 
       if (opt.icon) {
-        const icon = this.scene.add.text(lx, ly - 8, opt.icon, {
-          fontFamily: 'serif', fontSize: '18px',
-        }).setOrigin(0.5).setDepth(61);
+        const icon = this._createIcon(opt.icon, lx, ly - 8, 0.9);
         this.container.add(icon);
         this.texts.push(icon);
       }
@@ -111,6 +107,18 @@ export class RadialMenuUI {
     this.gfx.fillCircle(cx, cy, inner);
     this.gfx.lineStyle(1.5, 0x555555, 1);
     this.gfx.strokeCircle(cx, cy, inner);
+  }
+
+  /** Create an icon — sprite if key exists in texture cache, else fallback text */
+  _createIcon(iconKey, x, y, scale = 1) {
+    if (this.scene.textures.exists(iconKey)) {
+      return this.scene.add.image(x, y, iconKey)
+        .setOrigin(0.5).setDepth(61).setScale(scale);
+    }
+    // Fallback to text for any remaining emoji strings
+    return this.scene.add.text(x, y, iconKey, {
+      fontFamily: 'serif', fontSize: `${Math.round(18 * scale)}px`,
+    }).setOrigin(0.5).setDepth(61);
   }
 
   _clearTexts() {

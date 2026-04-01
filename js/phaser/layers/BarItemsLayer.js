@@ -10,7 +10,7 @@ export class BarItemsLayer {
     this.scene = scene;
     this.dirtySprites = new Map();
     this.cashSprites = new Map();
-    this.drinkGfx = scene.add.graphics().setDepth(3);
+    this.drinkGfx = scene.add.graphics().setDepth(6);
     this.matGfx = scene.add.graphics().setDepth(3);
     this.matZones = [];
   }

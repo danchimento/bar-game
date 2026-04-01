@@ -129,8 +129,8 @@ export class DrinkModal {
         (DRINKS[barState.activePour.drinkKey]?.color || '#f0c040').replace('#', ''), 16
       );
       const spoutX = this._spoutPositions[this._pouringIndex] || gx;
-      const spoutY = this._isBeer ? (gy - 42) : (gy - 48);
-      const glassTopY = gy - 20;
+      const spoutY = this._isBeer ? (gy - 30) : (gy - 48);
+      const glassTopY = gy - 25;
       const time = this.scene.time.now;
 
       this.pourStreamGfx.fillStyle(pourColor, 0.85);
@@ -236,84 +236,80 @@ export class DrinkModal {
   // ─── BEER TAPS ──────────────────────────────────────
 
   _buildBeerTaps(items, modal, startX, py, spacing) {
-    const baseY = py + 60;
     const TAP_COUNT = 3;
-    // Center 3 taps regardless of how many beers are available
-    const totalW = TAP_COUNT * spacing;
-    const centeredStartX = (960 - totalW) / 2 + spacing / 2;
+    const frameScale = 1.8;
+    const frameCX = CANVAS_W / 2;
+    const frameTopY = py + 52;
 
-    // Chrome bar across all 3 taps
-    const barLeft = centeredStartX - spacing / 2 - 8;
-    const barRight = centeredStartX + (TAP_COUNT - 1) * spacing + spacing / 2 + 8;
-    this.container.add(
-      this.scene.add.rectangle((barLeft + barRight) / 2, baseY - 8, barRight - barLeft, 10, 0xaaaaaa)
-        .setStrokeStyle(1, 0x888888)
-    );
+    // ── Tap frame sprite (U-frame with 3 cylinder taps) ──
+    const frame = this.scene.add.image(frameCX, frameTopY, 'tap_frame')
+      .setOrigin(0.5, 0).setScale(frameScale);
+    this.container.add(frame);
 
+    // Tap positions (matching the 3 cylinders in the sprite at x=15,30,45 out of 60)
+    const frameLeft = frameCX - (60 * frameScale) / 2;
+    const tapXPositions = [15, 30, 45].map(tx => frameLeft + tx * frameScale);
+    // Spout Y: bottom of cylinder taps in the sprite (y≈13 in sprite coords)
+    const spoutY = frameTopY + 13 * frameScale;
+    // Crossbar Y center: y≈4 in sprite coords
+    const crossbarY = frameTopY + 4 * frameScale;
+
+    // Drip trays under each tap
     for (let i = 0; i < TAP_COUNT; i++) {
-      const tx = centeredStartX + i * spacing;
+      const tx = tapXPositions[i];
+      this.container.add(
+        this.scene.add.rectangle(tx, spoutY + 18, 44, 5, 0x444444).setStrokeStyle(1, 0x666666)
+      );
+      this._spoutPositions.push(tx);
+    }
+
+    // ── Handles (only on active taps) ──
+    for (let i = 0; i < TAP_COUNT; i++) {
+      const tx = tapXPositions[i];
       const hasItem = i < items.length;
       const drinkKey = hasItem ? items[i] : null;
       const drink = hasItem ? DRINKS[drinkKey] : null;
 
-      // Pipe from bar (always shown — chrome pipe)
-      this.container.add(this.scene.add.rectangle(tx, baseY + 8, 6, 24, 0x999999));
-
-      // Spout (always shown)
-      this.container.add(this.scene.add.rectangle(tx, baseY + 70, 8, 12, 0xcccccc).setStrokeStyle(1, 0x888888));
-
-      // Drip tray (always shown)
-      this.container.add(this.scene.add.rectangle(tx, baseY + 88, 44, 5, 0x444444).setStrokeStyle(1, 0x666666));
-
-      this._spoutPositions.push(tx);
-
       if (hasItem && drink) {
-        const colorInt = parseInt(drink.color.replace('#', ''), 16);
+        const handleKey = `handle_${drinkKey.toLowerCase()}`;
+        const handlePulledKey = `handle_${drinkKey.toLowerCase()}_pulled`;
 
-        // Handle with beer color
-        const handle = this.scene.add.rectangle(tx, baseY + 42, 20, 44, colorInt)
-          .setStrokeStyle(2, 0xffffff);
+        // Upright handle sits on top of the tap cylinder
+        const handleY = crossbarY - 28;
+        const handle = this.scene.add.image(tx, handleY, handleKey)
+          .setOrigin(0.5, 0).setScale(1.6);
         this.container.add(handle);
-        this._handles.push(handle);
-
-        // Knob
-        this.container.add(this.scene.add.circle(tx, baseY + 19, 7, colorInt).setStrokeStyle(1, 0xffffff));
-
-        // Beer name ON the handle (short label, e.g. "Boors")
-        const shortName = drink.name.split(' ')[0];
-        this.container.add(this.scene.add.text(tx, baseY + 42, shortName, {
-          fontFamily: 'monospace', fontSize: '7px', fontStyle: 'bold', color: '#ffffff',
-          align: 'center',
-        }).setOrigin(0.5));
+        this._handles.push({ handle, handleKey, handlePulledKey, x: tx, y: handleY });
 
         // Name + price below drip tray
-        this.container.add(this.scene.add.text(tx, baseY + 105, drink.name, {
+        const labelY = spoutY + 30;
+        this.container.add(this.scene.add.text(tx, labelY, drink.name, {
           fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
           wordWrap: { width: 80 }, align: 'center',
         }).setOrigin(0.5));
-        this.container.add(this.scene.add.text(tx, baseY + 118, `$${drink.price}`, {
+        this.container.add(this.scene.add.text(tx, labelY + 13, `$${drink.price}`, {
           fontFamily: 'monospace', fontSize: '8px', color: '#999999',
         }).setOrigin(0.5));
 
-        // Interactive zone
-        const zone = this.scene.add.zone(tx, baseY + 45, 55, 120)
+        // Interactive zone covering handle + tap area
+        const zone = this.scene.add.zone(tx, crossbarY, 55, 100)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => {
           this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
-          handle.setStrokeStyle(3, 0xffd54f);
+          // Swap to pulled handle
+          handle.setTexture(handlePulledKey);
         });
-        zone.on('pointerup', () => handle.setStrokeStyle(2, 0xffffff));
-        zone.on('pointerout', () => handle.setStrokeStyle(2, 0xffffff));
+        zone.on('pointerup', () => handle.setTexture(handleKey));
+        zone.on('pointerout', () => handle.setTexture(handleKey));
         this.container.add(zone);
         this.drinkButtons.push(zone);
       } else {
-        // Empty tap — no handle, just the pipe/spout (inactive)
         this._handles.push(null);
       }
     }
 
-    // Set glass Y below the drip trays with clearance
-    this._glassY = py + 60 + 130;
+    // Glass Y sits below the drip trays
+    this._glassY = spoutY + 50;
   }
 
   // ─── WINE BOTTLES ───────────────────────────────────

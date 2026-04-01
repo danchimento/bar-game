@@ -210,33 +210,33 @@ export class GuestManager {
     switch (guest.state) {
       case GUEST_STATE.SEATED:
       case GUEST_STATE.LOOKING:
-        options.push({ label: 'Check In', icon: '👀', action: () => this.acknowledgeGuest(guest) });
+        options.push({ label: 'Check In', icon: 'icon_eyes', action: () => this.acknowledgeGuest(guest) });
         if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
-          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveAnticipated(guest) });
+          options.push({ label: 'Serve', icon: 'rm_serve', action: () => this.serveAnticipated(guest) });
         }
         break;
 
       case GUEST_STATE.WAITING_FOR_DRINK:
         if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
           const nextIdx = guest.currentOrder ? guest.fulfilledItems.length : 0;
-          options.push({ label: 'Serve', icon: '🍺', action: () => this.serveDrink(guest, nextIdx) });
+          options.push({ label: 'Serve', icon: 'rm_serve', action: () => this.serveDrink(guest, nextIdx) });
         }
-        options.push({ label: 'Ask Again', icon: '❓', action: () => this.askOrder(guest) });
+        options.push({ label: 'Ask Again', icon: 'rm_question', action: () => this.askOrder(guest) });
         break;
 
       case GUEST_STATE.ENJOYING:
-        options.push({ label: 'Check In', icon: '😊', action: () => this.checkIn(guest) });
+        options.push({ label: 'Check In', icon: 'rm_smile', action: () => this.checkIn(guest) });
         break;
 
       case GUEST_STATE.WANTS_ANOTHER:
         if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
-          options.push({ label: 'Serve', icon: '🍻', action: () => this.serveAnticipated(guest) });
+          options.push({ label: 'Serve', icon: 'rm_serve', action: () => this.serveAnticipated(guest) });
         }
         break;
 
       case GUEST_STATE.READY_TO_PAY:
         if (bartender.carrying && bartender.carrying === `CHECK_${guest.seatId}`) {
-          options.push({ label: 'Give Check', icon: '🧾', action: () => this.giveCheck(guest) });
+          options.push({ label: 'Give Check', icon: 'icon_receipt', action: () => this.giveCheck(guest) });
         }
         break;
     }
@@ -250,7 +250,7 @@ export class GuestManager {
         );
         if (hasEmpty) {
           options.push({
-            label: 'Take Glass', icon: '🫗', action: () => {
+            label: 'Take Glass', icon: 'rm_take_glass', action: () => {
               const seatX = guest.seat.x;
               walkThenAct(seatX, () => {
                 bartender.startAction(0.3, 'Clearing...', () => {

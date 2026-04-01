@@ -116,7 +116,7 @@ export class StationActions {
         const glassTypes = Object.keys(GLASSES);
         for (const key of glassTypes) {
           options.push({
-            icon: '\u{1F943}',
+            icon: 'rm_glass',
             label: GLASSES[key].name,
             action: () => {
               walkThenAct(station.x, () => {
@@ -136,7 +136,7 @@ export class StationActions {
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
         for (const key of beers) {
           options.push({
-            icon: '\u{1F37A}',
+            icon: 'icon_beer',
             label: DRINKS[key].name,
             pourKey: key,
             pourRate,
@@ -151,7 +151,7 @@ export class StationActions {
         const pourRate = 1.0 / ACTION_DURATIONS.POUR_WINE;
         for (const key of wines) {
           options.push({
-            icon: '\u{1F377}',
+            icon: 'rm_wine',
             label: DRINKS[key].name,
             pourKey: key,
             pourRate,
@@ -163,7 +163,8 @@ export class StationActions {
 
       case 'PREP': {
         options.push({
-          label: '\u{1F9CA} Ice',
+          icon: 'rm_ice',
+          label: 'Ice',
           disabled: !barState.carriedGlass || barState.carriedGlass.ice > 0,
           action: () => {
             walkThenAct(station.x, () => { this.addIce(); });
@@ -194,7 +195,7 @@ export class StationActions {
       case 'DISHWASHER': {
         if (bt.carrying === 'DIRTY_GLASS') {
           options.push({
-            icon: '\u{1F9FD}',
+            icon: 'rm_clean',
             label: 'Clean',
             action: () => {
               walkThenAct(station.x, () => {
@@ -212,7 +213,7 @@ export class StationActions {
       case 'SINK': {
         if (barState.carriedGlass) {
           options.push({
-            icon: '\u{1F6B0}',
+            icon: 'rm_dump',
             label: 'Dump',
             action: () => {
               walkThenAct(station.x, () => {
@@ -232,7 +233,7 @@ export class StationActions {
       case 'TRASH': {
         if (bt.carrying) {
           options.push({
-            icon: '\u{1F5D1}\u{FE0F}',
+            icon: 'rm_trash',
             label: 'Trash',
             action: () => {
               walkThenAct(station.x, () => {

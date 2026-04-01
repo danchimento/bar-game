@@ -56,6 +56,29 @@ export class BootScene extends Phaser.Scene {
     this.load.image('icon_thought', 'assets/sprites/icon_thought.png');
     this.load.image('icon_dirty_glass', 'assets/sprites/icon_dirty_glass.png');
     this.load.image('icon_heart', 'assets/sprites/icon_heart.png');
+
+    // Radial menu icons
+    this.load.image('rm_serve', 'assets/sprites/rm_serve.png');
+    this.load.image('rm_question', 'assets/sprites/rm_question.png');
+    this.load.image('rm_smile', 'assets/sprites/rm_smile.png');
+    this.load.image('rm_take_glass', 'assets/sprites/rm_take_glass.png');
+    this.load.image('rm_glass', 'assets/sprites/rm_glass.png');
+    this.load.image('rm_wine', 'assets/sprites/rm_wine.png');
+    this.load.image('rm_clean', 'assets/sprites/rm_clean.png');
+    this.load.image('rm_dump', 'assets/sprites/rm_dump.png');
+    this.load.image('rm_trash', 'assets/sprites/rm_trash.png');
+    this.load.image('rm_ice', 'assets/sprites/rm_ice.png');
+
+    // Tap frame and beer handles
+    this.load.image('tap_frame', 'assets/sprites/tap_frame.png');
+    this.load.image('handle_gold_lager', 'assets/sprites/handle_gold_lager.png');
+    this.load.image('handle_gold_lager_pulled', 'assets/sprites/handle_gold_lager_pulled.png');
+    this.load.image('handle_hazy_ipa', 'assets/sprites/handle_hazy_ipa.png');
+    this.load.image('handle_hazy_ipa_pulled', 'assets/sprites/handle_hazy_ipa_pulled.png');
+    this.load.image('handle_dark_porter', 'assets/sprites/handle_dark_porter.png');
+    this.load.image('handle_dark_porter_pulled', 'assets/sprites/handle_dark_porter_pulled.png');
+    this.load.image('handle_harvest_moon', 'assets/sprites/handle_harvest_moon.png');
+    this.load.image('handle_harvest_moon_pulled', 'assets/sprites/handle_harvest_moon_pulled.png');
   }
 
   create() {
