@@ -32,3 +32,33 @@ canvas {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Portrait orientation overlay — prompt user to rotate */
+#rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #000;
+  color: #e8c170;
+  font-family: monospace;
+  font-size: 18px;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+#rotate-overlay .rotate-icon {
+  font-size: 48px;
+}
+
+@media (orientation: portrait) {
+  #rotate-overlay {
+    display: flex;
+  }
+  canvas {
+    display: none;
+  }
+}
+

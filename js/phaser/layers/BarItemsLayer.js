@@ -78,7 +78,7 @@ export class BarItemsLayer {
         const gy = BAR_TOP_Y - 2;
         const fillPct = glass.totalFill;
         const liquidColor = getLiquidColor(glass.layers);
-        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.65);
+        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.8);
       }
     }
   }

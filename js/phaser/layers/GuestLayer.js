@@ -66,7 +66,7 @@ export class GuestLayer {
     const scene = this.scene;
     const spriteKey = GUEST_SPRITES[guest.id % GUEST_SPRITES.length];
 
-    const sprite = scene.add.image(0, 0, spriteKey).setScale(0.65).setDepth(5);
+    const sprite = scene.add.image(0, 0, spriteKey).setScale(0.81).setDepth(5);
     sprite.setInteractive({ useHandCursor: true });
     sprite.on('pointerdown', () => {
       scene.events.emit('guest-tap', guest);
@@ -209,7 +209,7 @@ export class GuestLayer {
     // Draw the actual glass using GlassRenderer at the same scale as bar glasses
     const fillPct = glass.totalFill;
     const liquidColor = getLiquidColor(glass.layers);
-    drawGlass(vis.sipGlass, glassX, glassY, glass.glassType, fillPct, liquidColor, 0.65);
+    drawGlass(vis.sipGlass, glassX, glassY, glass.glassType, fillPct, liquidColor, 0.8);
   }
 
   _indicatorIcon(guest) {

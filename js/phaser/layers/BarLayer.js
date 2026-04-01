@@ -32,7 +32,7 @@ export class BarLayer {
     // Stools at seat positions
     this.stools = [];
     for (const seat of seats) {
-      const stool = scene.add.image(seat.x, SEAT_Y + 10, 'stool').setDepth(1);
+      const stool = scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(1);
       this.stools.push(stool);
     }
 
