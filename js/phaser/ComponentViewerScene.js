@@ -28,6 +28,13 @@ export class ComponentViewerScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true }).setDepth(80);
     backBtn.on('pointerdown', () => this.scene.start('Title'));
 
+    // Toggle glass button
+    this._glassToggleBtn = this.add.text(CANVAS_W - 20, 16, 'Drop Glass', {
+      fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#66ccff',
+      backgroundColor: '#2a2a4a', padding: { x: 6, y: 3 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setDepth(80);
+    this._glassToggleBtn.on('pointerdown', () => this._toggleGlass());
+
     // Title
     const titles = {
       beer_taps: 'Beer Tap Modal',
@@ -139,6 +146,18 @@ export class ComponentViewerScene extends Phaser.Scene {
         }
       }
       this._drinkModal.update(this._barState, this._modalState);
+    }
+  }
+
+  _toggleGlass() {
+    if (this._barState.carriedGlass) {
+      this._barState.carriedGlass = null;
+      this._glassToggleBtn.setText('Pick Up Glass');
+    } else {
+      const glassType = this.component === 'wine_bottles' ? 'WINE_GLASS' : 'PINT';
+      this._glass = new GlassState(glassType);
+      this._barState.carriedGlass = this._glass;
+      this._glassToggleBtn.setText('Drop Glass');
     }
   }
 
