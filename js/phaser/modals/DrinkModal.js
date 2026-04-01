@@ -167,7 +167,7 @@ export class DrinkModal {
     const spacing = this._isBeer ? 90 : 100;
     const totalW = items.length * spacing;
     const pw = Math.max(totalW + 140, 380); // extra room for glass on left
-    const ph = this._isBeer ? 310 : 280;
+    const ph = this._isBeer ? 360 : 320;
     const px = (CANVAS_W - pw) / 2;
     const py = (CANVAS_H - ph) / 2;
 
@@ -205,7 +205,7 @@ export class DrinkModal {
 
     // Glass resting position (left of taps area)
     this._glassRestX = px + 50;
-    this._glassY = py + ph - 55;
+    this._glassY = py + ph - 45;
     this._glassCurrentX = this._glassRestX;
     this._glassTargetX = this._glassRestX;
 
@@ -312,8 +312,8 @@ export class DrinkModal {
       }
     }
 
-    // Set glass Y to sit on drip tray level
-    this._glassY = py + 60 + 85;
+    // Set glass Y below the drip trays with clearance
+    this._glassY = py + 60 + 130;
   }
 
   // ─── WINE BOTTLES ───────────────────────────────────

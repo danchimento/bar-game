@@ -79,7 +79,11 @@ export class GuestLayer {
     // Sip glass graphic (for the drinking animation)
     const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
 
-    return { sprite, moodBar, moodFill, bubble, indicator, orderText, sipGlass, sipGlassVisible: false };
+    // Mood change popup (heart / angry)
+    const moodPopup = scene.add.image(0, 0, 'icon_angry')
+      .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
+
+    return { sprite, moodBar, moodFill, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood };
   }
 
   _syncVisual(vis, guest) {
@@ -94,10 +98,10 @@ export class GuestLayer {
     vis.moodFill.setPosition(x - 16, y + 18).setSize(32 * moodPct, 4);
     vis.moodFill.setFillStyle(this._moodColor(moodPct));
 
-    // Indicator icon + thought bubble
+    // Indicator icon + thought bubble (raised higher to avoid head overlap)
     const iconKey = this._indicatorIcon(guest);
     if (iconKey) {
-      const iconY = y - 34;
+      const iconY = y - 46;
       vis.indicator.setTexture(iconKey).setPosition(x, iconY).setVisible(true).setScale(0.8);
 
       // Draw thought bubble behind icon
@@ -113,12 +117,34 @@ export class GuestLayer {
       vis.bubble.setVisible(false);
     }
 
-    // Order text above head
+    // Order text above head (above the bubble)
     if (guest.orderRevealTimer > 0 && guest.currentDrink) {
       const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
-      vis.orderText.setText(drinkName).setPosition(x, y - 52).setVisible(true);
+      const orderY = iconKey ? y - 68 : y - 52;
+      vis.orderText.setText(drinkName).setPosition(x, orderY).setVisible(true);
     } else {
       vis.orderText.setVisible(false);
+    }
+
+    // Mood change popup (heart on increase, angry on decrease)
+    const moodDelta = guest.mood - vis.lastMood;
+    if (moodDelta > 3) {
+      vis.moodPopup.setTexture('icon_heart').setPosition(x + 16, y - 30).setVisible(true).setAlpha(1);
+      vis.moodPopupTimer = 1.2;
+    } else if (moodDelta < -3) {
+      vis.moodPopup.setTexture('icon_angry').setPosition(x + 16, y - 30).setVisible(true).setAlpha(1);
+      vis.moodPopupTimer = 1.2;
+    }
+    vis.lastMood = guest.mood;
+
+    if (vis.moodPopupTimer > 0) {
+      vis.moodPopupTimer -= 1 / 60; // approximate dt
+      const popupY = vis.moodPopup.y - 0.5; // float upward
+      vis.moodPopup.setPosition(vis.moodPopup.x, popupY);
+      vis.moodPopup.setAlpha(Math.min(1, vis.moodPopupTimer / 0.3));
+      if (vis.moodPopupTimer <= 0) {
+        vis.moodPopup.setVisible(false);
+      }
     }
 
     // Sipping animation
@@ -227,6 +253,7 @@ export class GuestLayer {
     vis.indicator.destroy();
     vis.orderText.destroy();
     vis.sipGlass.destroy();
+    vis.moodPopup.destroy();
   }
 
   destroy() {

@@ -36,9 +36,9 @@ export class BarLayer {
       this.stools.push(stool);
     }
 
-    // Wall clock (right side of bar)
-    const clockX = CANVAS_W - 70;
-    const clockY = 60;
+    // Wall clock (right side of bar, on the wall behind guests)
+    const clockX = CANVAS_W - 80;
+    const clockY = 150;
     const clockR = 28;
     this.clockGfx = scene.add.graphics().setDepth(0);
     // Clock face

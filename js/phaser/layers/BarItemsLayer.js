@@ -27,9 +27,9 @@ export class BarItemsLayer {
     for (const seatId of dirtySeats) {
       if (!this.dirtySprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x, SEAT_Y + 8, 'spill').setDepth(2);
+        const sp = this.scene.add.image(seat.x, SEAT_Y + 8, 'spill').setDepth(7);
         const zone = this.scene.add.zone(seat.x, SEAT_Y + 8, 50, 40)
-          .setInteractive({ useHandCursor: true }).setDepth(4);
+          .setInteractive({ useHandCursor: true }).setDepth(7);
         zone.on('pointerdown', () => this.scene.events.emit('dirty-seat-tap', seatId));
         this.dirtySprites.set(seatId, { sp, zone });
       }
@@ -46,9 +46,9 @@ export class BarItemsLayer {
     for (const [seatId] of cashOnBar) {
       if (!this.cashSprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x - 20, BAR_TOP_Y + 10, 'cash').setDepth(2);
-        const zone = this.scene.add.zone(seat.x - 20, BAR_TOP_Y + 10, 40, 30)
-          .setInteractive({ useHandCursor: true }).setDepth(4);
+        const sp = this.scene.add.image(seat.x - 20, BAR_TOP_Y + 8, 'cash').setDepth(7);
+        const zone = this.scene.add.zone(seat.x - 20, BAR_TOP_Y + 8, 50, 40)
+          .setInteractive({ useHandCursor: true }).setDepth(7);
         zone.on('pointerdown', () => this.scene.events.emit('cash-tap', seatId));
         this.cashSprites.set(seatId, { sp, zone });
       }

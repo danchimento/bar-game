@@ -55,6 +55,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('icon_receipt', 'assets/sprites/icon_receipt.png');
     this.load.image('icon_thought', 'assets/sprites/icon_thought.png');
     this.load.image('icon_dirty_glass', 'assets/sprites/icon_dirty_glass.png');
+    this.load.image('icon_heart', 'assets/sprites/icon_heart.png');
   }
 
   create() {

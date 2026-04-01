@@ -296,4 +296,33 @@ createSprite(8, 12, ({ px, row, col }) => {
   px(0, 0, GLD); px(7, 2, GLD);
 }, 'icon_dirty_glass.png');
 
+// ============================================================
+// HEART ICON (12x11) — mood increased
+// ============================================================
+createSprite(12, 11, ({ px, row }) => {
+  const RED = '#e53935';
+  const REDL = '#ff5252';
+  const REDK = '#c62828';
+
+  // Heart shape
+  row(0, 1, 3, RED);   row(0, 7, 9, RED);
+  row(1, 0, 4, RED);   row(1, 6, 10, RED);
+  row(2, 0, 10, RED);
+  row(3, 0, 10, RED);
+  row(4, 1, 9, RED);
+  row(5, 2, 8, RED);
+  row(6, 3, 7, RED);
+  row(7, 3, 7, RED);
+  row(8, 4, 6, RED);
+  row(9, 5, 5, RED);
+
+  // Highlight on left lobe
+  px(1, 1, REDL); px(2, 1, REDL);
+  px(1, 2, REDL);
+
+  // Shadow on right lobe
+  px(9, 2, REDK); px(10, 2, REDK);
+  px(9, 3, REDK);
+}, 'icon_heart.png');
+
 console.log('\nDone! Indicator sprites generated.');
