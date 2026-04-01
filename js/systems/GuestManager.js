@@ -93,6 +93,7 @@ export class GuestManager {
   // ─── UPDATE ───────────────────────────────────────
 
   updateGuests(dt, levelTimer, activeDuration) {
+    this._barClosed = levelTimer >= activeDuration;
     const { settings, barState, stats } = this.ctx;
 
     stats.peakGuests = Math.max(stats.peakGuests, this.guests.length);
@@ -239,6 +240,13 @@ export class GuestManager {
           options.push({ label: 'Give Check', icon: 'icon_receipt', action: () => this.giveCheck(guest) });
         }
         break;
+    }
+
+    // Allow giving check in any seated state (early delivery)
+    if (guest.state !== GUEST_STATE.READY_TO_PAY && guest.state !== GUEST_STATE.REVIEWING_CHECK) {
+      if (bartender.carrying && bartender.carrying === `CHECK_${guest.seatId}`) {
+        options.push({ label: 'Give Check', icon: 'icon_receipt', action: () => this.giveCheck(guest) });
+      }
     }
 
     // Take empty glass — available in any state if there are empties at this seat
@@ -475,6 +483,18 @@ export class GuestManager {
       bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
         bartender.carrying = null;
 
+        // Early check penalty: guest didn't ask for it yet
+        const earlyCheck = guest.state !== GUEST_STATE.READY_TO_PAY;
+        if (earlyCheck) {
+          // After last call, guests understand — no penalty
+          if (!this._barClosed) {
+            guest.mood = Math.max(0, guest.mood - 20);
+            hud.showMessage('Wants to stay longer...', 1.5);
+          } else {
+            hud.showMessage('Last call — check delivered', 1.5);
+          }
+        }
+
         const tab = posTab.get(guest.seatId) || [];
         const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
         const servedTotal = guest.totalSpent;
@@ -482,16 +502,16 @@ export class GuestManager {
         if (tabTotal > servedTotal) {
           guest.overcharged = true;
           stats.billsOvercharged++;
-          hud.showMessage('Overcharged!', 2);
+          if (!earlyCheck) hud.showMessage('Overcharged!', 2);
         } else if (tabTotal < servedTotal) {
           const lost = servedTotal - tabTotal;
           hud.revenue -= lost;
           guest.totalSpent = tabTotal;
           stats.billsUndercharged++;
-          hud.showMessage('Check delivered', 1);
+          if (!earlyCheck) hud.showMessage('Check delivered', 1);
         } else {
           stats.billsCorrect++;
-          hud.showMessage('Check delivered', 1);
+          if (!earlyCheck) hud.showMessage('Check delivered', 1);
         }
 
         guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);

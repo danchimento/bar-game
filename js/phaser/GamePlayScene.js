@@ -250,10 +250,25 @@ export class GamePlayScene extends Phaser.Scene {
       }
     });
 
-    // Guest tap
-    this.events.on('guest-tap', (guest) => {
+    // Unified seat zone tap — handles guest interaction, cash, and bussing
+    this.events.on('seat-zone-tap', (seatId) => {
       if (this._anyModalOpen()) return;
-      this.guestManager.openGuestMenu(guest);
+
+      // Priority 1: Guest present → open radial menu
+      const guest = this.guestManager.guests.find(
+        g => g.seatId === seatId &&
+             g.state !== GUEST_STATE.LEAVING &&
+             g.state !== GUEST_STATE.ANGRY_LEAVING &&
+             g.state !== GUEST_STATE.DONE
+      );
+      if (guest) {
+        this.guestManager.openGuestMenu(guest);
+        return;
+      }
+
+      // Priority 2: Cash or dirty seat → cleanup
+      this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats,
+        this.walkThenAct.bind(this));
     });
 
     // Bar area tap → move bartender
@@ -265,16 +280,6 @@ export class GamePlayScene extends Phaser.Scene {
         this.bartender.moveTo(x);
         this.pendingAction = null;
       }
-    });
-
-    // Dirty seat / cash taps
-    this.events.on('dirty-seat-tap', (seatId) => {
-      this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats,
-        this.walkThenAct.bind(this));
-    });
-    this.events.on('cash-tap', (seatId) => {
-      this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats,
-        this.walkThenAct.bind(this));
     });
 
     // Service mat drink tap

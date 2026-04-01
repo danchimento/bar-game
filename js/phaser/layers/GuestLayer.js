@@ -68,10 +68,6 @@ export class GuestLayer {
     const spriteIdx = guest.id % GUEST_SPRITES.length;
 
     const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(0.81).setDepth(5);
-    sprite.setInteractive({ useHandCursor: true });
-    sprite.on('pointerdown', () => {
-      scene.events.emit('guest-tap', guest);
-    });
 
     // Thought bubble behind indicator
     const bubble = scene.add.graphics().setDepth(14);

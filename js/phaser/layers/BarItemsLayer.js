@@ -10,9 +10,28 @@ export class BarItemsLayer {
     this.scene = scene;
     this.dirtySprites = new Map();
     this.cashSprites = new Map();
-    this.drinkGfx = scene.add.graphics().setDepth(7);
+    this.drinkGfx = scene.add.graphics().setDepth(9);
     this.matGfx = scene.add.graphics().setDepth(3);
     this.matZones = [];
+    this.seatZones = [];
+    this._buildSeatZones();
+  }
+
+  /** Create one permanent interactive zone per seat covering the full seat area */
+  _buildSeatZones() {
+    for (const seat of SEATS) {
+      const zone = this.scene.add.zone(seat.x, SEAT_Y - 10, 70, 80)
+        .setInteractive({ useHandCursor: true }).setDepth(10);
+      zone.on('pointerdown', () => this.scene.events.emit('seat-zone-tap', seat.id));
+      this.seatZones.push(zone);
+    }
+  }
+
+  /** Rebuild seat zones when seat count changes */
+  rebuildSeatZones() {
+    this.seatZones.forEach(z => z.destroy());
+    this.seatZones = [];
+    this._buildSeatZones();
   }
 
   /** Call every frame with barState and optional sipping map from GuestLayer */
@@ -29,15 +48,12 @@ export class BarItemsLayer {
       if (!this.dirtySprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
         const sp = this.scene.add.image(seat.x, SEAT_Y + 8, 'spill').setDepth(7);
-        const zone = this.scene.add.zone(seat.x, SEAT_Y + 8, 50, 40)
-          .setInteractive({ useHandCursor: true }).setDepth(7);
-        zone.on('pointerdown', () => this.scene.events.emit('dirty-seat-tap', seatId));
-        this.dirtySprites.set(seatId, { sp, zone });
+        this.dirtySprites.set(seatId, { sp });
       }
     }
     for (const [id, obj] of this.dirtySprites) {
       if (!dirtySeats.has(id)) {
-        obj.sp.destroy(); obj.zone.destroy();
+        obj.sp.destroy();
         this.dirtySprites.delete(id);
       }
     }
@@ -48,15 +64,12 @@ export class BarItemsLayer {
       if (!this.cashSprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
         const sp = this.scene.add.image(seat.x - 20, BAR_TOP_Y + 8, 'cash').setDepth(7);
-        const zone = this.scene.add.zone(seat.x - 20, BAR_TOP_Y + 8, 50, 40)
-          .setInteractive({ useHandCursor: true }).setDepth(7);
-        zone.on('pointerdown', () => this.scene.events.emit('cash-tap', seatId));
-        this.cashSprites.set(seatId, { sp, zone });
+        this.cashSprites.set(seatId, { sp });
       }
     }
     for (const [id, obj] of this.cashSprites) {
       if (!cashOnBar.has(id)) {
-        obj.sp.destroy(); obj.zone.destroy();
+        obj.sp.destroy();
         this.cashSprites.delete(id);
       }
     }
@@ -113,10 +126,11 @@ export class BarItemsLayer {
   }
 
   destroy() {
-    for (const obj of this.dirtySprites.values()) { obj.sp.destroy(); obj.zone.destroy(); }
-    for (const obj of this.cashSprites.values()) { obj.sp.destroy(); obj.zone.destroy(); }
+    for (const obj of this.dirtySprites.values()) { obj.sp.destroy(); }
+    for (const obj of this.cashSprites.values()) { obj.sp.destroy(); }
     this.drinkGfx.destroy();
     this.matGfx.destroy();
     this.matZones.forEach(z => z.destroy());
+    this.seatZones.forEach(z => z.destroy());
   }
 }
