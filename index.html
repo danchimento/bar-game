@@ -12,10 +12,44 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
-  <!-- Phaser 3 as UMD global — creates window.Phaser -->
+
+  <!-- Error overlay — must load BEFORE anything else -->
+  <script>
+    function showError(msg) {
+      var el = document.getElementById('error-overlay');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'error-overlay';
+        el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:50vh;overflow:auto;z-index:99999;background:rgba(180,20,20,0.95);color:#fff;font:12px/1.4 monospace;padding:10px;white-space:pre-wrap;word-break:break-word;';
+        document.body.appendChild(el);
+      }
+      el.textContent += msg + '\n\n';
+    }
+    window.addEventListener('error', function(e) {
+      showError('[ERROR] ' + e.message + '\n  at ' + e.filename + ':' + e.lineno + ':' + e.colno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      showError('[PROMISE] ' + (e.reason && e.reason.stack || e.reason));
+    });
+  </script>
+
+  <!-- Phaser 3 as UMD global -->
   <script src="node_modules/phaser/dist/phaser.min.js"></script>
+  <script>
+    if (typeof Phaser === 'undefined') {
+      showError('[FATAL] Phaser failed to load. Check that node_modules/phaser/dist/phaser.min.js exists and is served correctly.');
+    } else {
+      console.log('Phaser ' + Phaser.VERSION + ' loaded');
+    }
+  </script>
 </head>
 <body>
   <script type="module" src="js/main-phaser.js"></script>
+  <script type="module">
+    // If main-phaser.js fails to import, this catches it
+    import('./js/main-phaser.js').catch(function(err) {
+      showError('[MODULE LOAD FAILED] ' + err.message + '\n' + (err.stack || ''));
+    });
+  </script>
 </body>
 </html>
