@@ -1,4 +1,5 @@
 import { GUEST_Y, GUEST_STATE, MOOD_MAX, BAR_TOP_Y } from '../../constants.js';
+import { DRINKS } from '../../data/menu.js';
 
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
 
@@ -62,14 +63,23 @@ export class GuestLayer {
     const moodBar = scene.add.rectangle(0, 18, 32, 4, 0x333333).setDepth(6);
     const moodFill = scene.add.rectangle(0, 18, 32, 4, 0x4caf50).setOrigin(0, 0.5).setDepth(6);
 
+    // Thought bubble behind indicator
+    const bubble = scene.add.graphics().setDepth(14);
+
     // State indicator (sprite icon)
     const indicator = scene.add.image(0, -30, 'icon_hourglass')
       .setOrigin(0.5).setDepth(15).setVisible(false).setScale(0.8);
 
+    // Order text above head
+    const orderText = scene.add.text(0, -50, '', {
+      fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#ffd54f',
+      backgroundColor: 'rgba(0,0,0,0.7)', padding: { x: 5, y: 2 },
+    }).setOrigin(0.5).setDepth(15).setVisible(false);
+
     // Sip glass graphic (for the drinking animation)
     const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
 
-    return { sprite, moodBar, moodFill, indicator, sipGlass, sipGlassVisible: false };
+    return { sprite, moodBar, moodFill, bubble, indicator, orderText, sipGlass, sipGlassVisible: false };
   }
 
   _syncVisual(vis, guest) {
@@ -84,12 +94,31 @@ export class GuestLayer {
     vis.moodFill.setPosition(x - 16, y + 18).setSize(32 * moodPct, 4);
     vis.moodFill.setFillStyle(this._moodColor(moodPct));
 
-    // Indicator icon
+    // Indicator icon + thought bubble
     const iconKey = this._indicatorIcon(guest);
     if (iconKey) {
-      vis.indicator.setTexture(iconKey).setPosition(x, y - 32).setVisible(true).setScale(0.8);
+      const iconY = y - 34;
+      vis.indicator.setTexture(iconKey).setPosition(x, iconY).setVisible(true).setScale(0.8);
+
+      // Draw thought bubble behind icon
+      vis.bubble.clear();
+      vis.bubble.fillStyle(0xffffff, 0.92);
+      vis.bubble.fillRoundedRect(x - 14, iconY - 12, 28, 24, 8);
+      // Small triangle pointer
+      vis.bubble.fillTriangle(x - 3, iconY + 12, x + 3, iconY + 12, x, iconY + 17);
+      vis.bubble.setVisible(true);
     } else {
       vis.indicator.setVisible(false);
+      vis.bubble.clear();
+      vis.bubble.setVisible(false);
+    }
+
+    // Order text above head
+    if (guest.orderRevealTimer > 0 && guest.currentDrink) {
+      const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
+      vis.orderText.setText(drinkName).setPosition(x, y - 52).setVisible(true);
+    } else {
+      vis.orderText.setVisible(false);
     }
 
     // Sipping animation
@@ -140,7 +169,7 @@ export class GuestLayer {
 
     // Draw a small glass shape
     const gfx = vis.sipGlass;
-    const s = 0.35;
+    const s = 0.55;
     const w = 12 * s, h = 18 * s;
 
     // Tilt when at mouth
@@ -194,7 +223,9 @@ export class GuestLayer {
     vis.sprite.destroy();
     vis.moodBar.destroy();
     vis.moodFill.destroy();
+    vis.bubble.destroy();
     vis.indicator.destroy();
+    vis.orderText.destroy();
     vis.sipGlass.destroy();
   }
 

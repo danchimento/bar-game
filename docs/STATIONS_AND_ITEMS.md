@@ -142,14 +142,21 @@ All glasses show:
 - Panel background: dark brown (#2a1a0a), gold border
 - Title: "Draft Beers"
 - Subtitle: "Hold to pour, release to stop"
-- **Tap handles:** Horizontal chrome bar across top, individual colored handles hanging down
-  - Knob (circle) at top of handle
-  - Colored rectangular handle body
-  - Chrome pipe connector
+- **Always 3 taps** shown, centered in the modal regardless of how many beers are available
+- **Tap structure (all 3 taps):**
+  - Chrome bar across all taps
+  - Chrome pipe from bar
   - Chrome spout/nozzle
   - Drip tray below each tap
+- **Active taps** (taps with an available beer) additionally have:
+  - Colored handle (beer's color) with white stroke
+  - Knob (circle) at top
+  - **Beer name on the handle** (first word, e.g., "Boors", 7px white bold text)
+  - Beer name + price label below the drip tray
+  - Interactive zone for hold-to-pour
+- **Inactive taps** (no beer assigned) show only the pipe/spout/tray — no handle
 - **Glass behavior:**
-  - Glass starts to the **left of all taps** in a resting position (tilted at the pour angle for beer: ~15°)
+  - Glass starts to the **left of all taps** in a resting position at 1.15x scale
   - When player holds down on a tap: glass **slides under that tap** with a quick tween (~150ms)
   - While pouring, glass stays tilted at the appropriate angle under the active spout
   - Pour stream animates from spout down into the glass

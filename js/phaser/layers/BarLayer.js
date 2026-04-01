@@ -1,5 +1,5 @@
 import {
-  CANVAS_W, CANVAS_H, BAR_TOP_Y, WALK_TRACK_Y, SEAT_Y,
+  CANVAS_W, CANVAS_H, BAR_TOP_Y, WALK_TRACK_Y, SEAT_Y, STATION_Y,
 } from '../../constants.js';
 
 /**
@@ -35,6 +35,63 @@ export class BarLayer {
       const stool = scene.add.image(seat.x, SEAT_Y + 10, 'stool').setDepth(1);
       this.stools.push(stool);
     }
+
+    // Wall clock (right side of bar)
+    const clockX = CANVAS_W - 70;
+    const clockY = 60;
+    const clockR = 28;
+    this.clockGfx = scene.add.graphics().setDepth(0);
+    // Clock face
+    this.clockGfx.fillStyle(0xf5f0e0, 1);
+    this.clockGfx.fillCircle(clockX, clockY, clockR);
+    this.clockGfx.lineStyle(3, 0x5a3a1a, 1);
+    this.clockGfx.strokeCircle(clockX, clockY, clockR);
+    // Hour markers
+    for (let h = 0; h < 12; h++) {
+      const angle = (h / 12) * Math.PI * 2 - Math.PI / 2;
+      const inner = clockR - 5;
+      const outer = clockR - 2;
+      this.clockGfx.lineStyle(1.5, 0x3a2a1a, 1);
+      this.clockGfx.lineBetween(
+        clockX + Math.cos(angle) * inner, clockY + Math.sin(angle) * inner,
+        clockX + Math.cos(angle) * outer, clockY + Math.sin(angle) * outer,
+      );
+    }
+
+    // Clock hands (drawn each frame)
+    this.clockHandsGfx = scene.add.graphics().setDepth(0);
+    this._clockX = clockX;
+    this._clockY = clockY;
+    this._clockR = clockR;
+  }
+
+  /** Update clock hands based on game time */
+  updateClock(levelTimer, levelDuration) {
+    const gfx = this.clockHandsGfx;
+    gfx.clear();
+    const cx = this._clockX;
+    const cy = this._clockY;
+
+    // Map levelTimer to clock: 6:00 PM → 12:00 AM (6 hours)
+    const progress = Math.min(1, levelTimer / levelDuration);
+    const totalMinutes = Math.floor(progress * 360); // 6h = 360 min
+    const hour24 = 18 + Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+
+    // Hour hand (12-hour mapped)
+    const hour12 = hour24 % 12;
+    const hourAngle = ((hour12 + minute / 60) / 12) * Math.PI * 2 - Math.PI / 2;
+    gfx.lineStyle(2.5, 0x1a1a1a, 1);
+    gfx.lineBetween(cx, cy, cx + Math.cos(hourAngle) * 14, cy + Math.sin(hourAngle) * 14);
+
+    // Minute hand
+    const minAngle = (minute / 60) * Math.PI * 2 - Math.PI / 2;
+    gfx.lineStyle(1.5, 0x1a1a1a, 1);
+    gfx.lineBetween(cx, cy, cx + Math.cos(minAngle) * 20, cy + Math.sin(minAngle) * 20);
+
+    // Center dot
+    gfx.fillStyle(0x1a1a1a, 1);
+    gfx.fillCircle(cx, cy, 2);
   }
 
   /** Rebuild stools when seat count changes */
@@ -49,5 +106,7 @@ export class BarLayer {
 
   destroy() {
     this.stools.forEach(s => s.destroy());
+    if (this.clockGfx) this.clockGfx.destroy();
+    if (this.clockHandsGfx) this.clockHandsGfx.destroy();
   }
 }

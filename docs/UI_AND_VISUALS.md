@@ -7,7 +7,7 @@
 The game uses **Phaser 3** loaded from CDN as a UMD global. The visual layer is split into:
 
 - **Layers** (background → foreground): BarLayer, StationLayer, BartenderLayer, GuestLayer, BarItemsLayer
-- **UI overlays**: HudUI, NotepadUI, RadialMenuUI, PauseUI
+- **UI overlays**: HudUI, RadialMenuUI, PauseUI
 - **Modals** (depth 70+): GlassModal, DrinkModal, PrepModal, POSModal
 
 All game logic modules (Bartender, Guest, BarState, GuestManager, etc.) are **unchanged** — the Phaser layers read from them each frame and sync visuals.
@@ -28,8 +28,7 @@ All game logic modules (Bartender, Guest, BarState, GuestManager, etc.) are **un
 | 11 | Bartender busy bar, carry label |
 | 12 | Bartender carried glass graphic |
 | 15 | Guest state indicator icons |
-| 50 | Notepad panel |
-| 55 | HUD elements |
+| 50 | HUD elements |
 | 60 | Radial menu |
 | 61 | Radial menu labels/icons |
 | 70 | Modal containers (glass, drink, prep, POS) |
@@ -60,6 +59,17 @@ All game logic modules (Bartender, Guest, BarState, GuestManager, etc.) are **un
 - One stool sprite per seat at (seat.x, SEAT_Y=185)
 - Sprite: stool.png (16×20 at 3x)
 - Brown wooden legs with padded seat top
+
+### Wall Clock
+- Position: right side of wall (CANVAS_W - 70, 60)
+- Radius: 28px
+- Face: cream/off-white (#f5f0e0), dark brown border (#5a3a1a, 3px)
+- 12 tick marks around the rim
+- **Hour hand**: thick (2.5px), dark, length 14px
+- **Minute hand**: thinner (1.5px), dark, length 20px
+- Center dot: 2px radius, dark
+- Updates every frame: maps game time (6:00 PM → 12:00 AM) to clock hand positions
+- Depth 0 (wall element)
 
 ---
 
@@ -103,7 +113,7 @@ Rendered **above the bartender's head** (Y = WALK_TRACK_Y - 28):
 | Carrying | Visual |
 |----------|--------|
 | Nothing | Hidden |
-| GLASS_* or DRINK_* | **Drawn glass** using GlassRenderer at 0.6x scale — correct glass type, fill level, liquid color |
+| GLASS_* or DRINK_* | **Drawn glass** using GlassRenderer at 0.9x scale — correct glass type, fill level, liquid color |
 | DIRTY_GLASS | icon_dirty_glass sprite at 0.7x scale |
 | CHECK_* | icon_receipt sprite at 0.7x scale |
 
@@ -132,8 +142,13 @@ All are 24×32 pixel art at 3x scale, rendered at 0.65x.
 - Arriving: slides from Y=-30 to Y=200
 - Leaving: slides from Y=200 to Y=-50, at 50% opacity
 
-### State Indicator Icons
-Rendered above guest head at (guest.x, guest.y - 32), scale 0.8x, depth 15.
+### State Indicator Icons (with Thought Bubble)
+Rendered above guest head at (guest.x, guest.y - 34), scale 0.8x, depth 15.
+
+A **white thought bubble** (depth 14) is drawn behind each indicator icon:
+- Rounded rectangle (28×24px) with 8px corner radius, 92% white opacity
+- Small triangle pointer at bottom pointing toward guest's head
+- Only visible when an icon is shown
 
 | State | Icon Sprite | Size (px art) |
 |-------|-------------|---------------|
@@ -146,6 +161,13 @@ Rendered above guest head at (guest.x, guest.y - 32), scale 0.8x, depth 15.
 | ANGRY_LEAVING | icon_angry | 12×12 |
 | All other states | *No icon* | — |
 
+### Order Text Above Head
+When `guest.orderRevealTimer > 0` and `guest.currentDrink` is set:
+- Text showing the drink name (e.g., "Boors Light") appears at (guest.x, guest.y - 52)
+- 9px monospace bold, yellow (#ffd54f) on dark semi-transparent background
+- Fades when `orderRevealTimer` reaches 0 (default 8 seconds)
+- Replaces the old notepad system — orders are shown directly above the guest
+
 ### Mood Bar
 - Position: (guest.x, guest.y + 18)
 - Background: 32×4px dark gray (#333333)
@@ -154,7 +176,7 @@ Rendered above guest head at (guest.x, guest.y - 32), scale 0.8x, depth 15.
 
 ### Sipping Animation
 During ENJOYING state when `guest.sipping` is true (1.0s duration):
-- A small glass graphic (GlassRenderer at 0.35x) animates:
+- A small glass graphic (GlassRenderer at 0.55x) animates:
   - Starts at counter position (guest.x + 8, BAR_TOP_Y - 2)
   - Lifts to mouth position (guest.x + 6, guest.y - 5) over 0.3s
   - Holds at mouth for 0.4s
@@ -181,14 +203,14 @@ Queued guests (WAITING_FOR_SEAT) are **NOT shown as sprites**. They are invisibl
 - Interactive zone (40×30px) — tap to collect
 
 ### Drinks at Seats
-- Drawn using GlassRenderer at 0.45x scale
+- Drawn using GlassRenderer at 0.65x scale
 - Position: (seat.x, BAR_TOP_Y - 2) per glass
 - Multiple glasses offset horizontally: `(i - (count-1)/2) * 14px`
 - Shows correct glass type, fill level, and liquid color
 - Updates every frame (fill depletes as guest sips)
 
 ### Service Mat Drinks
-- Drawn using GlassRenderer at 0.4x scale
+- Drawn using GlassRenderer at 0.6x scale
 - Position: (drink.x, SERVICE_MAT_Y + 10)
 - Interactive zones (30×30px) — tap to pick up
 
@@ -218,15 +240,9 @@ Queued guests (WAITING_FOR_SEAT) are **NOT shown as sprites**. They are invisibl
 
 ---
 
-## Notepad (NotepadUI)
+## Notepad (REMOVED)
 
-- Position: bottom-left corner, (X=10, Y = CANVAS_H - height - 10)
-- Background: beige (#fff8dc, 92% opacity) with brown border (#8b4513)
-- Width: 160px, height: 30 + (orders × 20px)
-- Title: "Orders" (12px monospace bold, #333)
-- Each order: "Seat N: DrinkName" (11px monospace, #555)
-- Only visible when `notepad.visible` is true AND has unfulfilled orders
-- Updates every frame
+The notepad system has been removed. Customer orders now appear as text directly above each guest's head (see [Order Text Above Head](#order-text-above-head) in the Guests section).
 
 ---
 

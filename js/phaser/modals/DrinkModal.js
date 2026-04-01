@@ -110,9 +110,9 @@ export class DrinkModal {
       // Save, translate, rotate, draw, restore via graphics transform
       // Phaser Graphics doesn't support rotation directly, so we draw at a slight visual offset
       // to simulate tilt: offset the top of the glass slightly right
-      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 0.85);
+      drawGlass(this.glassGfx, gx + 2, gy, glass.glassType, fillPct, liquidColor, 1.15);
     } else {
-      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.85);
+      drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.15);
     }
 
     // Fill label
@@ -237,69 +237,83 @@ export class DrinkModal {
 
   _buildBeerTaps(items, modal, startX, py, spacing) {
     const baseY = py + 60;
+    const TAP_COUNT = 3;
+    // Center 3 taps regardless of how many beers are available
+    const totalW = TAP_COUNT * spacing;
+    const centeredStartX = (960 - totalW) / 2 + spacing / 2;
 
-    // Chrome bar
-    const barLeft = startX - spacing / 2 - 8;
-    const barRight = startX + (items.length - 1) * spacing + spacing / 2 + 8;
+    // Chrome bar across all 3 taps
+    const barLeft = centeredStartX - spacing / 2 - 8;
+    const barRight = centeredStartX + (TAP_COUNT - 1) * spacing + spacing / 2 + 8;
     this.container.add(
       this.scene.add.rectangle((barLeft + barRight) / 2, baseY - 8, barRight - barLeft, 10, 0xaaaaaa)
         .setStrokeStyle(1, 0x888888)
     );
 
-    for (let i = 0; i < items.length; i++) {
-      const drinkKey = items[i];
-      const drink = DRINKS[drinkKey];
-      if (!drink) continue;
+    for (let i = 0; i < TAP_COUNT; i++) {
+      const tx = centeredStartX + i * spacing;
+      const hasItem = i < items.length;
+      const drinkKey = hasItem ? items[i] : null;
+      const drink = hasItem ? DRINKS[drinkKey] : null;
 
-      const tx = startX + i * spacing;
-      const colorInt = parseInt(drink.color.replace('#', ''), 16);
-
-      // Pipe from bar
+      // Pipe from bar (always shown — chrome pipe)
       this.container.add(this.scene.add.rectangle(tx, baseY + 8, 6, 24, 0x999999));
 
-      // Handle
-      const handle = this.scene.add.rectangle(tx, baseY + 42, 18, 44, colorInt)
-        .setStrokeStyle(2, 0xffffff);
-      this.container.add(handle);
-      this._handles.push(handle);
-
-      // Knob
-      this.container.add(this.scene.add.circle(tx, baseY + 19, 7, colorInt).setStrokeStyle(1, 0xffffff));
-
-      // Spout
+      // Spout (always shown)
       this.container.add(this.scene.add.rectangle(tx, baseY + 70, 8, 12, 0xcccccc).setStrokeStyle(1, 0x888888));
-      const spoutBottomY = baseY + 76;
 
-      // Drip tray
+      // Drip tray (always shown)
       this.container.add(this.scene.add.rectangle(tx, baseY + 88, 44, 5, 0x444444).setStrokeStyle(1, 0x666666));
 
-      // Record spout X position for glass to slide to
       this._spoutPositions.push(tx);
 
-      // Name + price
-      this.container.add(this.scene.add.text(tx, baseY + 105, drink.name, {
-        fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
-        wordWrap: { width: 80 }, align: 'center',
-      }).setOrigin(0.5));
-      this.container.add(this.scene.add.text(tx, baseY + 118, `$${drink.price}`, {
-        fontFamily: 'monospace', fontSize: '8px', color: '#999999',
-      }).setOrigin(0.5));
+      if (hasItem && drink) {
+        const colorInt = parseInt(drink.color.replace('#', ''), 16);
 
-      // Interactive zone
-      const zone = this.scene.add.zone(tx, baseY + 45, 55, 120)
-        .setInteractive({ useHandCursor: true });
-      zone.on('pointerdown', () => {
-        this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
-        handle.setStrokeStyle(3, 0xffd54f);
-      });
-      zone.on('pointerup', () => handle.setStrokeStyle(2, 0xffffff));
-      zone.on('pointerout', () => handle.setStrokeStyle(2, 0xffffff));
-      this.container.add(zone);
-      this.drinkButtons.push(zone);
+        // Handle with beer color
+        const handle = this.scene.add.rectangle(tx, baseY + 42, 20, 44, colorInt)
+          .setStrokeStyle(2, 0xffffff);
+        this.container.add(handle);
+        this._handles.push(handle);
+
+        // Knob
+        this.container.add(this.scene.add.circle(tx, baseY + 19, 7, colorInt).setStrokeStyle(1, 0xffffff));
+
+        // Beer name ON the handle (short label, e.g. "Boors")
+        const shortName = drink.name.split(' ')[0];
+        this.container.add(this.scene.add.text(tx, baseY + 42, shortName, {
+          fontFamily: 'monospace', fontSize: '7px', fontStyle: 'bold', color: '#ffffff',
+          align: 'center',
+        }).setOrigin(0.5));
+
+        // Name + price below drip tray
+        this.container.add(this.scene.add.text(tx, baseY + 105, drink.name, {
+          fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
+          wordWrap: { width: 80 }, align: 'center',
+        }).setOrigin(0.5));
+        this.container.add(this.scene.add.text(tx, baseY + 118, `$${drink.price}`, {
+          fontFamily: 'monospace', fontSize: '8px', color: '#999999',
+        }).setOrigin(0.5));
+
+        // Interactive zone
+        const zone = this.scene.add.zone(tx, baseY + 45, 55, 120)
+          .setInteractive({ useHandCursor: true });
+        zone.on('pointerdown', () => {
+          this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
+          handle.setStrokeStyle(3, 0xffd54f);
+        });
+        zone.on('pointerup', () => handle.setStrokeStyle(2, 0xffffff));
+        zone.on('pointerout', () => handle.setStrokeStyle(2, 0xffffff));
+        this.container.add(zone);
+        this.drinkButtons.push(zone);
+      } else {
+        // Empty tap — no handle, just the pipe/spout (inactive)
+        this._handles.push(null);
+      }
     }
 
     // Set glass Y to sit on drip tray level
-    this._glassY = this._spoutPositions.length > 0 ? (py + 60 + 85) : this._glassY;
+    this._glassY = py + 60 + 85;
   }
 
   // ─── WINE BOTTLES ───────────────────────────────────

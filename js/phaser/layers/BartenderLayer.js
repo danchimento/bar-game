@@ -56,7 +56,7 @@ export class BartenderLayer {
         if (glass) {
           const fillPct = glass.totalFill;
           const liquidColor = getLiquidColor(glass.layers);
-          drawGlass(this.carryGfx, x, glassY, glass.glassType, fillPct, liquidColor, 0.6);
+          drawGlass(this.carryGfx, x, glassY, glass.glassType, fillPct, liquidColor, 0.9);
         } else {
           // Fallback: empty glass sprite
           const glassKey = carry.startsWith('GLASS_')

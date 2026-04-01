@@ -193,7 +193,7 @@ export class GuestManager {
           stats.totalWaitTime += g.totalWaitTime;
           stats.guestsWaited++;
         }
-        this.ctx.notepad.removeGuest(g.id);
+        if (this.ctx.notepad) this.ctx.notepad.removeGuest(g.id);
         this.ctx.posTab.delete(g.seatId);
         return false;
       }
@@ -356,7 +356,7 @@ export class GuestManager {
           guest.drinksServed.push(wantedKey);
           guest.totalSpent += wantedDef.price;
           hud.revenue += wantedDef.price;
-          notepad.markFulfilled(guest.id);
+          if (notepad) notepad.markFulfilled(guest.id);
 
           if (guest.currentOrder && guest.currentOrder.length > 1) {
             guest.fulfilledItems.push(wantedKey);

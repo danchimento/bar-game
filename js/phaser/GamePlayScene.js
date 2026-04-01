@@ -11,7 +11,6 @@ import { GlassState } from '../entities/GlassState.js';
 import { BarState } from '../systems/BarState.js';
 import { GuestManager } from '../systems/GuestManager.js';
 import { StationActions } from '../systems/StationActions.js';
-import { Notepad } from '../ui/Notepad.js';
 import { HUD } from '../ui/HUD.js';
 import { RadialMenu } from '../ui/RadialMenu.js';
 
@@ -22,7 +21,6 @@ import { BartenderLayer } from './layers/BartenderLayer.js';
 import { GuestLayer } from './layers/GuestLayer.js';
 import { BarItemsLayer } from './layers/BarItemsLayer.js';
 import { HudUI } from './ui/HudUI.js';
-import { NotepadUI } from './ui/NotepadUI.js';
 import { RadialMenuUI } from './ui/RadialMenuUI.js';
 import { PauseUI } from './ui/PauseUI.js';
 import { GlassModal } from './modals/GlassModal.js';
@@ -62,7 +60,6 @@ export class GamePlayScene extends Phaser.Scene {
     this.barState = new BarState();
     this.guestManager = new GuestManager();
     this.stationActions = new StationActions();
-    this.notepad = new Notepad();
     this.hud = new HUD();
     this.radialMenu = new RadialMenu();
 
@@ -99,7 +96,7 @@ export class GamePlayScene extends Phaser.Scene {
     // Wire up game logic contexts
     this.guestManager.setContext({
       bartender: this.bartender, barState: this.barState,
-      hud: this.hud, notepad: this.notepad, stats: this.stats,
+      hud: this.hud, stats: this.stats,
       settings: this.settings, seats: this.seats, radialMenu: this.radialMenu,
       posTab: this.pos.tab,
       walkThenAct: this.walkThenAct.bind(this),
@@ -128,7 +125,6 @@ export class GamePlayScene extends Phaser.Scene {
 
     // ── Phaser UI ──
     this.hudUI = new HudUI(this);
-    this.notepadUI = new NotepadUI(this);
     this.radialMenuUI = new RadialMenuUI(this);
     this.pauseUI = new PauseUI(this);
     this.glassModal = new GlassModal(this);
@@ -192,7 +188,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.guestLayer.update(this.guestManager.guests);
     this.barItemsLayer.update(this.barState);
     this.hudUI.update(this.hud, this.levelTimer, this.activeDuration);
-    this.notepadUI.update(this.notepad);
+    this.barLayer.updateClock(this.levelTimer, this.activeDuration);
 
     // Radial menu
     if (this.radialMenu.visible) {
