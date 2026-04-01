@@ -29,10 +29,10 @@ export class BarLayer {
     // Bar front edge — depth 6
     scene.add.rectangle(CANVAS_W / 2, BAR_TOP_Y + 26, 920, 10, 0x6b3410).setDepth(6);
 
-    // Stools at seat positions — depth 4: behind guests (depth 5)
+    // Stools — depth 4: only cushion top peeks above bar surface (depth 6 covers the rest)
     this.stools = [];
     for (const seat of seats) {
-      const stool = scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(4);
+      const stool = scene.add.image(seat.x, BAR_TOP_Y - 10, 'stool').setOrigin(0.5, 0).setDepth(4);
       this.stools.push(stool);
     }
 
@@ -99,7 +99,7 @@ export class BarLayer {
     this.stools.forEach(s => s.destroy());
     this.stools = [];
     for (const seat of seats) {
-      const stool = this.scene.add.image(seat.x, SEAT_Y + 5, 'stool').setDepth(4);
+      const stool = this.scene.add.image(seat.x, BAR_TOP_Y - 10, 'stool').setOrigin(0.5, 0).setDepth(4);
       this.stools.push(stool);
     }
   }

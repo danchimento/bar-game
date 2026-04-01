@@ -9,6 +9,7 @@ const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitt
  * Manages visual representations of guests.
  * Creates/destroys Phaser sprites as guests come and go.
  * Handles sipping animation: glass lifts from counter to guest's mouth and back.
+ * Icons pop up and fade (like memory flashes) instead of persistent bubbles.
  */
 export class GuestLayer {
   constructor(scene) {
@@ -69,27 +70,26 @@ export class GuestLayer {
 
     const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(0.81).setDepth(5);
 
-    // Thought bubble behind indicator
-    const bubble = scene.add.graphics().setDepth(14);
-
-    // State indicator (sprite icon)
-    const indicator = scene.add.image(0, -30, 'icon_hourglass')
+    // State popup icon — pops up and fades on state change
+    const statePopup = scene.add.image(0, 0, 'icon_hourglass')
       .setOrigin(0.5).setDepth(15).setVisible(false).setScale(0.8);
 
-    // Order text above head
-    const orderText = scene.add.text(0, -50, '', {
-      fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#ffd54f',
-      backgroundColor: 'rgba(0,0,0,0.7)', padding: { x: 5, y: 2 },
-    }).setOrigin(0.5).setDepth(15).setVisible(false);
+    // Mood popup (heart / angry) — pops up and fades on mood change
+    const moodPopup = scene.add.image(0, 0, 'icon_angry')
+      .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
 
     // Sip glass graphic (for the drinking animation)
     const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
 
-    // Mood change popup (heart / angry)
-    const moodPopup = scene.add.image(0, 0, 'icon_angry')
-      .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
-
-    return { sprite, spriteIdx, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood, isSitting: false };
+    return {
+      sprite, spriteIdx,
+      statePopup, statePopupTimer: 0,
+      moodPopup, moodPopupTimer: 0,
+      sipGlass,
+      lastMood: guest.mood,
+      lastState: guest.state,
+      isSitting: false,
+    };
   }
 
   _syncVisual(vis, guest) {
@@ -123,49 +123,48 @@ export class GuestLayer {
       vis.sprite.setPosition(x, y);
     }
 
-    // Indicator icon + thought bubble (raised higher to avoid head overlap)
-    const iconKey = this._indicatorIcon(guest);
-    if (iconKey) {
-      const iconY = y - 46;
-      vis.indicator.setTexture(iconKey).setPosition(x, iconY).setVisible(true).setScale(0.8);
+    // The base Y for popups (above guest head)
+    const headY = vis.isSitting ? BAR_TOP_Y - 48 : y - 35;
 
-      // Draw thought bubble behind icon
-      vis.bubble.clear();
-      vis.bubble.fillStyle(0xffffff, 0.92);
-      vis.bubble.fillRoundedRect(x - 14, iconY - 12, 28, 24, 8);
-      // Small triangle pointer
-      vis.bubble.fillTriangle(x - 3, iconY + 12, x + 3, iconY + 12, x, iconY + 17);
-      vis.bubble.setVisible(true);
-    } else {
-      vis.indicator.setVisible(false);
-      vis.bubble.clear();
-      vis.bubble.setVisible(false);
+    // ── State change popup (pop up and fade like a memory flash) ──
+    if (guest.state !== vis.lastState) {
+      const iconKey = this._indicatorIcon(guest);
+      if (iconKey) {
+        vis.statePopup.setTexture(iconKey)
+          .setPosition(x, headY)
+          .setVisible(true).setAlpha(1).setScale(0.8);
+        vis.statePopupTimer = 2.0;
+      }
+      vis.lastState = guest.state;
     }
 
-    // Order text above head (above the bubble)
-    if (guest.orderRevealTimer > 0 && guest.currentDrink) {
-      const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
-      const orderY = iconKey ? y - 68 : y - 52;
-      vis.orderText.setText(drinkName).setPosition(x, orderY).setVisible(true);
-    } else {
-      vis.orderText.setVisible(false);
+    if (vis.statePopupTimer > 0) {
+      vis.statePopupTimer -= 1 / 60;
+      vis.statePopup.y -= 0.4;
+      vis.statePopup.setAlpha(Math.min(1, vis.statePopupTimer / 0.5));
+      if (vis.statePopupTimer <= 0) {
+        vis.statePopup.setVisible(false);
+      }
     }
 
-    // Mood change popup (heart on increase, angry on decrease)
+    // ── Mood change popup (heart on increase, angry on decrease) ──
     const moodDelta = guest.mood - vis.lastMood;
     if (moodDelta > 3) {
-      vis.moodPopup.setTexture('icon_heart').setPosition(x + 16, y - 30).setVisible(true).setAlpha(1);
+      vis.moodPopup.setTexture('icon_heart')
+        .setPosition(x + 16, headY)
+        .setVisible(true).setAlpha(1);
       vis.moodPopupTimer = 1.2;
     } else if (moodDelta < -3) {
-      vis.moodPopup.setTexture('icon_angry').setPosition(x + 16, y - 30).setVisible(true).setAlpha(1);
+      vis.moodPopup.setTexture('icon_angry')
+        .setPosition(x + 16, headY)
+        .setVisible(true).setAlpha(1);
       vis.moodPopupTimer = 1.2;
     }
     vis.lastMood = guest.mood;
 
     if (vis.moodPopupTimer > 0) {
-      vis.moodPopupTimer -= 1 / 60; // approximate dt
-      const popupY = vis.moodPopup.y - 0.5; // float upward
-      vis.moodPopup.setPosition(vis.moodPopup.x, popupY);
+      vis.moodPopupTimer -= 1 / 60;
+      vis.moodPopup.y -= 0.5;
       vis.moodPopup.setAlpha(Math.min(1, vis.moodPopupTimer / 0.3));
       if (vis.moodPopupTimer <= 0) {
         vis.moodPopup.setVisible(false);
@@ -264,11 +263,9 @@ export class GuestLayer {
 
   _destroyVisual(vis) {
     vis.sprite.destroy();
-    vis.bubble.destroy();
-    vis.indicator.destroy();
-    vis.orderText.destroy();
-    vis.sipGlass.destroy();
+    vis.statePopup.destroy();
     vis.moodPopup.destroy();
+    vis.sipGlass.destroy();
   }
 
   destroy() {
