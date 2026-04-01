@@ -26,11 +26,11 @@ export class StationLayer {
     for (const st of stations) {
       const spriteKey = this._spriteKey(st.id);
       const sprite = spriteKey
-        ? scene.add.image(st.x, STATION_Y, spriteKey).setDepth(3)
+        ? scene.add.image(st.x, STATION_Y, spriteKey).setScale(1.2).setDepth(3)
         : scene.add.rectangle(st.x, STATION_Y, st.width || 60, 60, 0x4a3728).setDepth(3);
 
       const label = scene.add.text(st.x, STATION_LABEL_Y, st.label, {
-        fontFamily: 'monospace', fontSize: '10px', color: '#999999',
+        fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#bbbbbb',
       }).setOrigin(0.5).setDepth(3);
 
       // Interactive zone covers station area

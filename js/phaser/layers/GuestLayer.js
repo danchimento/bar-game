@@ -64,8 +64,8 @@ export class GuestLayer {
 
     // State indicator (emoji)
     const indicator = scene.add.text(0, -30, '', {
-      fontFamily: 'serif', fontSize: '14px',
-    }).setOrigin(0.5).setDepth(6);
+      fontFamily: 'serif', fontSize: '20px',
+    }).setOrigin(0.5).setDepth(15);
 
     return { sprite, moodBar, moodFill, indicator };
   }

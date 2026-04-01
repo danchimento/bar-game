@@ -37,9 +37,7 @@
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   <script>
     if (typeof Phaser === 'undefined') {
-      showError('[FATAL] Phaser failed to load. Check that node_modules/phaser/dist/phaser.min.js exists and is served correctly.');
-    } else {
-      console.log('Phaser ' + Phaser.VERSION + ' loaded');
+      showError('[FATAL] Phaser failed to load from CDN.');
     }
   </script>
 </head>

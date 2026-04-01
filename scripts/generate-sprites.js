@@ -347,36 +347,58 @@ createSprite(28, 24, ({ px, row, rect, col }) => {
 }, 'station_glass_rack.png');
 
 // ============================================================
-// TAPS STATION (32x24)
+// TAPS STATION (40x32) — clear beer tap tower
 // ============================================================
-createSprite(32, 24, ({ px, row, rect, col }) => {
-  const PLATE = '#888890'; const PLD = '#686870'; const PLH = '#a8a8b0';
-  const HANDLE = '#e8c170'; const HND = '#c8a050';
-  const DRIP = '#666'; const DRIPD = '#555';
+createSprite(40, 32, ({ px, row, rect, col }) => {
+  const CHROME = '#b0b8c0'; const CHD = '#808890'; const CHH = '#d0d8e0';
+  const TOWER = '#888890'; const TWD = '#686870'; const TWH = '#a8a8b0';
+  const DRIP = '#555'; const DRIPH = '#666';
 
-  // Back plate
-  rect(0, 0, 32, 18, PLATE);
-  row(0, 0, 31, PLH); row(17, 0, 31, PLD);
-  col(0, 0, 17, PLD); col(31, 0, 17, PLH);
+  // Tower body (centered pillar)
+  rect(14, 0, 12, 20, TOWER);
+  col(14, 0, 19, TWD); col(25, 0, 19, TWH);
+  row(0, 14, 25, TWH);
+  // Tower cap
+  rect(12, 0, 16, 2, CHROME);
+  row(0, 12, 27, CHH);
 
-  // Three tap handles
-  for (const [tx, color] of [[6, '#f0c040'], [15, '#d4a020'], [24, '#3a1a0a']]) {
-    // Handle
-    rect(tx, 1, 4, 12, color);
-    col(tx, 1, 12, HND);
-    col(tx + 1, 1, 12, '#f0d088');
-    // Knob
-    row(0, tx, tx + 3, color);
-    // Spout
-    px(tx + 1, 13, PLATE); px(tx + 2, 13, PLATE);
-    px(tx + 1, 14, PLD); px(tx + 2, 14, PLD);
-    col(tx + 1, 15, 17, PLD); col(tx + 2, 15, 17, PLD);
+  // Three tap handles with distinct beer colors
+  const taps = [
+    { x: 6, color: '#f0c040', dark: '#c8a020' },   // gold lager
+    { x: 17, color: '#d4a020', dark: '#a87810' },   // amber
+    { x: 28, color: '#3a1a0a', dark: '#2a0a00' },   // dark porter
+  ];
+  for (const t of taps) {
+    // Handle (tall rounded shape)
+    rect(t.x, 2, 5, 14, t.color);
+    col(t.x, 3, 14, t.dark);
+    col(t.x + 1, 2, 14, t.color);
+    // Rounded knob on top
+    row(1, t.x, t.x + 4, t.color);
+    row(0, t.x + 1, t.x + 3, t.color);
+    px(t.x + 1, 0, t.dark);
+    // Chrome base/connector
+    rect(t.x, 15, 5, 2, CHROME);
+    row(15, t.x, t.x + 4, CHH);
+    // Spout pointing down
+    rect(t.x + 1, 17, 3, 5, CHROME);
+    col(t.x + 1, 17, 21, CHD);
+    col(t.x + 3, 17, 21, CHH);
+    // Spout tip
+    row(22, t.x + 1, t.x + 3, CHD);
   }
 
-  // Drip tray
-  rect(2, 19, 28, 4, DRIP);
-  row(19, 2, 29, '#777');
-  rect(4, 20, 24, 2, DRIPD);
+  // Drip tray (wide metal tray at bottom)
+  rect(2, 25, 36, 3, DRIP);
+  row(25, 2, 37, DRIPH);
+  rect(4, 26, 32, 1, '#444');
+  // Tray rim
+  rect(1, 24, 38, 1, CHROME);
+
+  // Drip tray grate lines
+  for (let x = 5; x < 36; x += 3) {
+    px(x, 26, '#4a4a4a');
+  }
 }, 'station_taps.png');
 
 // ============================================================

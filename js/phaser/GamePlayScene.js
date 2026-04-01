@@ -139,9 +139,28 @@ export class GamePlayScene extends Phaser.Scene {
     // ── Input wiring ──
     this._setupInput();
 
-    // ── Global pointerup to stop pours ──
+    // ── Global pointer handlers ──
+    this.input.on('pointermove', (ptr) => {
+      if (this.radialMenu.visible && this.radialMenu.dragging) {
+        this.radialMenu.updateHover(ptr.x, ptr.y);
+        this.radialMenuUI.redraw();
+      }
+    });
+
     this.input.on('pointerup', () => {
       if (this.barState.activePour) this.stopPour();
+
+      // Radial menu: select hovered option on release and close
+      if (this.radialMenu.visible) {
+        const idx = this.radialMenu.hoveredIndex;
+        if (idx >= 0) {
+          const opt = this.radialMenu.options[idx];
+          if (opt && opt.action && !opt.disabled && !opt.pourKey) {
+            opt.action();
+          }
+        }
+        this.radialMenu.close();
+      }
     });
   }
 

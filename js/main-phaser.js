@@ -1,11 +1,9 @@
-/* global Phaser, showError */
+/* global Phaser */
 import { CANVAS_W, CANVAS_H } from './constants.js';
 import { BootScene } from './phaser/BootScene.js';
 import { TitleScene } from './phaser/TitleScene.js';
 import { GamePlayScene } from './phaser/GamePlayScene.js';
 import { LevelCompleteScene } from './phaser/LevelCompleteScene.js';
-
-showError('[INFO] main-phaser.js loaded OK — starting Phaser...');
 
 // Prevent context menus and selection on long-press
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -23,8 +21,10 @@ const config = {
   parent: document.body,
   backgroundColor: '#1a1a2e',
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: CANVAS_W,
+    height: CANVAS_H,
   },
   scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene],
 };
