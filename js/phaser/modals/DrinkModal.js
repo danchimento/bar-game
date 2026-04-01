@@ -1,5 +1,6 @@
 import { CANVAS_W, CANVAS_H } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
+import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
  * Drink selection and pouring modal. Handles beer taps, wine, and mixers.
@@ -12,6 +13,13 @@ export class DrinkModal {
     this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
     this.drinkButtons = [];
     this.pouringIndex = -1;
+    this.glassGfx = scene.add.graphics().setDepth(72);
+    this.glassPreviewX = 0;
+    this.glassPreviewY = 0;
+    this.pourStreamGfx = scene.add.graphics().setDepth(71);
+    this.noGlassText = null;
+    this._modalType = null;
+    this._panelPy = 0;
   }
 
   show(drinkModalState) {
@@ -24,6 +32,74 @@ export class DrinkModal {
     this.container.removeAll(true);
     this.drinkButtons = [];
     this.pouringIndex = -1;
+    this.glassGfx.clear();
+    this.pourStreamGfx.clear();
+    if (this.noGlassText) { this.noGlassText.destroy(); this.noGlassText = null; }
+    if (this._fillLabel) { this._fillLabel.destroy(); this._fillLabel = null; }
+  }
+
+  /** Call each frame while visible to update glass fill preview and pour stream */
+  update(barState, drinkModalState) {
+    this.glassGfx.clear();
+    this.pourStreamGfx.clear();
+
+    if (!this.container.visible) return;
+
+    const glass = barState.carriedGlass;
+    const gx = this.glassPreviewX;
+    const gy = this.glassPreviewY;
+
+    if (!glass) {
+      // Show "no glass" warning
+      if (!this.noGlassText || !this.noGlassText.active) {
+        this.noGlassText = this.scene.add.text(gx, gy - 20, 'Pick up a glass first!', {
+          fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#ff6666',
+          backgroundColor: '#1a1a2e', padding: { x: 8, y: 4 },
+        }).setOrigin(0.5).setDepth(73);
+      }
+      this.noGlassText.setPosition(gx, gy - 20).setVisible(true);
+      return;
+    }
+
+    if (this.noGlassText) this.noGlassText.setVisible(false);
+
+    // Draw the glass with its current fill level
+    const fillPct = glass.totalFill;
+    const liquidColor = getLiquidColor(glass.layers);
+    drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.0);
+
+    // Fill percentage label
+    const pctText = `${Math.round(fillPct * 100)}%`;
+    // Reuse or create text (we'll just draw it as graphics text isn't ideal, use scene text)
+    if (!this._fillLabel || !this._fillLabel.active) {
+      this._fillLabel = this.scene.add.text(gx, gy + 6, '', {
+        fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#ffffff',
+      }).setOrigin(0.5).setDepth(73);
+    }
+    this._fillLabel.setText(pctText).setPosition(gx, gy + 6).setVisible(true);
+
+    // Pour stream animation when actively pouring
+    if (barState.activePour && drinkModalState.pouringIndex >= 0) {
+      const pourColor = parseInt(
+        (DRINKS[barState.activePour.drinkKey]?.color || '#f0c040').replace('#', ''), 16
+      );
+      // Animate drips from spout to glass
+      const time = this.scene.time.now;
+      const dripPhase = (time % 200) / 200;
+
+      this.pourStreamGfx.fillStyle(pourColor, 0.8);
+      // Stream from above
+      const streamX = gx;
+      const streamTop = gy - 40;
+      const streamBot = gy - 28;
+      this.pourStreamGfx.fillRect(streamX - 1.5, streamTop, 3, streamBot - streamTop);
+
+      // Drip drops
+      for (let i = 0; i < 3; i++) {
+        const dropY = streamTop + ((dripPhase + i * 0.33) % 1) * (streamBot - streamTop + 10);
+        this.pourStreamGfx.fillCircle(streamX + (i % 2 === 0 ? -1 : 1), dropY, 1.5);
+      }
+    }
   }
 
   get visible() { return this.container.visible; }
@@ -83,6 +159,17 @@ export class DrinkModal {
     } else {
       this._buildDrinkButtons(items, modal, startX, py, tapSpacing, isWine);
     }
+
+    // Glass preview area (left side of panel)
+    this.glassPreviewX = px + 45;
+    this.glassPreviewY = py + ph - 40;
+    this._modalType = modal.type;
+    this._panelPy = py;
+
+    // "Your glass" label
+    this.container.add(this.scene.add.text(px + 45, py + ph - 75, 'Your Glass', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#888888',
+    }).setOrigin(0.5));
 
     // Close button
     const closeBtn = this.scene.add.rectangle(px + pw - 25, py + 18, 30, 24, 0xf44336)
@@ -221,5 +308,11 @@ export class DrinkModal {
     }
   }
 
-  destroy() { this.container.destroy(true); }
+  destroy() {
+    this.container.destroy(true);
+    this.glassGfx.destroy();
+    this.pourStreamGfx.destroy();
+    if (this.noGlassText) this.noGlassText.destroy();
+    if (this._fillLabel) this._fillLabel.destroy();
+  }
 }

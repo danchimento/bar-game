@@ -1,27 +1,29 @@
 import { SEATS, BAR_TOP_Y, SEAT_Y, SERVICE_MAT_Y } from '../../constants.js';
+import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
  * Dynamic bar items: dirty seat markers, cash on bar, drinks at seats, service mat drinks.
+ * Drinks at seats now render as actual glass shapes with fill levels.
  */
 export class BarItemsLayer {
   constructor(scene) {
     this.scene = scene;
     this.dirtySprites = new Map();
     this.cashSprites = new Map();
-    this.drinkSprites = new Map();
-    this.matSprites = [];
+    this.drinkGfx = scene.add.graphics().setDepth(3);
+    this.matGfx = scene.add.graphics().setDepth(3);
+    this.matZones = [];
   }
 
   /** Call every frame with barState */
   update(barState) {
     this._syncDirtySeats(barState.dirtySeats);
     this._syncCash(barState.cashOnBar);
-    this._syncDrinksAtSeats(barState.drinksAtSeats);
-    this._syncServiceMat(barState.serviceMat);
+    this._drawDrinksAtSeats(barState.drinksAtSeats);
+    this._drawServiceMat(barState.serviceMat);
   }
 
   _syncDirtySeats(dirtySeats) {
-    // Add missing
     for (const seatId of dirtySeats) {
       if (!this.dirtySprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
@@ -32,7 +34,6 @@ export class BarItemsLayer {
         this.dirtySprites.set(seatId, { sp, zone });
       }
     }
-    // Remove cleared
     for (const [id, obj] of this.dirtySprites) {
       if (!dirtySeats.has(id)) {
         obj.sp.destroy(); obj.zone.destroy();
@@ -60,45 +61,60 @@ export class BarItemsLayer {
     }
   }
 
-  _syncDrinksAtSeats(drinksAtSeats) {
-    // Simple: show a glass icon at seats that have drinks
-    const activeIds = new Set();
+  _drawDrinksAtSeats(drinksAtSeats) {
+    this.drinkGfx.clear();
     for (const [seatId, glasses] of drinksAtSeats) {
       if (glasses.length === 0) continue;
-      activeIds.add(seatId);
-      if (!this.drinkSprites.has(seatId) && SEATS[seatId]) {
-        const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x, BAR_TOP_Y - 8, 'glass_pint')
-          .setScale(0.5).setDepth(2);
-        this.drinkSprites.set(seatId, sp);
-      }
-    }
-    for (const [id, sp] of this.drinkSprites) {
-      if (!activeIds.has(id)) {
-        sp.destroy();
-        this.drinkSprites.delete(id);
+      const seat = SEATS[seatId];
+      if (!seat) continue;
+
+      // Draw each glass at the seat, offset slightly for multiple
+      for (let i = 0; i < glasses.length; i++) {
+        const glass = glasses[i];
+        const offsetX = (i - (glasses.length - 1) / 2) * 14;
+        const gx = seat.x + offsetX;
+        const gy = BAR_TOP_Y - 2;
+        const fillPct = glass.totalFill;
+        const liquidColor = getLiquidColor(glass.layers);
+        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.45);
       }
     }
   }
 
-  _syncServiceMat(serviceMat) {
-    // Rebuild each frame (service mat is small)
-    this.matSprites.forEach(s => s.destroy());
-    this.matSprites = [];
+  _drawServiceMat(serviceMat) {
+    this.matGfx.clear();
+    // Destroy old zones
+    this.matZones.forEach(z => z.destroy());
+    this.matZones = [];
 
     for (const drink of serviceMat) {
-      const sp = this.scene.add.image(drink.x, SERVICE_MAT_Y + 13, 'glass_pint')
-        .setScale(0.45).setDepth(2);
-      sp.setInteractive({ useHandCursor: true });
-      sp.on('pointerdown', () => this.scene.events.emit('mat-drink-tap', drink));
-      this.matSprites.push(sp);
+      const gx = drink.x;
+      const gy = SERVICE_MAT_Y + 10;
+
+      // Draw the glass with its contents
+      if (drink.glass) {
+        const fillPct = drink.glass.totalFill;
+        const liquidColor = getLiquidColor(drink.glass.layers);
+        drawGlass(this.matGfx, gx, gy, drink.glass.glassType, fillPct, liquidColor, 0.4);
+      } else {
+        // Fallback: simple rectangle
+        this.matGfx.fillStyle(0xc8d8e8, 0.5);
+        this.matGfx.fillRect(gx - 6, gy - 16, 12, 16);
+      }
+
+      // Interactive zone
+      const zone = this.scene.add.zone(gx, gy - 8, 30, 30)
+        .setInteractive({ useHandCursor: true }).setDepth(4);
+      zone.on('pointerdown', () => this.scene.events.emit('mat-drink-tap', drink));
+      this.matZones.push(zone);
     }
   }
 
   destroy() {
     for (const obj of this.dirtySprites.values()) { obj.sp.destroy(); obj.zone.destroy(); }
     for (const obj of this.cashSprites.values()) { obj.sp.destroy(); obj.zone.destroy(); }
-    for (const sp of this.drinkSprites.values()) sp.destroy();
-    this.matSprites.forEach(s => s.destroy());
+    this.drinkGfx.destroy();
+    this.matGfx.destroy();
+    this.matZones.forEach(z => z.destroy());
   }
 }

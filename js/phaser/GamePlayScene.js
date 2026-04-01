@@ -209,6 +209,9 @@ export class GamePlayScene extends Phaser.Scene {
       this.drinkModal.show(this.drinkModalState);
     }
     if (!this.drinkModalState.visible && this.drinkModal.visible) this.drinkModal.hide();
+    if (this.drinkModal.visible) {
+      this.drinkModal.update(this.barState, this.drinkModalState);
+    }
 
     if (this.prepModalState.visible && !this.prepModal.visible) {
       this.prepModal.show(this.barState.carriedGlass);

@@ -1,15 +1,16 @@
-import { GUEST_Y, GUEST_STATE, MOOD_MAX } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, MOOD_MAX, BAR_TOP_Y } from '../../constants.js';
 
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
 
 /**
  * Manages visual representations of guests.
  * Creates/destroys Phaser sprites as guests come and go.
+ * Handles sipping animation: glass lifts from counter to guest's mouth and back.
  */
 export class GuestLayer {
   constructor(scene) {
     this.scene = scene;
-    this.guestVisuals = new Map(); // guestId → { container, sprite, moodBar, moodFill, indicator }
+    this.guestVisuals = new Map(); // guestId → visual object
     this.waitingText = null;
   }
 
@@ -44,7 +45,6 @@ export class GuestLayer {
       }
     }
 
-    // Waiting count badge
     this._updateWaitingBadge(waitingCount);
   }
 
@@ -58,16 +58,18 @@ export class GuestLayer {
       scene.events.emit('guest-tap', guest);
     });
 
-    // Mood bar background
+    // Mood bar
     const moodBar = scene.add.rectangle(0, 18, 32, 4, 0x333333).setDepth(6);
     const moodFill = scene.add.rectangle(0, 18, 32, 4, 0x4caf50).setOrigin(0, 0.5).setDepth(6);
 
-    // State indicator (emoji)
-    const indicator = scene.add.text(0, -30, '', {
-      fontFamily: 'serif', fontSize: '20px',
-    }).setOrigin(0.5).setDepth(15);
+    // State indicator (sprite icon)
+    const indicator = scene.add.image(0, -30, 'icon_hourglass')
+      .setOrigin(0.5).setDepth(15).setVisible(false).setScale(0.8);
 
-    return { sprite, moodBar, moodFill, indicator };
+    // Sip glass graphic (for the drinking animation)
+    const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
+
+    return { sprite, moodBar, moodFill, indicator, sipGlass, sipGlassVisible: false };
   }
 
   _syncVisual(vis, guest) {
@@ -82,12 +84,76 @@ export class GuestLayer {
     vis.moodFill.setPosition(x - 16, y + 18).setSize(32 * moodPct, 4);
     vis.moodFill.setFillStyle(this._moodColor(moodPct));
 
-    // Indicator
-    vis.indicator.setPosition(x, y - 30).setText(this._indicatorEmoji(guest));
+    // Indicator icon
+    const iconKey = this._indicatorIcon(guest);
+    if (iconKey) {
+      vis.indicator.setTexture(iconKey).setPosition(x, y - 32).setVisible(true).setScale(0.8);
+    } else {
+      vis.indicator.setVisible(false);
+    }
+
+    // Sipping animation
+    this._updateSipAnimation(vis, guest);
 
     // Fade leaving guests
     const leaving = guest.state === GUEST_STATE.LEAVING || guest.state === GUEST_STATE.ANGRY_LEAVING;
     vis.sprite.setAlpha(leaving ? 0.5 : 1);
+  }
+
+  _updateSipAnimation(vis, guest) {
+    vis.sipGlass.clear();
+
+    if (!guest.sipping || guest.state !== GUEST_STATE.ENJOYING) {
+      vis.sipGlass.setVisible(false);
+      return;
+    }
+
+    vis.sipGlass.setVisible(true);
+
+    // sipAnimTimer goes from 1.0 → 0.0 over 1 second
+    // Animation phases:
+    //   0.0–0.3: glass lifts from counter to mouth (progress 0→1)
+    //   0.3–0.7: glass at mouth (tilted)
+    //   0.7–1.0: glass returns to counter (progress 1→0)
+    const elapsed = 1.0 - guest.sipAnimTimer;
+    let liftProgress;
+    if (elapsed < 0.3) {
+      liftProgress = elapsed / 0.3;
+    } else if (elapsed < 0.7) {
+      liftProgress = 1.0;
+    } else {
+      liftProgress = 1.0 - (elapsed - 0.7) / 0.3;
+    }
+    liftProgress = Math.max(0, Math.min(1, liftProgress));
+
+    const guestX = guest.x || 0;
+    const guestY = guest.y || GUEST_Y;
+
+    // Counter position → mouth position
+    const counterX = guestX + 8;
+    const counterY = BAR_TOP_Y - 2;
+    const mouthX = guestX + 6;
+    const mouthY = guestY - 5;
+
+    const glassX = counterX + (mouthX - counterX) * liftProgress;
+    const glassY = counterY + (mouthY - counterY) * liftProgress;
+
+    // Draw a small glass shape
+    const gfx = vis.sipGlass;
+    const s = 0.35;
+    const w = 12 * s, h = 18 * s;
+
+    // Tilt when at mouth
+    const tilt = liftProgress > 0.8 ? (liftProgress - 0.8) * 5 * 0.3 : 0;
+
+    gfx.lineStyle(1.5, 0xc8d8e8, 0.9);
+    // Simple glass rectangle (small, just visual indicator)
+    gfx.strokeRect(glassX - w / 2, glassY - h, w, h);
+
+    // Fill with amber color
+    gfx.fillStyle(0xf0c040, 0.7);
+    const fillH = h * 0.6; // partially filled
+    gfx.fillRect(glassX - w / 2 + 0.5, glassY - fillH, w - 1, fillH);
   }
 
   _moodColor(pct) {
@@ -96,16 +162,16 @@ export class GuestLayer {
     return 0xf44336;
   }
 
-  _indicatorEmoji(guest) {
+  _indicatorIcon(guest) {
     switch (guest.state) {
-      case GUEST_STATE.LOOKING: return '\u23f3';
-      case GUEST_STATE.READY_TO_ORDER: return '\ud83d\udc40';
-      case GUEST_STATE.WAITING_FOR_DRINK: return '\u23f3';
-      case GUEST_STATE.WANTS_ANOTHER: return '\ud83c\udf7a';
-      case GUEST_STATE.READY_TO_PAY: return '\ud83d\udcb5';
-      case GUEST_STATE.REVIEWING_CHECK: return '\ud83e\uddfe';
-      case GUEST_STATE.ANGRY_LEAVING: return '\ud83d\ude21';
-      default: return '';
+      case GUEST_STATE.LOOKING: return 'icon_eyes';
+      case GUEST_STATE.READY_TO_ORDER: return 'icon_eyes';
+      case GUEST_STATE.WAITING_FOR_DRINK: return 'icon_hourglass';
+      case GUEST_STATE.WANTS_ANOTHER: return 'icon_beer';
+      case GUEST_STATE.READY_TO_PAY: return 'icon_money';
+      case GUEST_STATE.REVIEWING_CHECK: return 'icon_receipt';
+      case GUEST_STATE.ANGRY_LEAVING: return 'icon_angry';
+      default: return null;
     }
   }
 
@@ -118,7 +184,7 @@ export class GuestLayer {
           padding: { x: 10, y: 4 },
         }).setOrigin(0.5).setDepth(6);
       }
-      this.waitingText.setText(`\u23f3 ${count} waiting`).setVisible(true);
+      this.waitingText.setText(`${count} waiting`).setVisible(true);
     } else if (this.waitingText) {
       this.waitingText.setVisible(false);
     }
@@ -129,6 +195,7 @@ export class GuestLayer {
     vis.moodBar.destroy();
     vis.moodFill.destroy();
     vis.indicator.destroy();
+    vis.sipGlass.destroy();
   }
 
   destroy() {

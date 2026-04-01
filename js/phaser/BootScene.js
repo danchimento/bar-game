@@ -45,6 +45,16 @@ export class BootScene extends Phaser.Scene {
     this.load.image('cash', 'assets/sprites/cash.png');
     this.load.image('spill', 'assets/sprites/spill.png');
     this.load.image('service_mat', 'assets/sprites/service_mat.png');
+
+    // Indicator icons (replace emoji text)
+    this.load.image('icon_hourglass', 'assets/sprites/icon_hourglass.png');
+    this.load.image('icon_eyes', 'assets/sprites/icon_eyes.png');
+    this.load.image('icon_money', 'assets/sprites/icon_money.png');
+    this.load.image('icon_angry', 'assets/sprites/icon_angry.png');
+    this.load.image('icon_beer', 'assets/sprites/icon_beer.png');
+    this.load.image('icon_receipt', 'assets/sprites/icon_receipt.png');
+    this.load.image('icon_thought', 'assets/sprites/icon_thought.png');
+    this.load.image('icon_dirty_glass', 'assets/sprites/icon_dirty_glass.png');
   }
 
   create() {

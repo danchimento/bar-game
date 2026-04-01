@@ -1,7 +1,8 @@
 import { WALK_TRACK_Y } from '../../constants.js';
+import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
- * Bartender sprite + carry indicator + busy progress bar.
+ * Bartender sprite + carried glass graphic + busy progress bar.
  * Syncs position from Bartender logic each frame.
  */
 export class BartenderLayer {
@@ -22,10 +23,11 @@ export class BartenderLayer {
       fontFamily: 'monospace', fontSize: '10px', color: '#e0e0e0',
     }).setOrigin(0.5).setDepth(11).setVisible(false);
 
-    // Carry indicator (emoji text above head)
-    this.carryLabel = scene.add.text(480, WALK_TRACK_Y - 45, '', {
-      fontFamily: 'serif', fontSize: '18px', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(11);
+    // Carry indicator — Graphics object for drawing glass
+    this.carryGfx = scene.add.graphics().setDepth(12);
+    // Fallback icon for non-glass items (check, dirty glass)
+    this.carryIcon = scene.add.image(480, WALK_TRACK_Y - 45, 'icon_dirty_glass')
+      .setOrigin(0.5).setDepth(12).setVisible(false).setScale(0.7);
   }
 
   /** Call every frame with the Bartender logic instance and barState */
@@ -37,16 +39,33 @@ export class BartenderLayer {
     this.sprite.setFlipX(!bartender.facingRight);
 
     // Carry indicator
+    this.carryGfx.clear();
+    this.carryIcon.setVisible(false);
+
     const carry = bartender.carrying;
     if (carry) {
-      let label = '';
-      if (carry === 'DIRTY_GLASS') label = '\ud83e\udee7';
-      else if (carry.startsWith('CHECK_')) label = '\ud83e\uddfe';
-      else if (carry.startsWith('GLASS_')) label = '\ud83e\udd43';
-      else if (carry.startsWith('DRINK_')) label = '\ud83c\udf7a';
-      this.carryLabel.setText(label).setPosition(x, WALK_TRACK_Y - 45).setVisible(true);
-    } else {
-      this.carryLabel.setVisible(false);
+      const glassY = WALK_TRACK_Y - 28;
+
+      if (carry === 'DIRTY_GLASS') {
+        this.carryIcon.setTexture('icon_dirty_glass').setPosition(x, WALK_TRACK_Y - 42).setVisible(true);
+      } else if (carry.startsWith('CHECK_')) {
+        this.carryIcon.setTexture('icon_receipt').setPosition(x, WALK_TRACK_Y - 42).setVisible(true);
+      } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
+        // Draw the actual glass with fill level
+        const glass = barState.carriedGlass;
+        if (glass) {
+          const fillPct = glass.totalFill;
+          const liquidColor = getLiquidColor(glass.layers);
+          drawGlass(this.carryGfx, x, glassY, glass.glassType, fillPct, liquidColor, 0.6);
+        } else {
+          // Fallback: empty glass sprite
+          const glassKey = carry.startsWith('GLASS_')
+            ? `glass_${carry.replace('GLASS_', '').toLowerCase()}`
+            : 'glass_pint';
+          this.carryIcon.setTexture(glassKey).setPosition(x, WALK_TRACK_Y - 42)
+            .setVisible(true).setScale(0.4);
+        }
+      }
     }
 
     // Busy progress bar
@@ -74,6 +93,7 @@ export class BartenderLayer {
     this.busyBarBg.destroy();
     this.busyBarFill.destroy();
     this.busyLabel.destroy();
-    this.carryLabel.destroy();
+    this.carryGfx.destroy();
+    this.carryIcon.destroy();
   }
 }
