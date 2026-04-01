@@ -44,9 +44,9 @@ export class GlassModal {
     this.container.removeAll(true);
     this._shelves = [];
 
-    const pw = 340, ph = 300;
+    const pw = 420, ph = 380;
     const px = (CANVAS_W - pw) / 2;
-    const py = (CANVAS_H - ph) / 2 + 20;
+    const py = (CANVAS_H - ph) / 2 + 10;
 
     // Dim overlay
     const dim = this.scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.6)
@@ -93,7 +93,7 @@ export class GlassModal {
     ];
 
     const shelfStartY = py + 50;
-    const shelfH = 75;
+    const shelfH = 100;
     const shelfLeft = px + 30;
     const shelfRight = px + pw - 30;
     const shelfW = shelfRight - shelfLeft;
@@ -118,7 +118,7 @@ export class GlassModal {
 
       if (hasType) {
         // Place glasses on shelf
-        const glassSpacing = Math.min(45, (shelfW - 20) / def.count);
+        const glassSpacing = Math.min(65, (shelfW - 20) / def.count);
         const totalGlassW = (def.count - 1) * glassSpacing;
         const glassStartX = CANVAS_W / 2 - totalGlassW / 2;
 
@@ -127,8 +127,8 @@ export class GlassModal {
           const gy = shelfY - 3; // bottom of glass sits on shelf
           shelfData.glasses.push({ x: gx, y: gy, picked: false, animY: 0 });
 
-          // Interactive zone for each glass
-          const zone = this.scene.add.zone(gx, gy - 15, 30, 35)
+          // Interactive zone for each glass — generous size for easy tapping
+          const zone = this.scene.add.zone(gx, gy - 25, 50, 55)
             .setInteractive({ useHandCursor: true });
           zone.on('pointerdown', () => this._pickGlass(def.glassKey, si, gi));
           this.container.add(zone);
@@ -183,14 +183,14 @@ export class GlassModal {
           // Animate upward
           const t = this._pickAnim.timer / this._pickAnim.duration;
           const ease = t * (2 - t); // ease-out
-          gy = g.y - 50 * ease;
+          gy = g.y - 70 * ease;
           alpha = 1 - t * 0.5;
         } else if (g.picked) {
           continue; // already picked, don't draw
         }
 
         this._glassGfx.setAlpha(alpha);
-        drawGlass(this._glassGfx, gx, gy, shelf.glassKey, 0, 0x888888, 0.9);
+        drawGlass(this._glassGfx, gx, gy, shelf.glassKey, 0, 0x888888, 1.5);
         this._glassGfx.setAlpha(1);
       }
     }

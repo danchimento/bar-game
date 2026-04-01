@@ -129,6 +129,63 @@ for (const gc of GUEST_COLORS) {
 }
 
 // ============================================================
+// GUEST SITTING (24x20) — upper body only, arms resting on bar
+// No legs visible (hidden behind bar counter)
+// ============================================================
+function drawGuestSitting({ px, row, rect, col }, SHRT, SRTS) {
+  const SK = '#d4a574'; const SKS = '#b8895e'; const HAIR = '#3a2518';
+  const HRH = '#5c3a28'; const EYE = '#181818';
+
+  // Hair
+  row(0, 8, 15, HAIR);
+  row(1, 7, 16, HAIR); px(10, 1, HRH); px(11, 1, HRH);
+  row(2, 7, 16, HAIR); px(9, 2, HRH);
+
+  // Face
+  for (let y = 3; y <= 9; y++) row(y, 8, 15, SK);
+  for (let y = 3; y <= 5; y++) { px(7, y, HAIR); px(16, y, HAIR); }
+  px(7, 6, SKS); px(16, 6, SKS);
+  px(10, 6, EYE); px(13, 6, EYE);
+  row(5, 10, 11, HAIR); row(5, 13, 14, HAIR);
+  px(12, 7, SKS);
+  px(11, 8, SKS); px(12, 8, '#c47050'); px(13, 8, SKS);
+  row(9, 9, 14, SKS);
+
+  // Neck
+  row(10, 10, 13, SK); row(11, 10, 13, SK);
+
+  // Shirt / torso
+  for (let y = 12; y <= 17; y++) row(y, 6, 17, SHRT);
+  for (let y = 13; y <= 17; y++) { px(7, y, SRTS); px(16, y, SRTS); }
+  px(10, 12, SK); px(11, 12, SK); px(12, 12, SK); px(13, 12, SK);
+
+  // Arms extending outward and forward (resting on bar)
+  for (let y = 13; y <= 15; y++) { px(5, y, SHRT); px(18, y, SHRT); }
+  // Forearms reaching further out
+  for (let y = 16; y <= 17; y++) { px(4, y, SHRT); px(19, y, SHRT); }
+  // Hands resting on bar surface
+  px(3, 18, SK); px(4, 18, SK); px(19, 18, SK); px(20, 18, SK);
+  px(3, 19, SK); px(4, 19, SK); px(19, 19, SK); px(20, 19, SK);
+}
+
+createSprite(24, 20, (ctx) => {
+  drawGuestSitting(ctx, '#4a6fa5', '#3a5f95');
+}, 'guest_sitting.png');
+
+// Sitting variants
+const GUEST_SITTING_COLORS = [
+  { name: 'guest_sitting_red.png', shirt: '#a54a4a', shadow: '#953a3a' },
+  { name: 'guest_sitting_green.png', shirt: '#4a8a4a', shadow: '#3a7a3a' },
+  { name: 'guest_sitting_purple.png', shirt: '#7a4a9a', shadow: '#6a3a8a' },
+  { name: 'guest_sitting_orange.png', shirt: '#c88040', shadow: '#b87030' },
+];
+for (const gc of GUEST_SITTING_COLORS) {
+  createSprite(24, 20, (ctx) => {
+    drawGuestSitting(ctx, gc.shirt, gc.shadow);
+  }, gc.name);
+}
+
+// ============================================================
 // BAR STOOL (16x20)
 // ============================================================
 createSprite(16, 20, ({ px, row, rect }) => {

@@ -3,6 +3,7 @@ import { DRINKS } from '../../data/menu.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
+const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitting_green', 'guest_sitting_purple', 'guest_sitting_orange'];
 
 /**
  * Manages visual representations of guests.
@@ -64,9 +65,9 @@ export class GuestLayer {
 
   _createGuestVisual(guest) {
     const scene = this.scene;
-    const spriteKey = GUEST_SPRITES[guest.id % GUEST_SPRITES.length];
+    const spriteIdx = guest.id % GUEST_SPRITES.length;
 
-    const sprite = scene.add.image(0, 0, spriteKey).setScale(0.81).setDepth(5);
+    const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(0.81).setDepth(5);
     sprite.setInteractive({ useHandCursor: true });
     sprite.on('pointerdown', () => {
       scene.events.emit('guest-tap', guest);
@@ -92,14 +93,39 @@ export class GuestLayer {
     const moodPopup = scene.add.image(0, 0, 'icon_angry')
       .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
 
-    return { sprite, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood };
+    return { sprite, spriteIdx, bubble, indicator, orderText, sipGlass, sipGlassVisible: false, moodPopup, moodPopupTimer: 0, lastMood: guest.mood, isSitting: false };
   }
 
   _syncVisual(vis, guest) {
     const x = guest.x || 0;
     const y = guest.y || GUEST_Y;
 
-    vis.sprite.setPosition(x, y);
+    // Swap between sitting and standing sprites based on state
+    const seated = guest.state === GUEST_STATE.SEATED ||
+                   guest.state === GUEST_STATE.LOOKING ||
+                   guest.state === GUEST_STATE.READY_TO_ORDER ||
+                   guest.state === GUEST_STATE.ORDER_TAKEN ||
+                   guest.state === GUEST_STATE.WAITING_FOR_DRINK ||
+                   guest.state === GUEST_STATE.ENJOYING ||
+                   guest.state === GUEST_STATE.WANTS_ANOTHER ||
+                   guest.state === GUEST_STATE.READY_TO_PAY ||
+                   guest.state === GUEST_STATE.REVIEWING_CHECK;
+    if (seated !== vis.isSitting) {
+      vis.isSitting = seated;
+      const key = seated
+        ? GUEST_SITTING_SPRITES[vis.spriteIdx]
+        : GUEST_SPRITES[vis.spriteIdx];
+      vis.sprite.setTexture(key);
+    }
+
+    // Sitting sprite: position bottom at bar top; standing: center at y
+    if (vis.isSitting) {
+      vis.sprite.setOrigin(0.5, 1.0);
+      vis.sprite.setPosition(x, BAR_TOP_Y);
+    } else {
+      vis.sprite.setOrigin(0.5, 0.5);
+      vis.sprite.setPosition(x, y);
+    }
 
     // Indicator icon + thought bubble (raised higher to avoid head overlap)
     const iconKey = this._indicatorIcon(guest);

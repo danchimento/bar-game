@@ -163,6 +163,7 @@ export class GamePlayScene extends Phaser.Scene {
   // ─── UPDATE LOOP ─────────────────────────────────
 
   update(time, delta) {
+    this._modalClosedThisFrame = false;
     if (this.paused) return;
 
     const dt = Math.min(delta / 1000, 0.05);
@@ -257,7 +258,7 @@ export class GamePlayScene extends Phaser.Scene {
 
     // Bar area tap → move bartender
     this.input.on('pointerdown', (ptr) => {
-      if (this.paused || this._anyModalOpen()) return;
+      if (this.paused || this._anyModalOpen() || this._modalClosedThisFrame) return;
       if (this.radialMenu.visible) return;
       const { x, y } = ptr;
       if (y > BAR_TOP_Y && y < STATION_Y + 40) {
@@ -292,6 +293,7 @@ export class GamePlayScene extends Phaser.Scene {
     // Glass modal close (X button or click outside)
     this.events.on('glass-modal-close', () => {
       this.glassModalState.visible = false;
+      this._modalClosedThisFrame = true;
     });
 
     // Drink modal events
@@ -301,6 +303,7 @@ export class GamePlayScene extends Phaser.Scene {
     });
     this.events.on('drink-modal-close', () => {
       this.stationActions.closeDrinkModal();
+      this._modalClosedThisFrame = true;
     });
 
     // Prep modal events
@@ -311,7 +314,7 @@ export class GamePlayScene extends Phaser.Scene {
     });
 
     // POS events
-    this.events.on('pos-close', () => { this.pos.visible = false; });
+    this.events.on('pos-close', () => { this.pos.visible = false; this._modalClosedThisFrame = true; });
     this.events.on('pos-select-seat', (seatId) => {
       this.pos.mode = 'SEAT_VIEW';
       this.pos.selectedSeat = seatId;

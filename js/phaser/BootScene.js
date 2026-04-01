@@ -28,6 +28,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('guest_green', 'assets/sprites/guest_green.png');
     this.load.image('guest_purple', 'assets/sprites/guest_purple.png');
     this.load.image('guest_orange', 'assets/sprites/guest_orange.png');
+    this.load.image('guest_sitting', 'assets/sprites/guest_sitting.png');
+    this.load.image('guest_sitting_red', 'assets/sprites/guest_sitting_red.png');
+    this.load.image('guest_sitting_green', 'assets/sprites/guest_sitting_green.png');
+    this.load.image('guest_sitting_purple', 'assets/sprites/guest_sitting_purple.png');
+    this.load.image('guest_sitting_orange', 'assets/sprites/guest_sitting_orange.png');
     this.load.image('stool', 'assets/sprites/stool.png');
     this.load.image('glass_pint', 'assets/sprites/glass_pint.png');
     this.load.image('glass_wine', 'assets/sprites/glass_wine.png');
