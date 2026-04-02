@@ -46,6 +46,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('station_prep', 'assets/sprites/station_prep.png');
     this.load.image('station_pos', 'assets/sprites/station_pos.png');
     this.load.image('station_trash', 'assets/sprites/station_trash.png');
+    this.load.image('station_menu', 'assets/sprites/station_menu.png');
     this.load.image('back_counter', 'assets/sprites/back_counter.png');
     this.load.image('cash', 'assets/sprites/cash.png');
     this.load.image('spill', 'assets/sprites/spill.png');

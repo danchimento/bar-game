@@ -238,6 +238,10 @@ export class GamePlayScene extends Phaser.Scene {
     // Station tap
     this.events.on('station-tap', (station) => {
       if (this._anyModalOpen()) return;
+      if (station.id === 'MENU') {
+        this.events.emit('pause-tap');
+        return;
+      }
       this.stationActions.handleStationTap(station);
     });
 

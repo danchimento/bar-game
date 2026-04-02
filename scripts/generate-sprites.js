@@ -632,6 +632,42 @@ createSprite(64, 16, ({ px, row, rect }) => {
 }, 'back_counter.png');
 
 // ============================================================
+// CLIPBOARD / MENU (16x24) — wooden clipboard with paper and clip
+// ============================================================
+createSprite(16, 24, ({ px, row, rect, col }) => {
+  const BOARD = '#8B6914'; const BOARDH = '#9B7924'; const BOARDD = '#6b5010';
+  const PAPER = '#e8e0d0'; const PAPERD = '#d0c8b8';
+  const CLIP = '#888'; const CLIPH = '#aaa'; const CLIPD = '#666';
+  const LINE = '#999';
+
+  // Clipboard board
+  rect(1, 3, 14, 20, BOARD);
+  col(1, 3, 22, BOARDD); col(14, 3, 22, BOARDH);
+  row(22, 2, 13, BOARDD);
+
+  // Metal clip at top
+  rect(4, 0, 8, 5, CLIP);
+  row(0, 5, 10, CLIPH);
+  row(4, 5, 10, CLIPD);
+  // Clip jaw
+  rect(5, 4, 6, 2, CLIPD);
+  row(5, 6, 9, CLIP);
+
+  // Paper sheet
+  rect(3, 5, 10, 16, PAPER);
+  col(3, 5, 20, PAPERD);
+  row(20, 4, 11, PAPERD);
+
+  // Text lines on paper
+  row(8, 5, 10, LINE);
+  row(10, 5, 11, LINE);
+  row(12, 5, 9, LINE);
+  row(14, 5, 11, LINE);
+  row(16, 5, 8, LINE);
+
+}, 'station_menu.png');
+
+// ============================================================
 // CASH BILLS (12x8)
 // ============================================================
 createSprite(12, 8, ({ px, row, rect }) => {

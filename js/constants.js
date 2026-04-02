@@ -79,6 +79,7 @@ export const STATIONS = [
   { id: 'WINE',        x: 510, label: 'Wine',  icon: '🍷' },
   { id: 'PREP',        x: 650, label: 'Prep',  icon: '🔪' },
   { id: 'POS',         x: 850, label: 'POS',   icon: '💻' },
+  { id: 'MENU',        x: 930, label: 'Menu',  icon: '📋' },
 ];
 
 // Bartender
