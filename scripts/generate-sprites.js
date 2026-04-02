@@ -595,41 +595,115 @@ createSprite(16, 24, ({ px, row, rect, col }) => {
 }, 'station_trash.png');
 
 // ============================================================
-// BAR TOP TILE (64x12) - repeatable bar surface
+// ZONE TILES — tileable textures for each spatial zone (64px wide)
 // ============================================================
-createSprite(64, 12, ({ px, row, rect }) => {
-  const BAR = '#8B4513'; const BARH = '#9B5523'; const BARD = '#6b3410';
 
-  // Main surface
-  rect(0, 0, 64, 8, BAR);
-  // Top edge highlight
-  row(0, 0, 63, BARH);
-  row(1, 0, 63, BARH);
-  // Front edge (darker)
-  rect(0, 8, 64, 4, BARD);
-  // Wood grain hints
-  for (let x = 4; x < 64; x += 8) {
-    px(x, 3, BARH); px(x + 1, 4, BARH); px(x + 2, 5, BARH);
-  }
-}, 'bar_top.png');
-
-// ============================================================
-// BACK COUNTER TILE (64x16) - repeatable counter surface
-// ============================================================
+// WALL TILE (64x16) — dark blue-gray bricks
 createSprite(64, 16, ({ px, row, rect }) => {
+  const BRICK = '#252540'; const BRIKH = '#2d2d50'; const MORTAR = '#1a1a30';
+
+  rect(0, 0, 64, 16, BRICK);
+  // Mortar lines (horizontal)
+  row(7, 0, 63, MORTAR);
+  row(15, 0, 63, MORTAR);
+  // Mortar lines (vertical — offset every other row for brick pattern)
+  for (let x = 15; x < 64; x += 32) {
+    px(x, 0, MORTAR); px(x, 1, MORTAR); px(x, 2, MORTAR);
+    px(x, 3, MORTAR); px(x, 4, MORTAR); px(x, 5, MORTAR); px(x, 6, MORTAR);
+  }
+  for (let x = 31; x < 64; x += 32) {
+    px(x, 8, MORTAR); px(x, 9, MORTAR); px(x, 10, MORTAR);
+    px(x, 11, MORTAR); px(x, 12, MORTAR); px(x, 13, MORTAR); px(x, 14, MORTAR);
+  }
+  // Subtle highlight on some bricks
+  px(5, 3, BRIKH); px(6, 3, BRIKH); px(40, 3, BRIKH); px(41, 3, BRIKH);
+  px(22, 11, BRIKH); px(23, 11, BRIKH); px(55, 11, BRIKH);
+}, 'tile_wall.png');
+
+// BAR TOP TILE (64x16) — warm polished wood
+createSprite(64, 16, ({ px, row, rect }) => {
+  const WOOD = '#8B4513'; const WOODH = '#9B5523'; const WOODD = '#7a3a0f';
+
+  rect(0, 0, 64, 16, WOOD);
+  // Top edge highlight (polished rim)
+  row(0, 0, 63, WOODH); row(1, 0, 63, WOODH);
+  // Bottom edge shadow
+  row(14, 0, 63, WOODD); row(15, 0, 63, WOODD);
+  // Wood grain — long horizontal streaks
+  for (let x = 2; x < 64; x += 9) {
+    px(x, 4, WOODH); px(x + 1, 5, WOODH); px(x + 2, 5, WOODH);
+    px(x + 3, 6, WOODH); px(x + 4, 6, WOODH);
+  }
+  for (let x = 5; x < 64; x += 11) {
+    px(x, 9, WOODD); px(x + 1, 10, WOODD); px(x + 2, 10, WOODD);
+    px(x + 3, 11, WOODD);
+  }
+  // Knot hint
+  px(30, 7, WOODD); px(31, 7, WOODD); px(30, 8, WOODD); px(31, 8, WOODD);
+}, 'tile_bar_top.png');
+
+// BAR CABINET TILE (64x16) — dark wood panel with vertical slats
+createSprite(64, 16, ({ px, row, rect, col }) => {
+  const PANEL = '#2a1a0e'; const PANELH = '#33220f'; const PANELD = '#1e1208';
+  const TRIM = '#4d3a28';
+
+  rect(0, 0, 64, 16, PANEL);
+  // Top trim
+  row(0, 0, 63, TRIM);
+  // Bottom shadow
+  row(15, 0, 63, PANELD);
+  // Vertical slat lines (subtle panel divisions)
+  for (let x = 15; x < 64; x += 16) {
+    col(x, 1, 14, PANELD);
+    col(x + 1, 1, 14, PANELH);
+  }
+  // Subtle wood grain
+  for (let x = 4; x < 64; x += 13) {
+    px(x, 6, PANELH); px(x + 1, 7, PANELH); px(x, 10, PANELH);
+  }
+}, 'tile_cabinet.png');
+
+// FLOOR TILE (64x16) — dark hardwood planks
+createSprite(64, 16, ({ px, row, rect }) => {
+  const PLANK = '#3d2b1b'; const PLANKH = '#4a3525'; const PLANKD = '#2e1e12';
+  const GAP = '#221408';
+
+  rect(0, 0, 64, 16, PLANK);
+  // Plank gaps (horizontal)
+  row(7, 0, 63, GAP);
+  row(15, 0, 63, GAP);
+  // Plank end joints (staggered)
+  for (let x = 20; x < 64; x += 40) {
+    px(x, 0, GAP); px(x, 1, GAP); px(x, 2, GAP); px(x, 3, GAP);
+    px(x, 4, GAP); px(x, 5, GAP); px(x, 6, GAP);
+  }
+  for (let x = 40; x < 64; x += 40) {
+    px(x, 8, GAP); px(x, 9, GAP); px(x, 10, GAP); px(x, 11, GAP);
+    px(x, 12, GAP); px(x, 13, GAP); px(x, 14, GAP);
+  }
+  // Wood grain highlights
+  for (let x = 3; x < 64; x += 10) {
+    px(x, 3, PLANKH); px(x + 1, 3, PLANKH);
+    px(x + 2, 11, PLANKH); px(x + 3, 11, PLANKH);
+  }
+  // Slight darkness variation
+  px(10, 2, PLANKD); px(11, 2, PLANKD); px(45, 12, PLANKD); px(46, 12, PLANKD);
+}, 'tile_floor.png');
+
+// COUNTER TILE (64x8) — back counter strip (compact)
+createSprite(64, 8, ({ px, row, rect }) => {
   const CNT = '#3a2a1a'; const CNTH = '#4d3a28'; const CNTD = '#2a1a0e';
 
-  rect(0, 0, 64, 16, CNT);
+  rect(0, 0, 64, 8, CNT);
+  // Top edge highlight
   row(0, 0, 63, CNTH);
-  row(1, 0, 63, CNTH);
-  row(14, 0, 63, CNTD);
-  row(15, 0, 63, CNTD);
+  // Bottom edge shadow
+  row(7, 0, 63, CNTD);
   // Wood grain
   for (let x = 3; x < 64; x += 7) {
-    px(x, 5, CNTH); px(x + 1, 6, CNTH); px(x + 2, 7, CNTH);
-    px(x + 3, 8, CNTH);
+    px(x, 3, CNTH); px(x + 1, 4, CNTH); px(x + 2, 4, CNTH);
   }
-}, 'back_counter.png');
+}, 'tile_counter.png');
 
 // ============================================================
 // CLIPBOARD / MENU (16x24) — wooden clipboard with paper and clip
