@@ -515,34 +515,59 @@ createSprite(28, 24, ({ px, row, rect, col }) => {
 }, 'station_prep.png');
 
 // ============================================================
-// POS TERMINAL (20x24)
+// POS TERMINAL — BACK VIEW (24x28) — what the bartender sees
+// Monitor back panel with stand, vents, cable ports, and a small receipt printer
 // ============================================================
-createSprite(20, 24, ({ px, row, rect, col }) => {
-  const BODY = '#222'; const BDH = '#333'; const SCREEN = '#0a2a0a';
-  const SCRNH = '#1a4a1a'; const STAND = '#333'; const BASE = '#444';
+createSprite(24, 28, ({ px, row, rect, col }) => {
+  const CASE = '#2a2a2a'; const CASEH = '#363636'; const CASED = '#1e1e1e';
+  const VENT = '#1a1a1a'; const STAND = '#333'; const BASE = '#3a3a3a';
+  const BASEH = '#484848'; const CABLE = '#222'; const PORT = '#0a0a0a';
+  const LABEL = '#444'; const LED = '#2a8a2a';
 
-  // Monitor body
-  rect(1, 0, 18, 16, BODY);
-  row(0, 2, 17, BDH);
-  col(1, 0, 15, BDH);
+  // Monitor back casing
+  rect(2, 0, 20, 18, CASE);
+  // Top edge highlight
+  row(0, 3, 20, CASEH);
+  // Side edges
+  col(2, 0, 17, CASEH); col(21, 0, 17, CASED);
 
-  // Screen
-  rect(3, 2, 14, 11, SCREEN);
-  row(2, 4, 15, SCRNH);
-  // Screen text hint
-  row(5, 5, 14, '#1a6a1a');
-  row(7, 5, 12, '#1a5a1a');
-  row(9, 5, 14, '#1a6a1a');
-  row(11, 5, 10, '#1a5a1a');
+  // Center raised bump (where the electronics are)
+  rect(7, 3, 10, 10, CASEH);
+  rect(8, 4, 8, 8, CASE);
 
-  // "POS" text
-  px(8, 4, '#4caf50'); px(9, 4, '#4caf50'); px(10, 4, '#4caf50');
+  // Vent slits on the back panel
+  row(5, 9, 14, VENT); row(7, 9, 14, VENT); row(9, 9, 14, VENT);
 
-  // Stand
-  rect(8, 16, 4, 4, STAND);
-  // Base
-  rect(4, 20, 12, 3, BASE);
-  row(20, 5, 14, '#555');
+  // Small label/sticker area
+  rect(9, 11, 6, 2, LABEL);
+
+  // Status LED
+  px(18, 2, LED); px(19, 2, '#1a6a1a');
+
+  // Cable ports at bottom of monitor
+  rect(6, 15, 3, 2, PORT); rect(11, 15, 3, 2, PORT); rect(16, 15, 3, 2, PORT);
+
+  // Stand / neck
+  rect(10, 18, 4, 4, STAND);
+  col(10, 18, 21, CASEH); col(13, 18, 21, CASED);
+
+  // Cables hanging from back (dangling down to counter)
+  col(7, 17, 21, CABLE); col(12, 17, 20, CABLE); col(17, 17, 21, CABLE);
+
+  // Base plate
+  rect(4, 22, 16, 3, BASE);
+  row(22, 5, 18, BASEH);
+  row(24, 5, 18, CASED);
+
+  // Receipt printer to the right — small box
+  rect(19, 14, 4, 8, '#3a3530');
+  row(14, 19, 22, '#4a4540'); // top edge
+  // Paper slot
+  row(15, 20, 21, '#d8d0c0');
+  // Receipt paper sticking out
+  rect(20, 12, 2, 3, '#e8e0d0');
+  px(20, 12, '#d8d0c0');
+
 }, 'station_pos.png');
 
 // ============================================================
