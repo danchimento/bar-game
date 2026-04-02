@@ -1,5 +1,6 @@
 import {
-  CANVAS_W, CANVAS_H, BAR_TOP_Y, WALK_TRACK_Y, SEAT_Y, STATION_Y,
+  CANVAS_W, CANVAS_H, BAR_TOP_Y, BAR_SURFACE_Y, BAR_FRONT_Y,
+  WALK_TRACK_Y, SEAT_Y, STATION_Y,
 } from '../../constants.js';
 
 /**
@@ -21,23 +22,18 @@ export class BarLayer {
     scene.add.rectangle(CANVAS_W / 2, WALK_TRACK_Y, 900, 30, 0x3c3228, 0.3).setDepth(0);
 
     // Bar top surface (tiled) — depth 6: in front of guests (depth 5)
-    const barY = BAR_TOP_Y + 4;
     for (let x = 20; x < CANVAS_W; x += 192) {
-      scene.add.image(x, barY, 'bar_top').setOrigin(0, 0).setDepth(6);
+      scene.add.image(x, BAR_SURFACE_Y, 'bar_top').setOrigin(0, 0).setDepth(6);
     }
 
     // Bar front edge — depth 6
-    scene.add.rectangle(CANVAS_W / 2, BAR_TOP_Y + 26, 920, 10, 0x6b3410).setDepth(6);
+    scene.add.rectangle(CANVAS_W / 2, BAR_FRONT_Y, 920, 10, 0x6b3410).setDepth(6);
 
-    // Stools — depth 4: positioned at bar surface so cushion peeks out
-    // Bar surface tiles start at barSurfaceY = BAR_TOP_Y + 4
-    // Guest bottom is at barSurfaceY, stool top is 2px above that
-    const barSurfaceY = BAR_TOP_Y + 4;
+    // Stools — depth 4: cushion peeks above bar surface, cropped at bar front
     this.stools = [];
     for (const seat of seats) {
-      const stool = scene.add.image(seat.x, barSurfaceY - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
-      // Crop so nothing extends past bar front edge bottom
-      const maxH = (BAR_TOP_Y + 30) - (barSurfaceY - 2);
+      const stool = scene.add.image(seat.x, BAR_SURFACE_Y - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
+      const maxH = (BAR_FRONT_Y + 5) - (BAR_SURFACE_Y - 2);
       stool.setCrop(0, 0, 48, maxH);
       this.stools.push(stool);
     }
@@ -104,10 +100,9 @@ export class BarLayer {
   rebuildStools(seats) {
     this.stools.forEach(s => s.destroy());
     this.stools = [];
-    const barSurfaceY = BAR_TOP_Y + 4;
     for (const seat of seats) {
-      const stool = this.scene.add.image(seat.x, barSurfaceY - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
-      const maxH = (BAR_TOP_Y + 30) - (barSurfaceY - 2);
+      const stool = this.scene.add.image(seat.x, BAR_SURFACE_Y - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
+      const maxH = (BAR_FRONT_Y + 5) - (BAR_SURFACE_Y - 2);
       stool.setCrop(0, 0, 48, maxH);
       this.stools.push(stool);
     }

@@ -1,4 +1,4 @@
-import { GUEST_Y, GUEST_STATE, BAR_TOP_Y } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
@@ -128,19 +128,17 @@ export class GuestLayer {
     }
 
     // Sitting sprite: hands rest ON the bar surface (depth 6 covers anything below)
-    // barSurfaceY = where bar tiles start; push sprite down by HAND_OFFSET so
-    // the hand row aligns with the bar surface top
-    const barSurfaceY = BAR_TOP_Y + 4;
+    // Push sprite down by HAND_OFFSET so the hand row aligns with bar surface edge
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
-      vis.sprite.setPosition(x, barSurfaceY + HAND_OFFSET);
+      vis.sprite.setPosition(x, BAR_SURFACE_Y + HAND_OFFSET);
     } else {
       vis.sprite.setOrigin(0.5, 0.5);
       vis.sprite.setPosition(x, y);
     }
 
     // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? barSurfaceY + HAND_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
+    const spriteTop = vis.isSitting ? BAR_SURFACE_Y + HAND_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
     const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──

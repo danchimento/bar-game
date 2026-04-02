@@ -1,4 +1,4 @@
-import { SEATS, BAR_TOP_Y, SEAT_Y, SERVICE_MAT_Y } from '../../constants.js';
+import { SEATS, BAR_TOP_Y, SEAT_Y, SERVICE_MAT_Y, barY } from '../../constants.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
@@ -47,7 +47,7 @@ export class BarItemsLayer {
     for (const seatId of dirtySeats) {
       if (!this.dirtySprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x, SEAT_Y + 8, 'spill').setDepth(7);
+        const sp = this.scene.add.image(seat.x, barY(8), 'spill').setDepth(7);
         this.dirtySprites.set(seatId, { sp });
       }
     }
@@ -63,7 +63,7 @@ export class BarItemsLayer {
     for (const [seatId] of cashOnBar) {
       if (!this.cashSprites.has(seatId) && SEATS[seatId]) {
         const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x - 20, BAR_TOP_Y + 8, 'cash').setDepth(7);
+        const sp = this.scene.add.image(seat.x - 20, barY(6), 'cash').setDepth(7);
         this.cashSprites.set(seatId, { sp });
       }
     }
@@ -88,7 +88,7 @@ export class BarItemsLayer {
         const glass = glasses[i];
         const offsetX = (i - (glasses.length - 1) / 2) * 14;
         const gx = seat.x + offsetX;
-        const gy = BAR_TOP_Y - 2;
+        const gy = barY(10);  // ~10 inches from customer edge (about a foot in)
         const fillPct = glass.totalFill;
         const liquidColor = getLiquidColor(glass.layers);
         drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.8);
