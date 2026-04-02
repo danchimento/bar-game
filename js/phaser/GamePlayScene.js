@@ -241,14 +241,14 @@ export class GamePlayScene extends Phaser.Scene {
       this.stationActions.handleStationTap(station);
     });
 
-    // Station long-press → radial menu
-    this.events.on('station-longpress', (station) => {
-      if (this._anyModalOpen()) return;
-      const options = this.stationActions.getStationRadialOptions(station);
-      if (options.length > 0) {
-        this.radialMenu.open(station.x, STATION_Y - 40, options);
-      }
-    });
+    // Station long-press → radial menu (DISABLED — will be re-enabled as a skill later)
+    // this.events.on('station-longpress', (station) => {
+    //   if (this._anyModalOpen()) return;
+    //   const options = this.stationActions.getStationRadialOptions(station);
+    //   if (options.length > 0) {
+    //     this.radialMenu.open(station.x, STATION_Y - 40, options);
+    //   }
+    // });
 
     // Unified seat zone tap — handles guest interaction, cash, and bussing
     this.events.on('seat-zone-tap', (seatId) => {

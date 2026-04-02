@@ -10,10 +10,31 @@ import { ComponentViewerScene } from './phaser/ComponentViewerScene.js';
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('selectstart', e => e.preventDefault());
 
-// Lock to landscape if API available
-if (screen.orientation && screen.orientation.lock) {
-  screen.orientation.lock('landscape').catch(() => {});
+// Try to lock orientation on first user tap (requires fullscreen on most browsers)
+let orientationLocked = false;
+function tryLockLandscape() {
+  if (orientationLocked) return;
+  orientationLocked = true;
+
+  // Try fullscreen + orientation lock (works on Android Chrome)
+  const el = document.documentElement;
+  const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (requestFS) {
+    requestFS.call(el).then(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        return screen.orientation.lock('landscape').catch(() => {});
+      }
+    }).catch(() => {
+      // Fullscreen denied — try orientation lock alone
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    });
+  } else if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(() => {});
+  }
 }
+document.addEventListener('pointerdown', tryLockLandscape, { once: true });
 
 const config = {
   type: Phaser.AUTO,
@@ -27,7 +48,6 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: CANVAS_W,
     height: CANVAS_H,
-    orientation: Phaser.Scale.Orientation.LANDSCAPE,
   },
   scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene, ComponentViewerScene],
 };
