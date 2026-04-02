@@ -1,4 +1,4 @@
-import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
@@ -264,7 +264,7 @@ export class GuestLayer {
 
     // Counter position → mouth position
     const counterX = guestX + 8;
-    const counterY = BAR_TOP_Y - 2;
+    const counterY = barY(10);
     const mouthX = guestX + 6;
     const mouthY = guestY - 5;
 
