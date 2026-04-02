@@ -64,11 +64,6 @@ export class GlassModal {
         .setStrokeStyle(3, 0x5a4a38)
     );
 
-    // Title
-    this.container.add(this.scene.add.text(CANVAS_W / 2, py + 18, 'Glassware', {
-      fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold', color: '#c8b080',
-    }).setOrigin(0.5));
-
     // Close button
     const closeBtn = this.scene.add.rectangle(px + pw - 22, py + 16, 26, 22, 0xf44336)
       .setInteractive({ useHandCursor: true });
@@ -108,11 +103,6 @@ export class GlassModal {
         this.scene.add.rectangle(CANVAS_W / 2, shelfY, shelfW, 5, 0x5a4a30)
           .setStrokeStyle(1, 0x6a5a40)
       );
-
-      // Shelf label (left side)
-      this.container.add(this.scene.add.text(shelfLeft + 2, shelfY + 6, def.label, {
-        fontFamily: 'monospace', fontSize: '8px', color: '#8a7a60',
-      }));
 
       const shelfData = { glassKey: def.glassKey, shelfY, active: hasType, glasses: [] };
 

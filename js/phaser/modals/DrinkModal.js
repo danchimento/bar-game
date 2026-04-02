@@ -290,12 +290,7 @@ export class DrinkModal {
         .setStrokeStyle(2, borderColor)
     );
 
-    // Title
-    const titleColor = this._isBeer ? '#d4a020' : (this._isWine ? '#d4708a' : '#6ab4e8');
-    const titleText = this._isBeer ? 'Draft Beers' : (this._isWine ? 'Wines' : 'Soda Gun');
-    this.container.add(this.scene.add.text(CANVAS_W / 2, py + 18, titleText, {
-      fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold', color: titleColor,
-    }).setOrigin(0.5));
+    // (no title — clean modal)
 
     // Taps/bottles area starts offset to make room for glass rest area
     const tapsAreaLeft = px + 90;

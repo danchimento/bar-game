@@ -17,10 +17,13 @@ const STATION_TEMPLATES = {
   PREP:        { id: 'PREP',       label: 'Prep',  width: 100 },
   POS:         { id: 'POS',        label: 'POS',   width: 80 },
   TRASH:       { id: 'TRASH',      label: 'Trash', width: 60 },
+  MENU:        { id: 'MENU',       label: 'Menu',  width: 50 },
 };
 
-/** Build a stations array with automatic x positions from an ordered list of IDs */
+/** Build a stations array with automatic x positions from an ordered list of IDs.
+ *  MENU is always appended if not already present. */
 function layoutStations(ids, totalWidth = 900, marginLeft = 30) {
+  if (!ids.includes('MENU')) ids = [...ids, 'MENU'];
   const templates = ids.map(id => ({ ...STATION_TEMPLATES[id] }));
   const totalStationWidth = templates.reduce((s, t) => s + t.width, 0);
   const gap = (totalWidth - totalStationWidth) / (templates.length + 1);

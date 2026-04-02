@@ -1,11 +1,33 @@
 import { CANVAS_W, CANVAS_H, STATION_Y } from '../../constants.js';
 
+// Per-station placement config relative to the counter surface.
+// placement: 'on' = sits on counter (pushed into surface like bar items),
+//            'under' = below counter lip (in the cabinet area),
+//            'floor' = on the floor behind the counter (above it on screen),
+//            'flush' = fully overlaps the counter surface (sink)
+// baseRow: for 'on' placement, the pixel row (from bottom of sprite) where the
+//          base rests. Counter covers everything below this, like bar covers guest hands.
+//          Higher number = more of the sprite hidden by counter.
+const STATION_PLACEMENT = {
+  TAPS:        { placement: 'on', baseRow: 4 },
+  WINE:        { placement: 'on', baseRow: 4 },
+  PREP:        { placement: 'on', baseRow: 3 },
+  POS:         { placement: 'on', baseRow: 6 },   // stand + base hidden by counter
+  MENU:        { placement: 'on', baseRow: 4 },
+  SINK:        { placement: 'flush' },
+  GLASS_RACK:  { placement: 'under' },
+  DISHWASHER:  { placement: 'under' },
+  TRASH:       { placement: 'floor' },
+};
+
+const STATION_SCALE = 0.6;
+
 /**
  * Back counter with station sprites. Built as a wooden counter:
  * - Counter surface (tiled back_counter sprite)
  * - Front lip/edge
  * - Cabinet base extending to screen bottom
- * - Stations sitting ON the counter at reduced scale
+ * - Stations placed according to their placement type
  * Emits 'station-tap' and 'station-longpress' events on the scene.
  */
 export class StationLayer {
@@ -46,7 +68,7 @@ export class StationLayer {
       this.counterObjects.push(slat);
     }
 
-    // Counter surface — tiled back_counter sprite
+    // Counter surface — tiled back_counter sprite at depth 15
     for (let x = counterLeft; x < counterRight; x += 192) {
       const tile = scene.add.image(x, surfaceY, 'back_counter')
         .setOrigin(0, 0).setDepth(15);
@@ -60,17 +82,53 @@ export class StationLayer {
     ).setDepth(15);
     this.counterObjects.push(lip);
 
-    // Station sprites — depth 16, sitting ON the counter, no labels
-    const stationBottomY = surfaceY;
+    // Station sprites — placed according to type
     for (const st of stations) {
       const spriteKey = this._spriteKey(st.id);
-      const sprite = spriteKey
-        ? scene.add.image(st.x, stationBottomY, spriteKey)
-            .setOrigin(0.5, 1).setScale(0.6).setDepth(16)
-        : scene.add.rectangle(st.x, stationBottomY - 15, st.width || 30, 30, 0x4a3728).setDepth(16);
+      if (!spriteKey) continue;
 
-      // Interactive zone covers station area
-      const zone = scene.add.zone(st.x, STATION_Y, (st.width || 50) + 10, 70)
+      const config = STATION_PLACEMENT[st.id] || { placement: 'on', baseRow: 3 };
+      let sprite;
+      let zoneY = STATION_Y;
+
+      switch (config.placement) {
+        case 'on': {
+          // Sprite bottom pushed below counter surface by baseRow pixels (scaled)
+          // Counter surface (depth 15) covers the base, like bar covers guest hands
+          const overlap = (config.baseRow || 3) * STATION_SCALE;
+          sprite = scene.add.image(st.x, surfaceY + overlap, spriteKey)
+            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14); // behind counter surface
+          zoneY = surfaceY - 10;
+          break;
+        }
+        case 'flush': {
+          // Centered on the counter surface, depth 14 so surface partially covers
+          const midY = surfaceY + surfaceH / 2;
+          sprite = scene.add.image(st.x, midY, spriteKey)
+            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(14);
+          zoneY = surfaceY;
+          break;
+        }
+        case 'under': {
+          // Below the lip, in the cabinet area
+          sprite = scene.add.image(st.x, lipY + lipH + 2, spriteKey)
+            .setOrigin(0.5, 0).setScale(STATION_SCALE).setDepth(16);
+          zoneY = lipY + lipH + 10;
+          break;
+        }
+        case 'floor': {
+          // On the floor behind counter — sprite bottom at counter surface top
+          sprite = scene.add.image(st.x, surfaceY, spriteKey)
+            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14);
+          zoneY = surfaceY - 10;
+          break;
+        }
+      }
+
+      // Interactive zone — 10% larger than before
+      const zoneW = ((st.width || 50) + 10) * 1.1;
+      const zoneH = 77;
+      const zone = scene.add.zone(st.x, zoneY, zoneW, zoneH)
         .setInteractive({ useHandCursor: true })
         .setDepth(17);
 
