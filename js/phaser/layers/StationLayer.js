@@ -22,7 +22,7 @@ const COUNTER_BASE_ROWS = {
   TAPS: 4, WINE: 4, PREP: 3, POS: 6, MENU: 4,
 };
 
-const STATION_SCALE = 0.6;
+const STATION_SCALE = 0.72;
 
 /**
  * Back counter (single tiled strip at screen bottom) and station sprites.

@@ -11,7 +11,7 @@ const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitt
 // BAR_OVERLAP_ROW is the sprite row that aligns with BAR_SURFACE_Y —
 // everything below this row gets hidden behind the bar (depth 6 > depth 5).
 const SIT_SPRITE_H = 20;
-const SIT_SCALE = 0.81;
+const SIT_SCALE = 1.01;  // 25% larger than original 0.81
 const BAR_OVERLAP_ROW = 15; // bar covers rows 15-19 (lower torso + hands)
 // Push sprite down so BAR_OVERLAP_ROW lands at BAR_SURFACE_Y
 const BAR_OVERLAP_OFFSET = (SIT_SPRITE_H - BAR_OVERLAP_ROW) * SIT_SCALE;
@@ -79,15 +79,15 @@ export class GuestLayer {
     const scene = this.scene;
     const spriteIdx = guest.id % GUEST_SPRITES.length;
 
-    const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(0.81).setDepth(5);
+    const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(1.01).setDepth(5);
 
     // State popup icon — pops up and fades on state change
     const statePopup = scene.add.image(0, 0, 'icon_hourglass')
-      .setOrigin(0.5).setDepth(15).setVisible(false).setScale(0.8);
+      .setOrigin(0.5).setDepth(15).setVisible(false).setScale(0.96);
 
     // Mood popup (heart / angry) — pops up and fades on mood change
     const moodPopup = scene.add.image(0, 0, 'icon_angry')
-      .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.7);
+      .setOrigin(0.5).setDepth(16).setVisible(false).setScale(0.84);
 
     // Sip glass graphic (for the drinking animation)
     const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
@@ -152,7 +152,7 @@ export class GuestLayer {
       if (iconKey) {
         vis.statePopup.setTexture(iconKey)
           .setPosition(x, headY)
-          .setVisible(true).setAlpha(1).setScale(0.8);
+          .setVisible(true).setAlpha(1).setScale(0.96);
         vis.statePopupTimer = 2.0;
       }
       vis.stateRepeatTimer = 3.5; // first repeat after 3.5s
@@ -165,7 +165,7 @@ export class GuestLayer {
       if (vis.stateRepeatTimer <= 0) {
         vis.statePopup.setTexture(iconKey)
           .setPosition(x, headY)
-          .setVisible(true).setAlpha(1).setScale(0.8);
+          .setVisible(true).setAlpha(1).setScale(0.96);
         vis.statePopupTimer = 2.0;
         vis.stateRepeatTimer = 4.0; // repeat every 4s
       }
@@ -274,7 +274,7 @@ export class GuestLayer {
     // Draw the actual glass using GlassRenderer at the same scale as bar glasses
     const fillPct = glass.totalFill;
     const liquidColor = getLiquidColor(glass.layers);
-    drawGlass(vis.sipGlass, glassX, glassY, glass.glassType, fillPct, liquidColor, 0.8);
+    drawGlass(vis.sipGlass, glassX, glassY, glass.glassType, fillPct, liquidColor, 0.96);
   }
 
   _indicatorIcon(guest) {

@@ -598,26 +598,21 @@ createSprite(16, 24, ({ px, row, rect, col }) => {
 // ZONE TILES — tileable textures for each spatial zone (64px wide)
 // ============================================================
 
-// WALL TILE (64x16) — dark blue-gray bricks
+// WALL TILE (64x16) — dark interior wall with subtle wainscoting/paneling feel
 createSprite(64, 16, ({ px, row, rect }) => {
-  const BRICK = '#252540'; const BRIKH = '#2d2d50'; const MORTAR = '#1a1a30';
+  const BASE = '#252540'; const BASELT = '#2a2a48'; const BASEDK = '#20203a';
 
-  rect(0, 0, 64, 16, BRICK);
-  // Mortar lines (horizontal)
-  row(7, 0, 63, MORTAR);
-  row(15, 0, 63, MORTAR);
-  // Mortar lines (vertical — offset every other row for brick pattern)
-  for (let x = 15; x < 64; x += 32) {
-    px(x, 0, MORTAR); px(x, 1, MORTAR); px(x, 2, MORTAR);
-    px(x, 3, MORTAR); px(x, 4, MORTAR); px(x, 5, MORTAR); px(x, 6, MORTAR);
-  }
-  for (let x = 31; x < 64; x += 32) {
-    px(x, 8, MORTAR); px(x, 9, MORTAR); px(x, 10, MORTAR);
-    px(x, 11, MORTAR); px(x, 12, MORTAR); px(x, 13, MORTAR); px(x, 14, MORTAR);
-  }
-  // Subtle highlight on some bricks
-  px(5, 3, BRIKH); px(6, 3, BRIKH); px(40, 3, BRIKH); px(41, 3, BRIKH);
-  px(22, 11, BRIKH); px(23, 11, BRIKH); px(55, 11, BRIKH);
+  rect(0, 0, 64, 16, BASE);
+  // Very faint horizontal line — subtle paneling
+  for (let x = 0; x < 64; x += 2) { px(x, 15, BASEDK); }
+  // Sparse light variations for warmth
+  px(10, 5, BASELT); px(11, 5, BASELT);
+  px(35, 3, BASELT); px(36, 3, BASELT);
+  px(52, 9, BASELT); px(53, 9, BASELT);
+  px(20, 12, BASELT); px(21, 12, BASELT);
+  px(45, 7, BASELT);
+  // Faint shadow near bottom
+  for (let x = 1; x < 64; x += 3) { px(x, 14, BASEDK); }
 }, 'tile_wall.png');
 
 // BAR TOP TILE (64x16) — warm polished wood

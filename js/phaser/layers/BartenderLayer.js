@@ -12,7 +12,7 @@ export class BartenderLayer {
     // Bartender sprite
     this.sprite = scene.add.image(480, WALK_TRACK_Y, 'bartender')
       .setDepth(10)
-      .setScale(0.875);
+      .setScale(1.05);
 
     // Busy progress bar (hidden by default)
     this.busyBarBg = scene.add.rectangle(480, WALK_TRACK_Y + 35, 50, 5, 0x333333)
@@ -27,7 +27,7 @@ export class BartenderLayer {
     this.carryGfx = scene.add.graphics().setDepth(12);
     // Fallback icon for non-glass items (check, dirty glass)
     this.carryIcon = scene.add.image(480, WALK_TRACK_Y - 45, 'icon_dirty_glass')
-      .setOrigin(0.5).setDepth(12).setVisible(false).setScale(0.85);
+      .setOrigin(0.5).setDepth(12).setVisible(false).setScale(1.02);
   }
 
   /** Call every frame with the Bartender logic instance and barState */
@@ -64,7 +64,7 @@ export class BartenderLayer {
         if (glass) {
           const fillPct = glass.totalFill;
           const liquidColor = getLiquidColor(glass.layers);
-          drawGlass(this.carryGfx, itemX, itemY, glass.glassType, fillPct, liquidColor, 0.7);
+          drawGlass(this.carryGfx, itemX, itemY, glass.glassType, fillPct, liquidColor, 0.84);
         }
       }
     }

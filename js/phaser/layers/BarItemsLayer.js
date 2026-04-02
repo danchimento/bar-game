@@ -91,7 +91,7 @@ export class BarItemsLayer {
         const gy = barY(10);  // ~10 inches from customer edge (about a foot in)
         const fillPct = glass.totalFill;
         const liquidColor = getLiquidColor(glass.layers);
-        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.8);
+        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.96);
       }
     }
   }
@@ -110,7 +110,7 @@ export class BarItemsLayer {
       if (drink.glass) {
         const fillPct = drink.glass.totalFill;
         const liquidColor = getLiquidColor(drink.glass.layers);
-        drawGlass(this.matGfx, gx, gy, drink.glass.glassType, fillPct, liquidColor, 0.6);
+        drawGlass(this.matGfx, gx, gy, drink.glass.glassType, fillPct, liquidColor, 0.72);
       } else {
         // Fallback: simple rectangle
         this.matGfx.fillStyle(0xc8d8e8, 0.5);
