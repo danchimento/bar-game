@@ -5,6 +5,13 @@ import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
 const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitting_green', 'guest_sitting_purple', 'guest_sitting_orange'];
 
+// Sitting sprite geometry (24x20 source pixels, hands at rows 18-19)
+const SIT_SPRITE_H = 20;
+const SIT_SCALE = 0.81;
+const HAND_ROW = 18; // first row of hands (0-indexed)
+// How far below barSurfaceY to push the sprite so hands land on the bar
+const HAND_OFFSET = (SIT_SPRITE_H - HAND_ROW) * SIT_SCALE;
+
 /**
  * Manages visual representations of guests.
  * Creates/destroys Phaser sprites as guests come and go.
@@ -120,20 +127,21 @@ export class GuestLayer {
       vis.sprite.setTexture(key);
     }
 
-    // Sitting sprite: bottom aligned to bar surface (BAR_TOP_Y + 4 is where tiles start)
-    // Bar surface at depth 6 covers the very bottom of the sprite, so arms rest on the bar
+    // Sitting sprite: hands rest ON the bar surface (depth 6 covers anything below)
+    // barSurfaceY = where bar tiles start; push sprite down by HAND_OFFSET so
+    // the hand row aligns with the bar surface top
     const barSurfaceY = BAR_TOP_Y + 4;
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
-      vis.sprite.setPosition(x, barSurfaceY);
+      vis.sprite.setPosition(x, barSurfaceY + HAND_OFFSET);
     } else {
       vis.sprite.setOrigin(0.5, 0.5);
       vis.sprite.setPosition(x, y);
     }
 
     // The base Y for popups (above guest head)
-    const barSurfaceY2 = BAR_TOP_Y + 4;
-    const headY = vis.isSitting ? barSurfaceY2 - 48 : y - 35;
+    const spriteTop = vis.isSitting ? barSurfaceY + HAND_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
+    const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──
     const iconKey = this._indicatorIcon(guest);
