@@ -81,11 +81,17 @@ export class GuestLayer {
     // Sip glass graphic (for the drinking animation)
     const sipGlass = scene.add.graphics().setDepth(8).setVisible(false);
 
+    // Order text above head (shown when orderRevealTimer > 0)
+    const orderText = scene.add.text(0, 0, '', {
+      fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#ffd54f',
+      backgroundColor: 'rgba(0,0,0,0.7)', padding: { x: 5, y: 3 },
+    }).setOrigin(0.5).setDepth(15).setVisible(false);
+
     return {
       sprite, spriteIdx,
       statePopup, statePopupTimer: 0, stateRepeatTimer: 0,
       moodPopup, moodPopupTimer: 0,
-      sipGlass,
+      orderText, sipGlass,
       lastMood: guest.mood,
       lastState: guest.state,
       isSitting: false,
@@ -185,6 +191,17 @@ export class GuestLayer {
       }
     }
 
+    // ── Order text above head ──
+    if (guest.orderRevealTimer > 0 && guest.currentDrink) {
+      const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
+      const orderY = headY - 8;
+      vis.orderText.setText(drinkName).setPosition(x, orderY).setVisible(true);
+      // Fade out in the last 0.5s
+      vis.orderText.setAlpha(Math.min(1, guest.orderRevealTimer / 0.5));
+    } else {
+      vis.orderText.setVisible(false);
+    }
+
     // Sipping animation
     this._updateSipAnimation(vis, guest);
 
@@ -279,6 +296,7 @@ export class GuestLayer {
     vis.sprite.destroy();
     vis.statePopup.destroy();
     vis.moodPopup.destroy();
+    vis.orderText.destroy();
     vis.sipGlass.destroy();
   }
 

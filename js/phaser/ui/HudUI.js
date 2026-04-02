@@ -1,4 +1,4 @@
-import { CANVAS_W } from '../../constants.js';
+import { CANVAS_W, CANVAS_H } from '../../constants.js';
 
 /**
  * HUD: tips display (top-left), clock (top-right), floating messages (top-center).
@@ -15,9 +15,9 @@ export class HudUI {
       fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: '#e0e0e0',
     }).setOrigin(1, 0).setDepth(50);
 
-    this.messageText = scene.add.text(CANVAS_W / 2, 47, '', {
-      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffc107',
-      backgroundColor: 'rgba(0,0,0,0.65)', padding: { x: 15, y: 5 },
+    this.messageText = scene.add.text(CANVAS_W / 2, CANVAS_H - 30, '', {
+      fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#ffc107',
+      backgroundColor: 'rgba(0,0,0,0.65)', padding: { x: 12, y: 4 },
     }).setOrigin(0.5).setDepth(50).setVisible(false);
 
     // Pause button
