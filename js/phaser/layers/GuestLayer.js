@@ -120,17 +120,20 @@ export class GuestLayer {
       vis.sprite.setTexture(key);
     }
 
-    // Sitting sprite: position bottom at bar top; standing: center at y
+    // Sitting sprite: bottom aligned to bar surface (BAR_TOP_Y + 4 is where tiles start)
+    // Bar surface at depth 6 covers the very bottom of the sprite, so arms rest on the bar
+    const barSurfaceY = BAR_TOP_Y + 4;
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
-      vis.sprite.setPosition(x, BAR_TOP_Y);
+      vis.sprite.setPosition(x, barSurfaceY);
     } else {
       vis.sprite.setOrigin(0.5, 0.5);
       vis.sprite.setPosition(x, y);
     }
 
     // The base Y for popups (above guest head)
-    const headY = vis.isSitting ? BAR_TOP_Y - 48 : y - 35;
+    const barSurfaceY2 = BAR_TOP_Y + 4;
+    const headY = vis.isSitting ? barSurfaceY2 - 48 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──
     const iconKey = this._indicatorIcon(guest);
