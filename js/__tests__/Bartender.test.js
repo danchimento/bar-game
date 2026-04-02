@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Bartender } from '../entities/Bartender.js';
+import { BAR_LEFT, BAR_RIGHT } from '../constants.js';
 
 describe('Bartender', () => {
   let bt;
@@ -34,10 +35,10 @@ describe('Bartender', () => {
 
     it('clamps to bar boundaries', () => {
       bt.moveTo(-100);
-      expect(bt.targetX).toBe(30); // BAR_LEFT
+      expect(bt.targetX).toBe(BAR_LEFT);
 
       bt.moveTo(2000);
-      expect(bt.targetX).toBe(930); // BAR_RIGHT
+      expect(bt.targetX).toBe(BAR_RIGHT);
     });
 
     it('does not move when busy', () => {

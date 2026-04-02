@@ -1,34 +1,36 @@
-import { CANVAS_W, CANVAS_H, STATION_Y } from '../../constants.js';
+import {
+  CANVAS_W, BAR_LEFT, BAR_RIGHT, BAR_MAX_W,
+  BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
+  COUNTER_Y, COUNTER_H, COUNTER_SURFACE_Y,
+} from '../../constants.js';
 
-// Per-station placement config relative to the counter surface.
-// placement: 'on' = sits on counter (pushed into surface like bar items),
-//            'under' = below counter lip (in the cabinet area),
-//            'floor' = on the floor behind the counter (above it on screen),
-//            'flush' = fully overlaps the counter surface (sink)
-// baseRow: for 'on' placement, the pixel row (from bottom of sprite) where the
-//          base rests. Counter covers everything below this, like bar covers guest hands.
-//          Higher number = more of the sprite hidden by counter.
+// Where each station lives physically
+// 'on_counter'  — sits on the back counter, base pushed into surface
+// 'in_counter'  — embedded in the back counter (sink)
+// 'under_bar'   — inside the bar cabinets (below bar top, above floor)
 const STATION_PLACEMENT = {
-  TAPS:        { placement: 'on', baseRow: 4 },
-  WINE:        { placement: 'on', baseRow: 4 },
-  PREP:        { placement: 'on', baseRow: 3 },
-  POS:         { placement: 'on', baseRow: 6 },   // stand + base hidden by counter
-  MENU:        { placement: 'on', baseRow: 4 },
-  SINK:        { placement: 'flush' },
-  GLASS_RACK:  { placement: 'under' },
-  DISHWASHER:  { placement: 'under' },
-  TRASH:       { placement: 'floor' },
+  TAPS:        'on_counter',
+  WINE:        'on_counter',
+  PREP:        'on_counter',
+  POS:         'on_counter',
+  MENU:        'on_counter',
+  SINK:        'in_counter',
+  GLASS_RACK:  'under_bar',
+  DISHWASHER:  'under_bar',
+  TRASH:       'under_bar',
+};
+
+// How many source pixels of the sprite base to hide behind the counter surface
+// (like BAR_OVERLAP_ROW for guests)
+const COUNTER_BASE_ROWS = {
+  TAPS: 4, WINE: 4, PREP: 3, POS: 6, MENU: 4,
 };
 
 const STATION_SCALE = 0.6;
 
 /**
- * Back counter with station sprites. Built as a wooden counter:
- * - Counter surface (tiled back_counter sprite)
- * - Front lip/edge
- * - Cabinet base extending to screen bottom
- * - Stations placed according to their placement type
- * Emits 'station-tap' and 'station-longpress' events on the scene.
+ * Back counter (single wood-textured strip on the floor) and station sprites.
+ * Under-bar stations render in the bar cabinet area instead.
  */
 export class StationLayer {
   constructor(scene, stations) {
@@ -42,97 +44,60 @@ export class StationLayer {
     this.destroy();
     const scene = this.scene;
 
-    // Counter geometry — anchored to bottom of screen
+    // ── Back counter — single tiled wood strip ──
     const counterLeft = 10;
     const counterRight = CANVAS_W - 10;
-    const counterW = counterRight - counterLeft;
-    const surfaceY = STATION_Y - 16;        // top of counter surface
-    const surfaceH = 16;                      // back_counter tile height (at 3x scale)
-    const lipY = surfaceY + surfaceH;         // front edge below surface
-    const lipH = 4;
-    const cabinetTop = lipY + lipH;
-    const cabinetH = CANVAS_H - cabinetTop;  // extends to screen bottom
-
-    // Cabinet base — dark wood panel from lip to screen bottom
-    const cabinet = scene.add.rectangle(
-      counterLeft + counterW / 2, cabinetTop + cabinetH / 2,
-      counterW, cabinetH, 0x2a1a0e
-    ).setDepth(15);
-    this.counterObjects.push(cabinet);
-
-    // Cabinet face detail — subtle vertical slats
-    const slatColor = 0x33220f;
-    for (let x = counterLeft + 40; x < counterRight - 20; x += 80) {
-      const slat = scene.add.rectangle(x, cabinetTop + cabinetH / 2, 2, cabinetH - 4, slatColor, 0.4)
-        .setDepth(15);
-      this.counterObjects.push(slat);
-    }
-
-    // Counter surface — tiled back_counter sprite at depth 15
     for (let x = counterLeft; x < counterRight; x += 192) {
-      const tile = scene.add.image(x, surfaceY, 'back_counter')
+      const tile = scene.add.image(x, COUNTER_SURFACE_Y, 'back_counter')
         .setOrigin(0, 0).setDepth(15);
       this.counterObjects.push(tile);
     }
 
-    // Front lip / edge — slightly lighter wood strip
-    const lip = scene.add.rectangle(
-      counterLeft + counterW / 2, lipY + lipH / 2,
-      counterW, lipH, 0x4d3a28
-    ).setDepth(15);
-    this.counterObjects.push(lip);
+    // ── Station sprites ──
+    const barCenterX = (BAR_LEFT + BAR_RIGHT) / 2;
+    const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
 
-    // Station sprites — placed according to type
     for (const st of stations) {
       const spriteKey = this._spriteKey(st.id);
       if (!spriteKey) continue;
 
-      const config = STATION_PLACEMENT[st.id] || { placement: 'on', baseRow: 3 };
+      const placement = STATION_PLACEMENT[st.id] || 'on_counter';
       let sprite;
-      let zoneY = STATION_Y;
+      let zoneY;
 
-      switch (config.placement) {
-        case 'on': {
-          // Sprite bottom pushed below counter surface by baseRow pixels (scaled)
-          // Counter surface (depth 15) covers the base, like bar covers guest hands
-          const overlap = (config.baseRow || 3) * STATION_SCALE;
-          sprite = scene.add.image(st.x, surfaceY + overlap, spriteKey)
-            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14); // behind counter surface
-          zoneY = surfaceY - 10;
-          break;
-        }
-        case 'flush': {
-          // Centered on the counter surface, depth 14 so surface partially covers
-          const midY = surfaceY + surfaceH / 2;
-          sprite = scene.add.image(st.x, midY, spriteKey)
-            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(14);
-          zoneY = surfaceY;
-          break;
-        }
-        case 'under': {
-          // Below the lip, in the cabinet area
-          sprite = scene.add.image(st.x, lipY + lipH + 2, spriteKey)
-            .setOrigin(0.5, 0).setScale(STATION_SCALE).setDepth(16);
-          zoneY = lipY + lipH + 10;
-          break;
-        }
-        case 'floor': {
-          // On the floor behind counter — sprite bottom at counter surface top
-          sprite = scene.add.image(st.x, surfaceY, spriteKey)
+      switch (placement) {
+        case 'on_counter': {
+          // Sprite bottom pushed into counter by baseRows (counter covers the base)
+          const baseRows = COUNTER_BASE_ROWS[st.id] || 3;
+          const overlap = baseRows * STATION_SCALE;
+          sprite = scene.add.image(st.x, COUNTER_SURFACE_Y + overlap, spriteKey)
             .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14);
-          zoneY = surfaceY - 10;
+          zoneY = COUNTER_SURFACE_Y - 10;
+          break;
+        }
+        case 'in_counter': {
+          // Centered on the counter strip
+          sprite = scene.add.image(st.x, COUNTER_Y, spriteKey)
+            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(16);
+          zoneY = COUNTER_Y;
+          break;
+        }
+        case 'under_bar': {
+          // Inside the bar cabinets — centered vertically in cabinet area
+          sprite = scene.add.image(st.x, cabinetMidY, spriteKey)
+            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(7);
+          zoneY = cabinetMidY;
           break;
         }
       }
 
-      // Interactive zone — 10% larger than before
+      // Interactive zone — 10% larger
       const zoneW = ((st.width || 50) + 10) * 1.1;
       const zoneH = 77;
       const zone = scene.add.zone(st.x, zoneY, zoneW, zoneH)
         .setInteractive({ useHandCursor: true })
         .setDepth(17);
 
-      // Tap
       let longPressTimer = null;
       zone.on('pointerdown', () => {
         zone._tapPending = true;

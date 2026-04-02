@@ -26,18 +26,28 @@ export const BAR_TOP_Y = 290;
 export const SERVICE_MAT_Y = 330;
 export const WALK_TRACK_Y = 380;
 export const STATION_Y = 475;
-export const STATION_LABEL_Y = 515;
 
-// Bar edges
-export const BAR_LEFT = 30;
-export const BAR_RIGHT = 930;
+// Bar dimensions
+export const BAR_MAX_W = 860;             // max pixel width of the bar structure
+export const BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
+export const BAR_RIGHT = BAR_LEFT + BAR_MAX_W;
 
-// Bar surface geometry — used to place objects "on" the bar at realistic depth
-// The bar surface spans from its customer-side edge to the bartender-side front edge.
-// Moving an object further down-screen = further "into" the bar (away from customer).
-export const BAR_SURFACE_Y = BAR_TOP_Y + 4;         // top of bar tiles (customer edge)
-export const BAR_FRONT_Y = BAR_TOP_Y + 26;           // front edge (bartender side)
-export const BAR_DEPTH_PX = BAR_FRONT_Y - BAR_SURFACE_Y; // total bar depth in pixels (22px)
+// Bar surface geometry
+export const BAR_SURFACE_Y = BAR_TOP_Y + 4;
+export const BAR_FRONT_Y = BAR_TOP_Y + 26;
+export const BAR_DEPTH_PX = BAR_FRONT_Y - BAR_SURFACE_Y;
+
+// Bar cabinets — the enclosed space below the bar top (glass rack, trash, etc.)
+export const BAR_CABINET_TOP = BAR_FRONT_Y + 5;
+export const BAR_CABINET_BOTTOM = 420;
+
+// Floor — starts at bottom of bar cabinets, extends behind back counter
+export const FLOOR_Y = BAR_CABINET_BOTTOM;
+
+// Back counter — a single strip sitting on the floor
+export const COUNTER_Y = STATION_Y;           // center of the counter strip
+export const COUNTER_H = 20;                   // height of the counter strip
+export const COUNTER_SURFACE_Y = COUNTER_Y - COUNTER_H / 2;  // top edge
 
 // Real-world bar is ~30 inches deep. 1 inch ≈ BAR_DEPTH_PX / 30 pixels.
 export const BAR_INCH = BAR_DEPTH_PX / 30;
