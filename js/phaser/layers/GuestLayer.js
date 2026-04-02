@@ -5,12 +5,16 @@ import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
 const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitting_green', 'guest_sitting_purple', 'guest_sitting_orange'];
 
-// Sitting sprite geometry (24x20 source pixels, hands at rows 18-19)
+// Sitting sprite geometry (24x20 source pixels)
+// Torso rows 12-17, arms on outer cols 13-17, hands at rows 18-19.
+// We want the bar surface to overlap the lower torso so there's no gap.
+// BAR_OVERLAP_ROW is the sprite row that aligns with BAR_SURFACE_Y —
+// everything below this row gets hidden behind the bar (depth 6 > depth 5).
 const SIT_SPRITE_H = 20;
 const SIT_SCALE = 0.81;
-const HAND_ROW = 18; // first row of hands (0-indexed)
-// How far below barSurfaceY to push the sprite so hands land on the bar
-const HAND_OFFSET = (SIT_SPRITE_H - HAND_ROW) * SIT_SCALE;
+const BAR_OVERLAP_ROW = 15; // bar covers rows 15-19 (lower torso + hands)
+// Push sprite down so BAR_OVERLAP_ROW lands at BAR_SURFACE_Y
+const BAR_OVERLAP_OFFSET = (SIT_SPRITE_H - BAR_OVERLAP_ROW) * SIT_SCALE;
 
 /**
  * Manages visual representations of guests.
@@ -127,18 +131,18 @@ export class GuestLayer {
       vis.sprite.setTexture(key);
     }
 
-    // Sitting sprite: hands rest ON the bar surface (depth 6 covers anything below)
-    // Push sprite down by HAND_OFFSET so the hand row aligns with bar surface edge
+    // Sitting sprite: push down so BAR_OVERLAP_ROW aligns with bar surface.
+    // Bar surface (depth 6) covers the lower torso, making guest flush against bar.
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
-      vis.sprite.setPosition(x, BAR_SURFACE_Y + HAND_OFFSET);
+      vis.sprite.setPosition(x, BAR_SURFACE_Y + BAR_OVERLAP_OFFSET);
     } else {
       vis.sprite.setOrigin(0.5, 0.5);
       vis.sprite.setPosition(x, y);
     }
 
     // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? BAR_SURFACE_Y + HAND_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
+    const spriteTop = vis.isSitting ? BAR_SURFACE_Y + BAR_OVERLAP_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
     const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──
