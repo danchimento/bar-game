@@ -141,13 +141,19 @@ export class GuestManager {
         if (allEmpty && !guest._doneWithCurrentRound) {
           guest._doneWithCurrentRound = true;
           guest.drinksHad++;
-          const barClosed = levelTimer >= activeDuration;
-          if (guest.drinksHad < guest.maxDrinks && !barClosed) {
-            guest.lookingReason = 'another';
+
+          // If they already have their check, go straight to reviewing it
+          if (guest.hasCheck) {
+            guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
           } else {
-            guest.lookingReason = 'check';
+            const barClosed = levelTimer >= activeDuration;
+            if (guest.drinksHad < guest.maxDrinks && !barClosed) {
+              guest.lookingReason = 'another';
+            } else {
+              guest.lookingReason = 'check';
+            }
+            guest.transitionTo(GUEST_STATE.LOOKING);
           }
-          guest.transitionTo(GUEST_STATE.LOOKING);
         }
       }
 
@@ -521,7 +527,12 @@ export class GuestManager {
           if (!earlyCheck) hud.showMessage('Check delivered', 1);
         }
 
-        guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
+        // If guest is still enjoying a drink, let them finish it first
+        if (guest.state === GUEST_STATE.ENJOYING) {
+          guest.hasCheck = true;
+        } else {
+          guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
+        }
       });
     });
   }

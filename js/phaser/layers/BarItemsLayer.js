@@ -1,4 +1,4 @@
-import { SEATS, BAR_TOP_Y, SEAT_Y, SERVICE_MAT_Y, barY } from '../../constants.js';
+import { SEATS, BAR_SURFACE_Y, SEAT_Y, SERVICE_MAT_Y, barY } from '../../constants.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**

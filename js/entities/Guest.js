@@ -69,6 +69,7 @@ export class Guest {
     this.totalWaitTime = 0;                          // accumulated wait time across all rounds
     this.lookingReason = null;                       // 'first_order' | 'another' | 'check'
     this.sipAnimProgress = 0;                        // 0→1→0 glass lift animation
+    this.hasCheck = false;                           // true if check was delivered early (finish drink first)
   }
 
   getMoodLabel() {
