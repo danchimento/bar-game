@@ -48,6 +48,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('station_trash', 'assets/sprites/station_trash.png');
     this.load.image('station_menu', 'assets/sprites/station_menu.png');
     this.load.image('back_counter', 'assets/sprites/back_counter.png');
+    this.load.image('tile_wall', 'assets/sprites/tile_wall.png');
+    this.load.image('tile_bar_top', 'assets/sprites/tile_bar_top.png');
+    this.load.image('tile_cabinet', 'assets/sprites/tile_cabinet.png');
+    this.load.image('tile_floor', 'assets/sprites/tile_floor.png');
+    this.load.image('tile_counter', 'assets/sprites/tile_counter.png');
     this.load.image('cash', 'assets/sprites/cash.png');
     this.load.image('spill', 'assets/sprites/spill.png');
     this.load.image('service_mat', 'assets/sprites/service_mat.png');

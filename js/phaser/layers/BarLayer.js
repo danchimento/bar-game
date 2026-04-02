@@ -1,5 +1,5 @@
 import {
-  CANVAS_W, ZONES, COLORS, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
+  CANVAS_W, ZONES, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
   BAR_LEFT, BAR_RIGHT, BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
 } from '../../constants.js';
 
@@ -12,26 +12,26 @@ export class BarLayer {
     this.scene = scene;
     const barCenterX = (BAR_LEFT + BAR_RIGHT) / 2;
 
-    // ── Wall ──
+    // ── Wall — tiled brick texture ──
     const wall = ZONES.wall;
-    scene.add.rectangle(CANVAS_W / 2, wall.center, CANVAS_W, wall.height, COLORS.WALL)
-      .setDepth(0);
+    scene.add.tileSprite(0, wall.top, CANVAS_W, wall.height, 'tile_wall')
+      .setOrigin(0, 0).setDepth(0);
 
-    // ── Floor — full width, spans floor + counter zones ──
+    // ── Floor — tiled hardwood, spans floor + counter zones ──
     const floorTop = ZONES.floor.top;
     const floorH = ZONES.counter.bottom - floorTop;
-    scene.add.rectangle(CANVAS_W / 2, floorTop + floorH / 2, CANVAS_W, floorH, COLORS.FLOOR)
-      .setDepth(0);
+    scene.add.tileSprite(0, floorTop, CANVAS_W, floorH, 'tile_floor')
+      .setOrigin(0, 0).setDepth(0);
 
-    // ── Bar top surface ──
+    // ── Bar top surface — tiled polished wood ──
     const barTopH = BAR_FRONT_Y - BAR_SURFACE_Y + 5;
-    scene.add.rectangle(barCenterX, BAR_SURFACE_Y + barTopH / 2, BAR_MAX_W, barTopH, COLORS.BAR_TOP)
-      .setDepth(6);
+    scene.add.tileSprite(barCenterX - BAR_MAX_W / 2, BAR_SURFACE_Y, BAR_MAX_W, barTopH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(6);
 
-    // ── Bar cabinets ──
+    // ── Bar cabinets — tiled dark wood panel ──
     const cabinetH = BAR_CABINET_BOTTOM - BAR_CABINET_TOP;
-    scene.add.rectangle(barCenterX, BAR_CABINET_TOP + cabinetH / 2, BAR_MAX_W, cabinetH, COLORS.BAR_CABINET)
-      .setDepth(6);
+    scene.add.tileSprite(barCenterX - BAR_MAX_W / 2, BAR_CABINET_TOP, BAR_MAX_W, cabinetH, 'tile_cabinet')
+      .setOrigin(0, 0).setDepth(6);
     // Top trim
     scene.add.rectangle(barCenterX, BAR_CABINET_TOP, BAR_MAX_W, 2, 0x4d3a28)
       .setDepth(6);

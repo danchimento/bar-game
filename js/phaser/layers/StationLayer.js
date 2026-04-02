@@ -1,5 +1,5 @@
 import {
-  CANVAS_W, ZONES,
+  CANVAS_W,
   BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
   COUNTER_SURFACE_Y, COUNTER_Y, COUNTER_H,
 } from '../../constants.js';
@@ -41,11 +41,10 @@ export class StationLayer {
     const scene = this.scene;
 
     // ── Back counter — tiled wood strip flush with screen bottom ──
-    for (let x = 10; x < CANVAS_W - 10; x += 192) {
-      const tile = scene.add.image(x, COUNTER_SURFACE_Y, 'back_counter')
-        .setOrigin(0, 0).setDepth(15);
-      this.counterObjects.push(tile);
-    }
+    const counterH = COUNTER_H;
+    const counterTile = scene.add.tileSprite(0, COUNTER_SURFACE_Y, CANVAS_W, counterH, 'tile_counter')
+      .setOrigin(0, 0).setDepth(15);
+    this.counterObjects.push(counterTile);
 
     // ── Station sprites ──
     const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
