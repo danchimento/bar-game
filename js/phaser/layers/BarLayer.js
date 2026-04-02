@@ -21,13 +21,10 @@ export class BarLayer {
     // Walk track shadow
     scene.add.rectangle(CANVAS_W / 2, WALK_TRACK_Y, 900, 30, 0x3c3228, 0.3).setDepth(0);
 
-    // Bar top surface (tiled) — depth 6: in front of guests (depth 5)
-    for (let x = 20; x < CANVAS_W; x += 192) {
-      scene.add.image(x, BAR_SURFACE_Y, 'bar_top').setOrigin(0, 0).setDepth(6);
-    }
-
-    // Bar front edge — depth 6
-    scene.add.rectangle(CANVAS_W / 2, BAR_FRONT_Y, 920, 10, 0x6b3410).setDepth(6);
+    // Bar surface — single solid rectangle from BAR_SURFACE_Y to BAR_FRONT_Y, depth 6
+    const barHeight = BAR_FRONT_Y - BAR_SURFACE_Y + 5; // +5 for front edge thickness
+    scene.add.rectangle(CANVAS_W / 2, BAR_SURFACE_Y + barHeight / 2, 920, barHeight, 0x8B4513)
+      .setDepth(6);
 
     // Stools — depth 4: cushion peeks above bar surface, cropped at bar front
     this.stools = [];
