@@ -29,10 +29,14 @@ export class BarLayer {
     // Bar front edge — depth 6
     scene.add.rectangle(CANVAS_W / 2, BAR_TOP_Y + 26, 920, 10, 0x6b3410).setDepth(6);
 
-    // Stools — depth 4: only cushion top peeks above bar surface (depth 6 covers the rest)
+    // Stools — depth 4: cushion peeks above bar, bar surface (depth 6) covers the rest
+    // Crop so legs don't extend below bar front edge
     this.stools = [];
     for (const seat of seats) {
       const stool = scene.add.image(seat.x, BAR_TOP_Y - 10, 'stool').setOrigin(0.5, 0).setDepth(4);
+      // Stool image is 48x60. Crop to hide anything that extends past bar front edge
+      const maxH = (BAR_TOP_Y + 30) - (BAR_TOP_Y - 10); // bar front edge bottom - stool top
+      stool.setCrop(0, 0, 48, maxH);
       this.stools.push(stool);
     }
 
@@ -100,6 +104,8 @@ export class BarLayer {
     this.stools = [];
     for (const seat of seats) {
       const stool = this.scene.add.image(seat.x, BAR_TOP_Y - 10, 'stool').setOrigin(0.5, 0).setDepth(4);
+      const maxH = (BAR_TOP_Y + 30) - (BAR_TOP_Y - 10);
+      stool.setCrop(0, 0, 48, maxH);
       this.stools.push(stool);
     }
   }

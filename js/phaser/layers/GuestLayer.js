@@ -83,7 +83,7 @@ export class GuestLayer {
 
     return {
       sprite, spriteIdx,
-      statePopup, statePopupTimer: 0,
+      statePopup, statePopupTimer: 0, stateRepeatTimer: 0,
       moodPopup, moodPopupTimer: 0,
       sipGlass,
       lastMood: guest.mood,
@@ -127,15 +127,29 @@ export class GuestLayer {
     const headY = vis.isSitting ? BAR_TOP_Y - 48 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──
+    const iconKey = this._indicatorIcon(guest);
     if (guest.state !== vis.lastState) {
-      const iconKey = this._indicatorIcon(guest);
+      // Immediate popup on state change
       if (iconKey) {
         vis.statePopup.setTexture(iconKey)
           .setPosition(x, headY)
           .setVisible(true).setAlpha(1).setScale(0.8);
         vis.statePopupTimer = 2.0;
       }
+      vis.stateRepeatTimer = 3.5; // first repeat after 3.5s
       vis.lastState = guest.state;
+    }
+
+    // Repeat popup for states that need attention
+    if (iconKey && vis.statePopupTimer <= 0) {
+      vis.stateRepeatTimer -= 1 / 60;
+      if (vis.stateRepeatTimer <= 0) {
+        vis.statePopup.setTexture(iconKey)
+          .setPosition(x, headY)
+          .setVisible(true).setAlpha(1).setScale(0.8);
+        vis.statePopupTimer = 2.0;
+        vis.stateRepeatTimer = 4.0; // repeat every 4s
+      }
     }
 
     if (vis.statePopupTimer > 0) {

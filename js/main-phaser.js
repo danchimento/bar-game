@@ -23,7 +23,7 @@ const config = {
   backgroundColor: '#1a1a2e',
   audio: { noAudio: true },
   scale: {
-    mode: Phaser.Scale.ENVELOP,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: CANVAS_W,
     height: CANVAS_H,
