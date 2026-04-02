@@ -1,6 +1,7 @@
 import {
   CANVAS_W, ZONES, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
   BAR_LEFT, BAR_RIGHT, BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
+  COUNTER_SURFACE_Y,
 } from '../../constants.js';
 
 /**
@@ -38,6 +39,17 @@ export class BarLayer {
     // Bottom trim
     scene.add.rectangle(barCenterX, BAR_CABINET_BOTTOM, BAR_MAX_W, 2, 0x1a0e06)
       .setDepth(6);
+
+    // ── U-shaped bar legs — counter tile extends down from bar edges ──
+    const legWidth = 24;
+    const legTop = BAR_SURFACE_Y;
+    const legH = COUNTER_SURFACE_Y - legTop;
+    // Left leg
+    scene.add.tileSprite(BAR_LEFT, legTop, legWidth, legH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(6);
+    // Right leg
+    scene.add.tileSprite(BAR_RIGHT - legWidth, legTop, legWidth, legH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(6);
 
     // ── Stools ──
     this.stools = [];

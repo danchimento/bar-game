@@ -15,12 +15,12 @@ export const CANVAS_H = 540;
 //   wall → guest_area → bar_top → bar_cabinet → floor → counter
 
 const ZONE_DEFS = [
-  { id: 'wall',        weight: 0.07 },   // back wall
-  { id: 'guest_area',  weight: 0.39 },   // where guests walk in and stand
+  { id: 'wall',        weight: 0.10 },   // back wall (+1 tile taller)
+  { id: 'guest_area',  weight: 0.36 },   // where guests walk in and stand
   { id: 'bar_top',     weight: 0.06 },   // the bar surface customers sit at
   { id: 'bar_cabinet', weight: 0.09 },   // under-bar storage (glass rack, etc.)
-  { id: 'floor',       weight: 0.35 },   // open floor behind the bar
-  { id: 'counter',     weight: 0.04 },   // back counter strip (flush with bottom)
+  { id: 'floor',       weight: 0.30 },   // open floor behind the bar (-1 tile)
+  { id: 'counter',     weight: 0.09 },   // back counter strip (+1 tile taller)
 ];
 
 /** Resolve zone definitions into pixel ranges */

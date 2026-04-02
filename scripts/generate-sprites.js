@@ -663,31 +663,21 @@ createSprite(64, 16, ({ px, row, rect, col }) => {
   }
 }, 'tile_cabinet.png');
 
-// FLOOR TILE (64x16) — dark hardwood planks
+// FLOOR TILE (64x16) — subtle dark floor, minimal texture
 createSprite(64, 16, ({ px, row, rect }) => {
-  const PLANK = '#3d2b1b'; const PLANKH = '#4a3525'; const PLANKD = '#2e1e12';
-  const GAP = '#221408';
+  const BASE = '#3a2818'; const BASELT = '#3f2d1c'; const BASEDK = '#352414';
 
-  rect(0, 0, 64, 16, PLANK);
-  // Plank gaps (horizontal)
-  row(7, 0, 63, GAP);
-  row(15, 0, 63, GAP);
-  // Plank end joints (staggered)
-  for (let x = 20; x < 64; x += 40) {
-    px(x, 0, GAP); px(x, 1, GAP); px(x, 2, GAP); px(x, 3, GAP);
-    px(x, 4, GAP); px(x, 5, GAP); px(x, 6, GAP);
-  }
-  for (let x = 40; x < 64; x += 40) {
-    px(x, 8, GAP); px(x, 9, GAP); px(x, 10, GAP); px(x, 11, GAP);
-    px(x, 12, GAP); px(x, 13, GAP); px(x, 14, GAP);
-  }
-  // Wood grain highlights
-  for (let x = 3; x < 64; x += 10) {
-    px(x, 3, PLANKH); px(x + 1, 3, PLANKH);
-    px(x + 2, 11, PLANKH); px(x + 3, 11, PLANKH);
-  }
-  // Slight darkness variation
-  px(10, 2, PLANKD); px(11, 2, PLANKD); px(45, 12, PLANKD); px(46, 12, PLANKD);
+  rect(0, 0, 64, 16, BASE);
+  // Very faint horizontal seam — barely visible
+  for (let x = 0; x < 64; x += 2) { px(x, 7, BASEDK); }
+  for (let x = 1; x < 64; x += 2) { px(x, 15, BASEDK); }
+  // Sparse subtle grain — just a few light pixels
+  px(8, 3, BASELT); px(9, 3, BASELT);
+  px(30, 4, BASELT); px(31, 4, BASELT);
+  px(50, 2, BASELT); px(51, 2, BASELT);
+  px(15, 11, BASELT); px(16, 11, BASELT);
+  px(40, 12, BASELT); px(41, 12, BASELT);
+  px(58, 10, BASELT);
 }, 'tile_floor.png');
 
 // COUNTER TILE (64x8) — back counter strip (compact)
