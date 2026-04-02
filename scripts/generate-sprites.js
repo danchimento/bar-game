@@ -675,18 +675,15 @@ createSprite(64, 16, ({ px, row, rect }) => {
   px(58, 10, BASELT);
 }, 'tile_floor.png');
 
-// COUNTER TILE (64x8) — back counter strip (compact)
-createSprite(64, 8, ({ px, row, rect }) => {
-  const CNT = '#3a2a1a'; const CNTH = '#4d3a28'; const CNTD = '#2a1a0e';
+// COUNTER TILE (64x8) — seamless wood counter (no hard borders)
+createSprite(64, 8, ({ px, rect }) => {
+  const CNT = '#3a2a1a'; const CNTH = '#4d3a28';
 
   rect(0, 0, 64, 8, CNT);
-  // Top edge highlight
-  row(0, 0, 63, CNTH);
-  // Bottom edge shadow
-  row(7, 0, 63, CNTD);
-  // Wood grain
-  for (let x = 3; x < 64; x += 7) {
-    px(x, 3, CNTH); px(x + 1, 4, CNTH); px(x + 2, 4, CNTH);
+  // Subtle wood grain only — tiles seamlessly
+  for (let x = 3; x < 64; x += 9) {
+    px(x, 2, CNTH); px(x + 1, 3, CNTH); px(x + 2, 3, CNTH);
+    px(x + 4, 5, CNTH); px(x + 5, 6, CNTH);
   }
 }, 'tile_counter.png');
 

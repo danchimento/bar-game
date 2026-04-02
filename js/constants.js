@@ -19,8 +19,8 @@ const ZONE_DEFS = [
   { id: 'guest_area',  weight: 0.34 },   // where guests walk in and stand
   { id: 'bar_top',     weight: 0.06 },   // the bar surface customers sit at
   { id: 'bar_cabinet', weight: 0.09 },   // under-bar storage (glass rack, etc.)
-  { id: 'floor',       weight: 0.24 },   // open floor behind the bar (compact)
-  { id: 'counter',     weight: 0.13 },   // back counter strip (flush with bottom)
+  { id: 'floor',       weight: 0.33 },   // open floor behind the bar
+  { id: 'counter',     weight: 0.04 },   // back counter strip (flush with bottom)
 ];
 
 /** Resolve zone definitions into pixel ranges */

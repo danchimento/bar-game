@@ -59,11 +59,13 @@ export class StationLayer {
 
       switch (placement) {
         case 'on_counter': {
+          // Place sprite so its base sinks into the counter by baseRows,
+          // visually sitting ON the counter surface
           const baseRows = COUNTER_BASE_ROWS[st.id] || 3;
-          const overlap = baseRows * STATION_SCALE;
-          sprite = scene.add.image(st.x, COUNTER_SURFACE_Y + overlap, spriteKey)
+          const sinkPx = baseRows * STATION_SCALE;
+          sprite = scene.add.image(st.x, COUNTER_SURFACE_Y + COUNTER_H * 0.5 + sinkPx, spriteKey)
             .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14);
-          zoneY = COUNTER_SURFACE_Y - 10;
+          zoneY = COUNTER_SURFACE_Y;
           break;
         }
         case 'in_counter': {
