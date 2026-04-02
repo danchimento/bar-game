@@ -1,74 +1,114 @@
-// Canvas - LANDSCAPE
+// ═══════════════════════════════════════════════════════════
+// CANVAS
+// ═══════════════════════════════════════════════════════════
 export const CANVAS_W = 960;
 export const CANVAS_H = 540;
 
-// Colors
-export const COLORS = {
-  FLOOR: '#2d1b0e',
-  BAR_TOP: '#8B4513',
-  BAR_FRONT: '#6b3410',
-  WALK_TRACK: '#3d2b1b',
-  WALL: '#1a1a2e',
-  STATION_BG: '#4a3728',
-  STATION_BORDER: '#6b5040',
-  SEAT_EMPTY: '#5a4a3a',
-  SEAT_DIRTY: '#8b6914',
-  BARTENDER: '#e8c170',
-  BARTENDER_APRON: '#2d5a27',
-  GUEST_BODY: '#d4a574',
-  SERVICE_MAT: '#333333',
-};
+// ═══════════════════════════════════════════════════════════
+// ZONE LAYOUT — single source of truth for the spatial map
+// ═══════════════════════════════════════════════════════════
+// Each zone has a proportional weight. The layout resolver turns
+// weights into pixel ranges. Change a weight and everything
+// downstream adjusts automatically — no manual offset math.
+//
+// Physical space (top to bottom of screen):
+//   wall → guest_area → bar_top → bar_cabinet → floor → counter
 
-// Layout Y positions — guests sit right at the bar
-export const GUEST_Y = 260;
-export const SEAT_Y = 275;
-export const BAR_TOP_Y = 290;
-export const SERVICE_MAT_Y = 330;
-export const WALK_TRACK_Y = 380;
-export const STATION_Y = CANVAS_H - 10;  // center of back counter (flush with screen bottom)
+const ZONE_DEFS = [
+  { id: 'wall',        weight: 0.07 },   // back wall
+  { id: 'guest_area',  weight: 0.39 },   // where guests walk in and stand
+  { id: 'bar_top',     weight: 0.06 },   // the bar surface customers sit at
+  { id: 'bar_cabinet', weight: 0.09 },   // under-bar storage (glass rack, etc.)
+  { id: 'floor',       weight: 0.35 },   // open floor behind the bar
+  { id: 'counter',     weight: 0.04 },   // back counter strip (flush with bottom)
+];
 
-// Bar dimensions
-export const BAR_MAX_W = 860;             // max pixel width of the bar structure
+/** Resolve zone definitions into pixel ranges */
+function resolveZones(defs, totalH) {
+  const totalWeight = defs.reduce((s, z) => s + z.weight, 0);
+  const zones = {};
+  let y = 0;
+  for (const def of defs) {
+    const h = Math.round((def.weight / totalWeight) * totalH);
+    zones[def.id] = { top: y, bottom: y + h, height: h, center: y + h / 2 };
+    y += h;
+  }
+  // Snap last zone to exactly totalH to avoid rounding gaps
+  const last = defs[defs.length - 1];
+  zones[last.id].bottom = totalH;
+  zones[last.id].height = totalH - zones[last.id].top;
+  zones[last.id].center = zones[last.id].top + zones[last.id].height / 2;
+  return zones;
+}
+
+export const ZONES = resolveZones(ZONE_DEFS, CANVAS_H);
+
+// ═══════════════════════════════════════════════════════════
+// DERIVED LAYOUT — everything below reads from ZONES
+// ═══════════════════════════════════════════════════════════
+
+// Guest area
+export const WAITING_Y = ZONES.wall.bottom + 30;
+export const GUEST_Y = ZONES.guest_area.bottom - 20;
+export const SEAT_Y = ZONES.guest_area.bottom - 5;
+
+// Bar top surface — the customer-facing bar
+export const BAR_TOP_Y = ZONES.bar_top.top;
+export const BAR_SURFACE_Y = ZONES.bar_top.top + 4;     // where the surface texture starts
+export const BAR_FRONT_Y = ZONES.bar_top.bottom - 5;    // bartender-side edge
+export const BAR_DEPTH_PX = BAR_FRONT_Y - BAR_SURFACE_Y;
+
+// Bar physical width (centered)
+export const BAR_MAX_W = 860;
 export const BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
 export const BAR_RIGHT = BAR_LEFT + BAR_MAX_W;
 
-// Bar surface geometry
-export const BAR_SURFACE_Y = BAR_TOP_Y + 4;
-export const BAR_FRONT_Y = BAR_TOP_Y + 26;
-export const BAR_DEPTH_PX = BAR_FRONT_Y - BAR_SURFACE_Y;
+// Bar cabinets (under the bar)
+export const BAR_CABINET_TOP = ZONES.bar_cabinet.top;
+export const BAR_CABINET_BOTTOM = ZONES.bar_cabinet.bottom;
 
-// Bar cabinets — the enclosed space below the bar top (glass rack, trash, etc.)
-export const BAR_CABINET_TOP = BAR_FRONT_Y + 5;
-export const BAR_CABINET_BOTTOM = BAR_CABINET_TOP + 50;
+// Floor
+export const FLOOR_Y = ZONES.floor.top;
+export const SERVICE_MAT_Y = ZONES.floor.top + 15;
+export const WALK_TRACK_Y = Math.round(ZONES.floor.top + ZONES.floor.height * 0.35);
 
-// Floor — starts at bottom of bar cabinets, extends behind back counter
-export const FLOOR_Y = BAR_CABINET_BOTTOM;
+// Back counter (flush with screen bottom)
+export const COUNTER_SURFACE_Y = ZONES.counter.top;
+export const COUNTER_H = ZONES.counter.height;
+export const COUNTER_Y = ZONES.counter.center;
+export const STATION_Y = ZONES.counter.center;
 
-// Back counter — a single strip flush with the bottom of the screen
-export const COUNTER_H = 20;
-export const COUNTER_SURFACE_Y = CANVAS_H - COUNTER_H;       // top edge
-export const COUNTER_Y = COUNTER_SURFACE_Y + COUNTER_H / 2;  // center
-
-// Real-world bar is ~30 inches deep. 1 inch ≈ BAR_DEPTH_PX / 30 pixels.
+// ═══════════════════════════════════════════════════════════
+// BAR DEPTH HELPER — position objects "on" the bar surface
+// ═══════════════════════════════════════════════════════════
+// Real bar ≈ 30 inches deep. 1 inch ≈ BAR_DEPTH_PX / 30 pixels.
 export const BAR_INCH = BAR_DEPTH_PX / 30;
 
-/**
- * Convert a real-world distance from the customer edge (in inches) to a Y position on the bar.
- * 0 inches = customer edge, 30 inches = bartender edge.
- */
+/** Convert distance from customer edge (inches) to screen Y */
 export function barY(inchesFromEdge) {
   return BAR_SURFACE_Y + inchesFromEdge * BAR_INCH;
 }
 
-// Seat positions (dynamic — rebuilt per level)
+// ═══════════════════════════════════════════════════════════
+// COLORS
+// ═══════════════════════════════════════════════════════════
+export const COLORS = {
+  WALL:         0x252540,
+  FLOOR:        0x3d2b1b,
+  BAR_TOP:      0x8B4513,
+  BAR_CABINET:  0x2a1a0e,
+  COUNTER:      0x3a2a1a,
+};
+
+// ═══════════════════════════════════════════════════════════
+// SEATS — dynamic, rebuilt per level
+// ═══════════════════════════════════════════════════════════
 export const SEATS = [
   { id: 0, x: 200 },
   { id: 1, x: 480 },
   { id: 2, x: 760 },
 ];
 
-/** Reconfigure SEATS for N seats, evenly spaced across the bar.
- *  Mutates the global SEATS array (backward compat) and returns it. */
 export function setSeatCount(n) {
   SEATS.length = 0;
   const margin = 120;
@@ -80,7 +120,9 @@ export function setSeatCount(n) {
   return SEATS;
 }
 
-// Station definitions
+// ═══════════════════════════════════════════════════════════
+// STATIONS — static definitions (x positions set by levels.js)
+// ═══════════════════════════════════════════════════════════
 export const STATIONS = [
   { id: 'DISHWASHER',  x: 60,  label: 'Dish',  icon: '🫧' },
   { id: 'SINK',        x: 150, label: 'Sink',  icon: '🚰' },
@@ -92,19 +134,20 @@ export const STATIONS = [
   { id: 'MENU',        x: 930, label: 'Menu',  icon: '📋' },
 ];
 
-// Bartender
+// ═══════════════════════════════════════════════════════════
+// BARTENDER
+// ═══════════════════════════════════════════════════════════
 export const BARTENDER_SPEED = 280;
 export const BARTENDER_START_X = 480;
 
-// Guest states
-// Y position for waiting guests (behind seats)
-export const WAITING_Y = 70;
-
+// ═══════════════════════════════════════════════════════════
+// GUEST STATES & MOOD
+// ═══════════════════════════════════════════════════════════
 export const GUEST_STATE = {
   WAITING_FOR_SEAT: 'WAITING_FOR_SEAT',
   ARRIVING: 'ARRIVING',
   SEATED: 'SEATED',
-  LOOKING: 'LOOKING',          // wants bartender attention (first order, another, or check)
+  LOOKING: 'LOOKING',
   READY_TO_ORDER: 'READY_TO_ORDER',
   ORDER_TAKEN: 'ORDER_TAKEN',
   WAITING_FOR_DRINK: 'WAITING_FOR_DRINK',
@@ -117,7 +160,6 @@ export const GUEST_STATE = {
   ANGRY_LEAVING: 'ANGRY_LEAVING',
 };
 
-// Mood thresholds
 export const MOOD_MAX = 100;
 export const MOOD_THRESHOLDS = {
   ENTERTAINED: 80,
@@ -127,7 +169,6 @@ export const MOOD_THRESHOLDS = {
   FRUSTRATED: 10,
 };
 
-// Mood decay rates (per second) — halved for early levels, stress comes later
 export const MOOD_DECAY = {
   WAITING_FOR_SEAT: 0.25,
   ARRIVING: 0,
@@ -145,10 +186,11 @@ export const MOOD_DECAY = {
   ANGRY_LEAVING: 0,
 };
 
-// Grace period — mood decay scales from 0% to 100% over this many seconds
 export const MOOD_GRACE_PERIOD = 60;
 
-// Timers (seconds)
+// ═══════════════════════════════════════════════════════════
+// TIMERS & DURATIONS
+// ═══════════════════════════════════════════════════════════
 export const SETTLE_TIME = 4;
 export const ORDER_TAKE_TIME = 1;
 export const ENJOY_TIME_MIN = 20;
@@ -156,7 +198,6 @@ export const ENJOY_TIME_MAX = 35;
 export const CHECK_REVIEW_TIME = 6;
 export const ORDER_REVEAL_TIME = 8;
 
-// Station action durations
 export const ACTION_DURATIONS = {
   GLASS_RACK: 0.4,
   DISHWASHER: 0.8,
@@ -173,10 +214,8 @@ export const ACTION_DURATIONS = {
   GARNISH: 0.6,
 };
 
-// Hit detection radius
 export const HIT_RADIUS = 40;
 
-// Game states
 export const GAME_STATE = {
   TITLE: 'TITLE',
   SETTINGS: 'SETTINGS',

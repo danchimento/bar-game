@@ -1,41 +1,41 @@
 import {
-  CANVAS_W, CANVAS_H, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
-  BAR_LEFT, BAR_RIGHT, BAR_CABINET_TOP, BAR_CABINET_BOTTOM, FLOOR_Y,
+  CANVAS_W, ZONES, COLORS, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
+  BAR_LEFT, BAR_RIGHT, BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
 } from '../../constants.js';
 
 /**
- * Static background layers (top to bottom):
- *   Wall → Guest area → Bar top → Bar cabinets → Floor
- * The bar has a max width and is centered. The floor extends behind everything.
+ * Static background layers derived from ZONES:
+ *   wall → guest_area → bar_top → bar_cabinet → floor → counter
  */
 export class BarLayer {
   constructor(scene, seats) {
     this.scene = scene;
-
     const barCenterX = (BAR_LEFT + BAR_RIGHT) / 2;
 
     // ── Wall ──
-    scene.add.rectangle(CANVAS_W / 2, 18, CANVAS_W, 36, 0x252540).setDepth(0);
-
-    // ── Floor — full width, from cabinet bottom to screen bottom ──
-    const floorH = CANVAS_H - FLOOR_Y;
-    scene.add.rectangle(CANVAS_W / 2, FLOOR_Y + floorH / 2, CANVAS_W, floorH, 0x3d2b1b)
+    const wall = ZONES.wall;
+    scene.add.rectangle(CANVAS_W / 2, wall.center, CANVAS_W, wall.height, COLORS.WALL)
       .setDepth(0);
 
-    // ── Bar top surface — centered, max width ──
+    // ── Floor — full width, spans floor + counter zones ──
+    const floorTop = ZONES.floor.top;
+    const floorH = ZONES.counter.bottom - floorTop;
+    scene.add.rectangle(CANVAS_W / 2, floorTop + floorH / 2, CANVAS_W, floorH, COLORS.FLOOR)
+      .setDepth(0);
+
+    // ── Bar top surface ──
     const barTopH = BAR_FRONT_Y - BAR_SURFACE_Y + 5;
-    scene.add.rectangle(barCenterX, BAR_SURFACE_Y + barTopH / 2, BAR_MAX_W, barTopH, 0x8B4513)
+    scene.add.rectangle(barCenterX, BAR_SURFACE_Y + barTopH / 2, BAR_MAX_W, barTopH, COLORS.BAR_TOP)
       .setDepth(6);
 
-    // ── Bar cabinets — enclosed area below the bar top ──
+    // ── Bar cabinets ──
     const cabinetH = BAR_CABINET_BOTTOM - BAR_CABINET_TOP;
-    // Cabinet face (dark wood)
-    scene.add.rectangle(barCenterX, BAR_CABINET_TOP + cabinetH / 2, BAR_MAX_W, cabinetH, 0x2a1a0e)
+    scene.add.rectangle(barCenterX, BAR_CABINET_TOP + cabinetH / 2, BAR_MAX_W, cabinetH, COLORS.BAR_CABINET)
       .setDepth(6);
-    // Cabinet top edge (lighter trim)
+    // Top trim
     scene.add.rectangle(barCenterX, BAR_CABINET_TOP, BAR_MAX_W, 2, 0x4d3a28)
       .setDepth(6);
-    // Cabinet bottom edge
+    // Bottom trim
     scene.add.rectangle(barCenterX, BAR_CABINET_BOTTOM, BAR_MAX_W, 2, 0x1a0e06)
       .setDepth(6);
 
@@ -50,7 +50,7 @@ export class BarLayer {
 
     // ── Wall clock ──
     const clockX = CANVAS_W - 80;
-    const clockY = 150;
+    const clockY = ZONES.guest_area.top + 80;
     const clockR = 28;
     this.clockGfx = scene.add.graphics().setDepth(0);
     this.clockGfx.fillStyle(0xf5f0e0, 1);
@@ -59,12 +59,10 @@ export class BarLayer {
     this.clockGfx.strokeCircle(clockX, clockY, clockR);
     for (let h = 0; h < 12; h++) {
       const angle = (h / 12) * Math.PI * 2 - Math.PI / 2;
-      const inner = clockR - 5;
-      const outer = clockR - 2;
       this.clockGfx.lineStyle(1.5, 0x3a2a1a, 1);
       this.clockGfx.lineBetween(
-        clockX + Math.cos(angle) * inner, clockY + Math.sin(angle) * inner,
-        clockX + Math.cos(angle) * outer, clockY + Math.sin(angle) * outer,
+        clockX + Math.cos(angle) * (clockR - 5), clockY + Math.sin(angle) * (clockR - 5),
+        clockX + Math.cos(angle) * (clockR - 2), clockY + Math.sin(angle) * (clockR - 2),
       );
     }
     this.clockHandsGfx = scene.add.graphics().setDepth(0);
