@@ -33,15 +33,9 @@ export class BarLayer {
     const cabinetH = BAR_CABINET_BOTTOM - BAR_CABINET_TOP;
     scene.add.tileSprite(barCenterX - BAR_MAX_W / 2, BAR_CABINET_TOP, BAR_MAX_W, cabinetH, 'tile_cabinet')
       .setOrigin(0, 0).setDepth(6);
-    // Top trim
-    scene.add.rectangle(barCenterX, BAR_CABINET_TOP, BAR_MAX_W, 2, 0x4d3a28)
-      .setDepth(6);
-    // Bottom trim
-    scene.add.rectangle(barCenterX, BAR_CABINET_BOTTOM, BAR_MAX_W, 2, 0x1a0e06)
-      .setDepth(6);
 
     // ── U-shaped bar legs — counter tile extends down from bar edges ──
-    const legWidth = 24;
+    const legWidth = 72;
     const legTop = BAR_SURFACE_Y;
     const legH = COUNTER_SURFACE_Y - legTop;
     // Left leg

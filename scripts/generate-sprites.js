@@ -615,16 +615,12 @@ createSprite(64, 16, ({ px, row, rect }) => {
   for (let x = 1; x < 64; x += 3) { px(x, 14, BASEDK); }
 }, 'tile_wall.png');
 
-// BAR TOP TILE (64x16) — warm polished wood
-createSprite(64, 16, ({ px, row, rect }) => {
+// BAR TOP TILE (64x16) — warm polished wood, seamless edges
+createSprite(64, 16, ({ px, rect }) => {
   const WOOD = '#8B4513'; const WOODH = '#9B5523'; const WOODD = '#7a3a0f';
 
   rect(0, 0, 64, 16, WOOD);
-  // Top edge highlight (polished rim)
-  row(0, 0, 63, WOODH); row(1, 0, 63, WOODH);
-  // Bottom edge shadow
-  row(14, 0, 63, WOODD); row(15, 0, 63, WOODD);
-  // Wood grain — long horizontal streaks
+  // Wood grain — long horizontal streaks (no border rows)
   for (let x = 2; x < 64; x += 9) {
     px(x, 4, WOODH); px(x + 1, 5, WOODH); px(x + 2, 5, WOODH);
     px(x + 3, 6, WOODH); px(x + 4, 6, WOODH);
@@ -635,22 +631,19 @@ createSprite(64, 16, ({ px, row, rect }) => {
   }
   // Knot hint
   px(30, 7, WOODD); px(31, 7, WOODD); px(30, 8, WOODD); px(31, 8, WOODD);
+  // Sparse subtle grain near edges for seamless blending
+  px(3, 1, WOODH); px(50, 14, WOODH); px(20, 13, WOODD);
 }, 'tile_bar_top.png');
 
-// BAR CABINET TILE (64x16) — dark wood panel with vertical slats
-createSprite(64, 16, ({ px, row, rect, col }) => {
+// BAR CABINET TILE (64x16) — dark wood panel, seamless edges
+createSprite(64, 16, ({ px, rect, col }) => {
   const PANEL = '#2a1a0e'; const PANELH = '#33220f'; const PANELD = '#1e1208';
-  const TRIM = '#4d3a28';
 
   rect(0, 0, 64, 16, PANEL);
-  // Top trim
-  row(0, 0, 63, TRIM);
-  // Bottom shadow
-  row(15, 0, 63, PANELD);
-  // Vertical slat lines (subtle panel divisions)
+  // Vertical slat lines (subtle panel divisions, no border rows)
   for (let x = 15; x < 64; x += 16) {
-    col(x, 1, 14, PANELD);
-    col(x + 1, 1, 14, PANELH);
+    col(x, 0, 15, PANELD);
+    col(x + 1, 0, 15, PANELH);
   }
   // Subtle wood grain
   for (let x = 4; x < 64; x += 13) {
