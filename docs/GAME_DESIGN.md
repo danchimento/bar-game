@@ -1,5 +1,7 @@
 # Bar Rush — Game Design Document
 
+> **Last updated:** 2026-04-07
+
 > **Purpose:** This is the authoritative reference for how every feature in Bar Rush should behave. All code changes must conform to this spec. If behavior differs from this doc, either the code has a bug or this doc needs updating — never silently diverge.
 
 ## Game Overview
