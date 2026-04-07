@@ -44,10 +44,11 @@ const config = {
   backgroundColor: '#1a1a2e',
   audio: { noAudio: true },
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: CANVAS_W,
     height: CANVAS_H,
+    min: { width: CANVAS_W / 2, height: CANVAS_H / 2 },
   },
   scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene, ComponentViewerScene],
 };
