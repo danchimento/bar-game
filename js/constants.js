@@ -38,8 +38,37 @@ export function initCanvas() {
 // weights into pixel ranges. Change a weight and everything
 // downstream adjusts automatically — no manual offset math.
 //
-// Physical space (top to bottom of screen):
-//   wall → guest_area → bar_top → bar_cabinet → floor → counter
+// MAP ZONES (top → bottom of screen):
+//
+//  ┌──────────────────────────────────────┐
+//  │  1. WALL  (14%)                      │  Back wall with brick texture.
+//  │                                      │  Contains: clock (upper right).
+//  ├──────────────────────────────────────┤
+//  │  2. GUEST AREA  (34%)                │  Customer-facing open space.
+//  │                                      │  Contains: waiting queue line
+//  │                                      │  (top), standing guests, seated
+//  │                                      │  guests at bar stools (bottom).
+//  ├──────────────────────────────────────┤
+//  │  3. BAR TOP  (6%)                    │  The polished bar surface itself.
+//  │                                      │  Contains: drinks served to
+//  │                                      │  customers, stool tops.
+//  │                                      │  Color: warm brown (#8B4513).
+//  ├──────────────────────────────────────┤
+//  │  4. BAR CABINET  (9%)                │  Under-bar storage, dark panel.
+//  │                                      │  Contains: dishwasher, glass
+//  │                                      │  rack, trash (under_bar items).
+//  │                                      │  Color: dark brown (#2a1a0e).
+//  ├──────────────────────────────────────┤
+//  │  5. FLOOR  (33%)                     │  Open floor behind the bar.
+//  │                                      │  Contains: bartender walk track,
+//  │                                      │  service mat (drink staging).
+//  ├──────────────────────────────────────┤
+//  │  6. COUNTER  (4%)                    │  Back counter at screen bottom.
+//  │                                      │  Contains: stations (taps, wine,
+//  │                                      │  prep, POS, menu, sink).
+//  │                                      │  Color: warm brown (#8B4513),
+//  │                                      │  matches BAR TOP.
+//  └──────────────────────────────────────┘
 
 const ZONE_DEFS = [
   { id: 'wall',        weight: 0.14 },   // back wall (tall interior wall)
@@ -124,7 +153,7 @@ export const COLORS = {
   FLOOR:        0x3d2b1b,
   BAR_TOP:      0x8B4513,
   BAR_CABINET:  0x2a1a0e,
-  COUNTER:      0x3a2a1a,
+  COUNTER:      0x8B4513,   // matches BAR_TOP
 };
 
 // ═══════════════════════════════════════════════════════════

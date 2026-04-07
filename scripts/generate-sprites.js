@@ -582,9 +582,9 @@ createSprite(64, 16, ({ px, rect }) => {
   px(3, 1, WOODH); px(50, 14, WOODH); px(20, 13, WOODD);
 }, 'tile_bar_top.png');
 
-// BAR CABINET TILE (64x16) — same warm wood as bar top, seamless
+// BAR CABINET TILE (64x16) — dark under-bar storage panel
 createSprite(64, 16, ({ px, rect, col }) => {
-  const WOOD = '#8B4513'; const WOODH = '#9B5523'; const WOODD = '#7a3a0f';
+  const WOOD = '#2a1a0e'; const WOODH = '#3a2a1a'; const WOODD = '#1e120a';
 
   rect(0, 0, 64, 16, WOOD);
   // Vertical slat lines (subtle panel divisions)
@@ -615,9 +615,9 @@ createSprite(64, 16, ({ px, row, rect }) => {
   px(58, 10, BASELT);
 }, 'tile_floor.png');
 
-// COUNTER TILE (64x8) — seamless wood counter (no hard borders)
+// COUNTER TILE (64x8) — matches bar top polished wood
 createSprite(64, 8, ({ px, rect }) => {
-  const CNT = '#3a2a1a'; const CNTH = '#4d3a28';
+  const CNT = '#8B4513'; const CNTH = '#9B5523';
 
   rect(0, 0, 64, 8, CNT);
   // Subtle wood grain only — tiles seamlessly
