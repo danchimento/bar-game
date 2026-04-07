@@ -1,4 +1,4 @@
-import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY, ORDER_REVEAL_TIME } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
@@ -214,13 +214,19 @@ export class GuestLayer {
       }
     }
 
-    // ── Order text above head ──
+    // ── Order text above head (floats up slowly + fades like a memory) ──
     if (guest.orderRevealTimer > 0 && guest.currentDrink) {
       const drinkName = DRINKS[guest.currentDrink]?.name || guest.currentDrink;
-      const orderY = headY - 8;
+      const revealMax = ORDER_REVEAL_TIME;
+      const elapsed = revealMax - guest.orderRevealTimer;
+      // Start 24px above head, drift up ~20px over the full duration
+      const floatOffset = elapsed * (20 / revealMax);
+      const orderY = headY - 24 - floatOffset;
       vis.orderText.setText(drinkName).setPosition(x, orderY).setVisible(true);
-      // Fade out in the last 0.5s
-      vis.orderText.setAlpha(Math.min(1, guest.orderRevealTimer / 0.5));
+      // Full opacity for first half, then fade out over remaining half
+      const t = guest.orderRevealTimer / revealMax; // 1 = just started, 0 = expired
+      const alpha = t > 0.5 ? 1 : t / 0.5;
+      vis.orderText.setAlpha(alpha);
     } else {
       vis.orderText.setVisible(false);
     }
