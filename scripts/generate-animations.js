@@ -259,4 +259,93 @@ createSheet(24, 20, 4, (ctx, frame) => {
   }
 }, 'guest_drink.png');
 
+// ============================================================
+// BARTENDER BACK VIEW (32x48, single frame) — facing bar/away from player
+// Shows back of head, vest back, arms at sides
+// ============================================================
+function createSingleSprite(w, h, drawFn, filename) {
+  const canvas = createCanvas(w * PIXEL, h * PIXEL);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const px = (x, y, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * PIXEL, y * PIXEL, PIXEL, PIXEL);
+  };
+  const row = (y, x0, x1, color) => {
+    for (let x = x0; x <= x1; x++) px(x, y, color);
+  };
+  const rect = (x0, y0, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x0 * PIXEL, y0 * PIXEL, w * PIXEL, h * PIXEL);
+  };
+  const col = (x, y0, y1, color) => {
+    for (let y = y0; y <= y1; y++) px(x, y, color);
+  };
+  drawFn({ px, row, rect, col });
+
+  const outPath = path.join(OUT, filename);
+  const buf = canvas.toBuffer('image/png');
+  fs.writeFileSync(outPath, buf);
+  console.log(`  ${filename} (${w}x${h} @${PIXEL}x → ${canvas.width}x${canvas.height})`);
+}
+
+createSingleSprite(32, 48, ({ px, row, rect, col }) => {
+  const P = BARTENDER;
+
+  // Hair (back of head — fuller coverage, no face visible)
+  row(0, 12, 19, P.HAIR); row(1, 11, 20, P.HAIR);
+  row(2, 10, 21, P.HAIR); row(3, 10, 21, P.HAIR);
+  // Back of head — all hair, no face
+  for (let y = 4; y <= 8; y++) row(y, 10, 21, P.HAIR);
+  // Hair highlight
+  px(14, 2, P.HRH); px(15, 2, P.HRH); px(16, 3, P.HRH);
+  px(13, 5, P.HRH); px(18, 5, P.HRH);
+
+  // Ears (skin peeking out at sides)
+  px(10, 7, P.SKS); px(10, 8, P.SKS);
+  px(21, 7, P.SKS); px(21, 8, P.SKS);
+
+  // Lower back of head / neck transition
+  for (let y = 9; y <= 11; y++) row(y, 11, 20, P.HAIR);
+  // Neck
+  for (let y = 12; y <= 13; y++) row(y, 14, 17, P.SK);
+
+  // Vest back (solid dark, no shirt visible from behind except collar)
+  for (let y = 14; y <= 34; y++) row(y, 9, 22, P.VST);
+  // Collar — tiny sliver of shirt at neckline
+  row(14, 13, 18, P.SHRT);
+  // Vest seam down center back
+  for (let y = 16; y <= 33; y++) px(16, y, P.VSTH);
+  // Shoulder seams
+  row(14, 9, 10, P.VSTH); row(14, 21, 22, P.VSTH);
+  // Vest bottom edge
+  row(34, 9, 22, P.VSTH);
+
+  // Arms (vest sleeves then skin)
+  for (let y = 15; y <= 19; y++) { px(7, y, P.VST); px(8, y, P.VST); }
+  for (let y = 15; y <= 19; y++) { px(23, y, P.VST); px(24, y, P.VST); }
+  for (let y = 20; y <= 25; y++) { px(7, y, P.SK); px(8, y, P.SK); }
+  for (let y = 20; y <= 25; y++) { px(23, y, P.SK); px(24, y, P.SK); }
+  // Hands
+  px(7, 26, P.SK); px(8, 26, P.SKS);
+  px(23, 26, P.SKS); px(24, 26, P.SK);
+
+  // Belt
+  row(35, 10, 21, '#222');
+  px(15, 35, P.BKLE); px(16, 35, P.BKLE);
+
+  // Pants
+  for (let y = 36; y <= 42; y++) row(y, 10, 15, P.PNT);
+  for (let y = 36; y <= 42; y++) row(y, 16, 21, P.PNT);
+  for (let y = 37; y <= 41; y++) { px(12, y, P.PNTH); px(19, y, P.PNTH); }
+  for (let y = 37; y <= 42; y++) { px(15, y, '#0a0a1a'); px(16, y, '#0a0a1a'); }
+
+  // Shoes
+  row(43, 9, 15, P.SHOE); row(44, 8, 15, P.SHOE); row(45, 8, 15, '#080808');
+  row(43, 16, 22, P.SHOE); row(44, 16, 23, P.SHOE); row(45, 16, 23, '#080808');
+  px(9, 43, P.SHOH); px(10, 43, P.SHOH);
+  px(21, 43, P.SHOH); px(22, 43, P.SHOH);
+}, 'bartender_back.png');
+
 console.log('Animation spritesheets generated.');

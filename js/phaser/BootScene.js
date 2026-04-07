@@ -26,6 +26,7 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('guest_walk', 'assets/sprites/guest_walk.png', { frameWidth: 72, frameHeight: 96 });
     this.load.spritesheet('guest_drink', 'assets/sprites/guest_drink.png', { frameWidth: 72, frameHeight: 60 });
     this.load.image('bartender_carry', 'assets/sprites/bartender_carry.png');
+    this.load.image('bartender_back', 'assets/sprites/bartender_back.png');
     this.load.image('guest', 'assets/sprites/guest.png');
     this.load.image('guest_red', 'assets/sprites/guest_red.png');
     this.load.image('guest_green', 'assets/sprites/guest_green.png');

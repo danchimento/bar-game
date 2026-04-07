@@ -41,19 +41,28 @@ export class BartenderLayer {
 
     const isMoving = Math.abs(bartender.x - bartender.targetX) > 3;
     this.sprite.x = x;
-    this.sprite.setFlipX(!bartender.facingRight);
 
-    // Walk animation when moving, static when idle or carrying
-    if (isMoving && !isCarrying) {
-      if (!this._wasMoving || this.sprite.texture.key !== 'bartender_walk') {
-        this.sprite.play('bartender-walk');
+    // Walking: side-view walk animation, flipped for direction
+    // Idle: back view (facing bar, away from player)
+    // Carrying idle: carry sprite (side view, facing last direction)
+    if (isMoving) {
+      this.sprite.setFlipX(!bartender.facingRight);
+      if (!isCarrying) {
+        if (!this._wasMoving || this.sprite.texture.key !== 'bartender_walk') {
+          this.sprite.play('bartender-walk');
+        }
+      } else {
+        this.sprite.stop();
+        this.sprite.setTexture('bartender_carry');
       }
     } else {
-      if (this._wasMoving || this.sprite.anims.isPlaying) {
-        this.sprite.stop();
-        this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
+      this.sprite.stop();
+      if (isCarrying) {
+        this.sprite.setTexture('bartender_carry');
+        this.sprite.setFlipX(!bartender.facingRight);
       } else {
-        this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
+        this.sprite.setTexture('bartender_back');
+        this.sprite.setFlipX(false);
       }
     }
     this._wasMoving = isMoving;
