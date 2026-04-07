@@ -268,8 +268,12 @@ export class GamePlayScene extends Phaser.Scene {
              g.state !== GUEST_STATE.DONE
       );
       if (guest) {
-        const actions = this.guestManager.getGuestActions(guest);
-        this.guestModal.show(guest, actions);
+        const seatX = guest.seat ? guest.seat.x : guest.x;
+        this.walkThenAct(seatX, () => {
+          if (this._anyModalOpen()) return;
+          const actions = this.guestManager.getGuestActions(guest);
+          this.guestModal.show(guest, actions);
+        });
         return;
       }
 
