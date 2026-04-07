@@ -210,6 +210,89 @@ export class GuestManager {
 
   // ─── GUEST INTERACTIONS ───────────────────────────
 
+  /** Build context-dependent action list for a guest (used by GuestModal) */
+  getGuestActions(guest) {
+    const actions = [];
+    const { bartender, barState, walkThenAct } = this.ctx;
+
+    switch (guest.state) {
+      case GUEST_STATE.SEATED:
+      case GUEST_STATE.LOOKING:
+        actions.push({ label: 'Check In', action: () => this.acknowledgeGuest(guest) });
+        if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
+          actions.push({ label: 'Serve Drink', action: () => this.serveAnticipated(guest) });
+        }
+        break;
+
+      case GUEST_STATE.WAITING_FOR_DRINK:
+        if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
+          const nextIdx = guest.currentOrder ? guest.fulfilledItems.length : 0;
+          actions.push({ label: 'Serve Drink', action: () => this.serveDrink(guest, nextIdx) });
+        }
+        actions.push({ label: 'Ask Again', action: () => this.askOrder(guest) });
+        break;
+
+      case GUEST_STATE.ENJOYING:
+        actions.push({ label: 'Check In', action: () => this.checkIn(guest) });
+        break;
+
+      case GUEST_STATE.WANTS_ANOTHER:
+        if (barState.carriedGlass && barState.carriedGlass.primaryDrink) {
+          actions.push({ label: 'Serve Drink', action: () => this.serveAnticipated(guest) });
+        }
+        break;
+
+      case GUEST_STATE.READY_TO_PAY:
+        if (bartender.carrying && bartender.carrying.startsWith('CHECK_')) {
+          actions.push({ label: 'Give Check', action: () => this.giveCheck(guest) });
+        }
+        break;
+    }
+
+    // Early check delivery
+    if (guest.state !== GUEST_STATE.READY_TO_PAY && guest.state !== GUEST_STATE.REVIEWING_CHECK) {
+      if (bartender.carrying && bartender.carrying.startsWith('CHECK_')) {
+        actions.push({ label: 'Give Check', action: () => this.giveCheck(guest) });
+      }
+    }
+
+    // Pick up empty glasses
+    if (guest.seatId !== null && (!bartender.carrying || bartender.carrying === 'DIRTY_GLASS')) {
+      const glasses = barState.drinksAtSeats.get(guest.seatId);
+      if (glasses) {
+        const hasEmpty = glasses.some(g =>
+          g.layers.reduce((s, l) => s + l.amount, 0) < 0.01
+        );
+        if (hasEmpty) {
+          actions.push({
+            label: 'Pick Up Glasses', action: () => {
+              const seatX = guest.seat.x;
+              walkThenAct(seatX, () => {
+                bartender.startAction(0.3, 'Clearing...', () => {
+                  const remaining = glasses.filter(g =>
+                    g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
+                  );
+                  if (remaining.length > 0) {
+                    barState.drinksAtSeats.set(guest.seatId, remaining);
+                  } else {
+                    barState.drinksAtSeats.delete(guest.seatId);
+                  }
+                  bartender.carrying = 'DIRTY_GLASS';
+                  this.ctx.hud.showMessage('Cleared glass', 0.8);
+                });
+              });
+            },
+          });
+        }
+      }
+    }
+
+    // Always offer "Be right back" as a dismiss option
+    actions.push({ label: 'Be Right Back', action: () => {} });
+
+    return actions;
+  }
+
   openGuestMenu(guest) {
     const options = [];
     const { bartender, barState, radialMenu, walkThenAct } = this.ctx;

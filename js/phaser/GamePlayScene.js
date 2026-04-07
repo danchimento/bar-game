@@ -27,6 +27,7 @@ import { GlassModal } from './modals/GlassModal.js';
 import { DrinkModal } from './modals/DrinkModal.js';
 import { PrepModal } from './modals/PrepModal.js';
 import { POSModal } from './modals/POSModal.js';
+import { GuestModal } from './modals/GuestModal.js';
 
 export class GamePlayScene extends Phaser.Scene {
   constructor() {
@@ -131,6 +132,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.drinkModal = new DrinkModal(this);
     this.prepModal = new PrepModal(this);
     this.posModal = new POSModal(this);
+    this.guestModal = new GuestModal(this);
 
     // ── Input wiring ──
     this._setupInput();
@@ -258,7 +260,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.events.on('seat-zone-tap', (seatId) => {
       if (this._anyModalOpen()) return;
 
-      // Priority 1: Guest present → open radial menu
+      // Priority 1: Guest present → open guest modal
       const guest = this.guestManager.guests.find(
         g => g.seatId === seatId &&
              g.state !== GUEST_STATE.LEAVING &&
@@ -266,13 +268,19 @@ export class GamePlayScene extends Phaser.Scene {
              g.state !== GUEST_STATE.DONE
       );
       if (guest) {
-        this.guestManager.openGuestMenu(guest);
+        const actions = this.guestManager.getGuestActions(guest);
+        this.guestModal.show(guest, actions);
         return;
       }
 
       // Priority 2: Cash or dirty seat → cleanup
       this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats,
         this.walkThenAct.bind(this));
+    });
+
+    // Guest modal close
+    this.events.on('guest-modal-close', () => {
+      this.guestModal.hide();
     });
 
     // Bar area tap → move bartender
@@ -374,7 +382,8 @@ export class GamePlayScene extends Phaser.Scene {
 
   _anyModalOpen() {
     return this.glassModalState.visible || this.drinkModalState.visible ||
-           this.prepModalState.visible || this.pos.visible;
+           this.prepModalState.visible || this.pos.visible ||
+           this.guestModal.visible;
   }
 
   // ─── GAME LOGIC HELPERS ──────────────────────────
