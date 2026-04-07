@@ -193,6 +193,16 @@ export class GamePlayScene extends Phaser.Scene {
     this.hudUI.update(this.hud, this.levelTimer, this.activeDuration);
     this.barLayer.updateClock(this.levelTimer, this.activeDuration);
 
+    // Guest modal live update
+    if (this.guestModal.visible) {
+      const g = this.guestModal._guest;
+      if (!g || g.state === GUEST_STATE.DONE || g.state === GUEST_STATE.LEAVING || g.state === GUEST_STATE.ANGRY_LEAVING) {
+        this.guestModal.hide();
+      } else {
+        this.guestModal.update();
+      }
+    }
+
     // Radial menu
     if (this.radialMenu.visible) {
       this.radialMenuUI.show(this.radialMenu);
@@ -271,8 +281,7 @@ export class GamePlayScene extends Phaser.Scene {
         const seatX = guest.seat ? guest.seat.x : guest.x;
         this.walkThenAct(seatX, () => {
           if (this._anyModalOpen()) return;
-          const actions = this.guestManager.getGuestActions(guest);
-          this.guestModal.show(guest, actions);
+          this.guestModal.show(guest, (g) => this.guestManager.getGuestActions(g));
         });
         return;
       }

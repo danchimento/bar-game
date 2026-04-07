@@ -167,14 +167,26 @@ export class GuestModal {
     this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
     this._guest = null;
+    this._getActions = null;
     this._actions = [];
+    // References for dynamic updates
+    this._msgText = null;
+    this._btnObjects = [];  // [{bg, label}]
+    this._lastState = null;
+    this._lastHasCheck = null;
+    this._lastGreeted = null;
+    this._btnStartY = 0;
   }
 
   get visible() { return this.container.visible; }
 
-  show(guest, actions) {
+  show(guest, getActions) {
     this._guest = guest;
-    this._actions = actions || [];
+    this._getActions = getActions;
+    this._actions = typeof getActions === 'function' ? getActions(guest) : (getActions || []);
+    this._lastState = guest.state;
+    this._lastHasCheck = guest.hasCheck;
+    this._lastGreeted = guest.greeted;
     this._build();
     this.container.setVisible(true);
   }
@@ -183,7 +195,38 @@ export class GuestModal {
     this.container.setVisible(false);
     this.container.removeAll(true);
     this._guest = null;
+    this._getActions = null;
     this._actions = [];
+    this._msgText = null;
+    this._btnObjects = [];
+  }
+
+  /** Call each frame while visible to refresh message + actions */
+  update() {
+    if (!this.container.visible || !this._guest) return;
+    const guest = this._guest;
+
+    // Check if anything changed that would affect display
+    const stateChanged = guest.state !== this._lastState;
+    const checkChanged = guest.hasCheck !== this._lastHasCheck;
+    const greetChanged = guest.greeted !== this._lastGreeted;
+
+    if (!stateChanged && !checkChanged && !greetChanged) return;
+
+    this._lastState = guest.state;
+    this._lastHasCheck = guest.hasCheck;
+    this._lastGreeted = guest.greeted;
+
+    // Update message text
+    if (this._msgText) {
+      this._msgText.setText(this._getMessage(guest));
+    }
+
+    // Rebuild action buttons
+    if (this._getActions && typeof this._getActions === 'function') {
+      this._actions = this._getActions(guest);
+      this._rebuildButtons();
+    }
   }
 
   _build() {
@@ -245,14 +288,31 @@ export class GuestModal {
       scene.add.rectangle(RIGHT_X + RIGHT_W / 2, curY + bubbleH / 2, RIGHT_W, bubbleH, 0x2a2a3e)
         .setStrokeStyle(1, 0x5a5a7a)
     );
-    const msgText = scene.add.text(RIGHT_X + 12, curY + 10, message, {
+    this._msgText = scene.add.text(RIGHT_X + 12, curY + 10, message, {
       fontFamily: 'monospace', fontSize: '11px', color: '#ffd54f',
       wordWrap: { width: RIGHT_W - 24 },
     });
-    this.container.add(msgText);
+    this.container.add(this._msgText);
     curY += bubbleH + 16;
 
     // ── Action buttons ──
+    this._btnStartY = curY;
+    this._btnObjects = [];
+    this._buildButtons();
+
+    // ── Close button ──
+    const closeBtn = scene.add.rectangle(PX + PANEL_W - 22, PY + 16, 26, 22, 0xf44336)
+      .setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => scene.events.emit('guest-modal-close'));
+    this.container.add(closeBtn);
+    this.container.add(scene.add.text(PX + PANEL_W - 22, PY + 16, 'X', {
+      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5));
+  }
+
+  _buildButtons() {
+    const scene = this.scene;
+    let curY = this._btnStartY;
     for (const action of this._actions) {
       const btnY = curY + BTN_H / 2;
       const btnBg = scene.add.rectangle(RIGHT_X + RIGHT_W / 2, btnY, RIGHT_W, BTN_H,
@@ -276,17 +336,21 @@ export class GuestModal {
 
       this.container.add(btnBg);
       this.container.add(btnLabel);
+      this._btnObjects.push({ bg: btnBg, label: btnLabel });
       curY += BTN_H + BTN_GAP;
     }
+  }
 
-    // ── Close button ──
-    const closeBtn = scene.add.rectangle(PX + PANEL_W - 22, PY + 16, 26, 22, 0xf44336)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => scene.events.emit('guest-modal-close'));
-    this.container.add(closeBtn);
-    this.container.add(scene.add.text(PX + PANEL_W - 22, PY + 16, 'X', {
-      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5));
+  _rebuildButtons() {
+    // Destroy old buttons
+    for (const btn of this._btnObjects) {
+      btn.bg.destroy();
+      btn.label.destroy();
+      this.container.remove(btn.bg);
+      this.container.remove(btn.label);
+    }
+    this._btnObjects = [];
+    this._buildButtons();
   }
 
   _getMessage(guest) {
