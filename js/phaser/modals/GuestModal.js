@@ -1,19 +1,6 @@
 import { CANVAS_W, CANVAS_H, GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 
-// Messages shown based on guest state
-const STATE_MESSAGES = {
-  [GUEST_STATE.SEATED]:           "Just sat down...",
-  [GUEST_STATE.LOOKING]:          "Still deciding...",
-  [GUEST_STATE.READY_TO_ORDER]:   "I'd like to order something!",
-  [GUEST_STATE.ORDER_TAKEN]:      "Thanks, I'll wait.",
-  [GUEST_STATE.WAITING_FOR_DRINK]:"Waiting on my drink...",
-  [GUEST_STATE.ENJOYING]:         "This is great!",
-  [GUEST_STATE.WANTS_ANOTHER]:    "Another one, please!",
-  [GUEST_STATE.READY_TO_PAY]:     "Check, please!",
-  [GUEST_STATE.REVIEWING_CHECK]:  "Let me look at this...",
-};
-
 const PANEL_W = 460;
 const PANEL_H = 320;
 const PX = (CANVAS_W - PANEL_W) / 2;
@@ -157,20 +144,32 @@ export class GuestModal {
   }
 
   _getMessage(guest) {
-    // Contextual message based on state
     if (guest.state === GUEST_STATE.ENJOYING && guest.hasCheck) {
       return "Let me finish this drink first...";
     }
-    if (guest.state === GUEST_STATE.WAITING_FOR_DRINK && guest.greeted) {
-      return "Waiting on my drink...";
+
+    switch (guest.state) {
+      case GUEST_STATE.SEATED:
+        return guest.greeted ? "Give me a moment..." : "Hi there!";
+      case GUEST_STATE.LOOKING:
+        return guest.greeted ? "Hmm, still deciding..." : "Hmm, what looks good...";
+      case GUEST_STATE.READY_TO_ORDER:
+        return "I'm ready to order!";
+      case GUEST_STATE.ORDER_TAKEN:
+        return "Thanks, I'll wait.";
+      case GUEST_STATE.WAITING_FOR_DRINK:
+        return "Waiting on my drink...";
+      case GUEST_STATE.ENJOYING:
+        return "This is great!";
+      case GUEST_STATE.WANTS_ANOTHER:
+        return "I'd like another one!";
+      case GUEST_STATE.READY_TO_PAY:
+        return "Check, please!";
+      case GUEST_STATE.REVIEWING_CHECK:
+        return "Let me look at this...";
+      default:
+        return "...";
     }
-    if (guest.state === GUEST_STATE.SEATED && !guest.greeted) {
-      return "Hi there!";
-    }
-    if (guest.state === GUEST_STATE.LOOKING && !guest.greeted) {
-      return "Hmm, what looks good...";
-    }
-    return STATE_MESSAGES[guest.state] || "...";
   }
 
   destroy() {
