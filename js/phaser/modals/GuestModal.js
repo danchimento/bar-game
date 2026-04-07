@@ -1,6 +1,152 @@
 import { CANVAS_W, CANVAS_H, GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 
+// ── Message pools — random pick per guest for variety ──
+const MESSAGES = {
+  SEATED_NEW: [
+    "Hi there!", "Hey!", "Evening!", "Hello!", "Hey, how's it going?",
+    "Hi! Nice place.", "What's up?", "Heya!", "Good evening!",
+    "Hi! Busy night?", "Hey there!", "Howdy!", "'Sup!",
+    "Hi! First time here.", "Well hello!", "Hey hey!",
+    "Nice spot!", "Good to be here!", "Hey! Love the vibe.",
+    "Hi! What a night.", "Yo!", "Greetings!", "Hiya!",
+    "Hey! Great atmosphere.", "Cheers!", "Hi! Finally made it.",
+  ],
+  SEATED_GREETED: [
+    "Give me a moment...", "Just a sec...", "Hmm, one moment...",
+    "Let me think...", "Hold on...", "Gimme a sec...",
+    "Still looking...", "One minute...", "Bear with me...",
+    "Almost ready...", "Just browsing...", "Hmm...",
+    "Need a second...", "Just getting settled...", "Hang on...",
+    "Let me see...", "Not quite ready...", "Working on it...",
+    "Thinking...", "Still making up my mind...",
+  ],
+  LOOKING_NEW: [
+    "Hmm, what looks good...", "What do you have?",
+    "Let me see the options...", "What's on tap?",
+    "Anything you recommend?", "What's popular here?",
+    "Hmm, decisions decisions...", "What's the special?",
+    "So many choices...", "I'm browsing...",
+    "What do people usually get?", "Talk to me about the menu.",
+    "Let me take a look...", "What's good tonight?",
+    "Any recommendations?", "What's your best seller?",
+    "I need a minute to decide.", "Ooh, tough choices.",
+    "Hmm, what am I in the mood for...", "What's fresh?",
+  ],
+  LOOKING_GREETED: [
+    "Hmm, still deciding...", "Almost there...",
+    "Give me one more sec...", "Narrowing it down...",
+    "Can't decide...", "Everything looks good...",
+    "Torn between two...", "Hmm, what to get...",
+    "So hard to choose!", "Just about ready...",
+    "Between a few options...", "Think I'm close...",
+    "Let me see... almost.", "One more look...",
+    "Hmm, tough call...", "Really can't decide...",
+    "It all sounds good...", "Maybe... no... hmm...",
+    "Almost got it...", "Okay, thinking...",
+  ],
+  READY_TO_ORDER: [
+    "I'm ready to order!", "I know what I want!",
+    "I'll have something!", "Ready when you are!",
+    "Let's do this!", "I've decided!", "Know what I want!",
+    "Ready to order!", "I'll take something!", "Got it!",
+    "Made up my mind!", "Okay, I'm ready!",
+    "Let me get a drink!", "I know what I'm having!",
+    "Yep, ready!", "Alright, let's go!", "I'd like to order!",
+    "Can I order now?", "I'll have my usual... wait, first time.",
+    "Hit me!", "Let's get this started!", "Order time!",
+    "I want something good!", "Ready over here!",
+  ],
+  ORDER_TAKEN: [
+    "Thanks, I'll wait.", "Sounds good!", "Awesome, thanks!",
+    "Can't wait!", "Great, thanks!", "Perfect!",
+    "Looking forward to it!", "Sweet!", "Nice, thanks!",
+    "You got it!", "Appreciate it!", "Thanks a lot!",
+    "Ooh, excited!", "Can't wait to try it!", "Thanks!",
+    "Woohoo!", "That was easy!", "Good choice, right?",
+    "Alright!", "Cool, no rush!", "Take your time!",
+  ],
+  WAITING_FOR_DRINK: [
+    "Waiting on my drink...", "How's it coming?",
+    "No rush... well, maybe a little.", "Still waiting!",
+    "Take your time!", "Is it almost ready?",
+    "Getting thirsty over here!", "Patiently waiting...",
+    "Any minute now...", "I can almost taste it!",
+    "The anticipation!", "Tick tock...", "Still here!",
+    "Whenever you're ready!", "No worries, I'll wait.",
+    "Starting to get parched...", "My glass is lonely.",
+    "Almost there?", "I'm sure it's worth the wait!",
+    "The bar looks busy tonight.", "Hope it's a good pour!",
+  ],
+  ENJOYING: [
+    "This is great!", "Mmm, delicious!", "Good stuff!",
+    "Exactly what I needed.", "Cheers!", "Really hitting the spot.",
+    "Now this is nice.", "Loving it!", "Ahh, perfect.",
+    "Great pour!", "Just right!", "Smooth!",
+    "Can't complain!", "This is the life.", "Wonderful!",
+    "Tastes amazing!", "You nailed it!", "So good.",
+    "Best drink I've had all week.", "Heaven in a glass.",
+    "Brilliant!", "Spot on!", "Mmm!",
+    "This is why I came here!", "Pure perfection.",
+  ],
+  WANTS_ANOTHER: [
+    "I'd like another one!", "Another round!", "Hit me again!",
+    "Same again, please!", "One more!", "Keep 'em coming!",
+    "Can I get another?", "That was too good to stop!",
+    "Round two!", "I'll have another!", "More please!",
+    "Refill?", "Another one of those!", "Don't stop now!",
+    "Same thing again!", "I could go for one more.",
+    "You talked me into another.", "Why not, one more!",
+    "Let's keep this going!", "Encore!",
+    "That didn't last long!", "I need a sequel!",
+  ],
+  READY_TO_PAY: [
+    "Check, please!", "I'm ready to close out.", "Tab please!",
+    "Can I get the bill?", "Time to settle up!",
+    "What do I owe?", "I should probably pay up.",
+    "Bill me!", "Let me get the check.", "Closing time for me!",
+    "Ring me up!", "How much do I owe?", "I'll take my check.",
+    "Better pay before I order more!", "Check time!",
+    "I need to head out.", "Gotta run, check please!",
+    "Can you close me out?", "What's the damage?",
+    "Time to pay the piper!", "Let's square up!",
+  ],
+  REVIEWING_CHECK: [
+    "Let me look at this...", "Hmm, let me see...",
+    "One moment...", "Checking the total...",
+    "Let me review this...", "Alright, let's see...",
+    "Going over the bill...", "Math time...",
+    "Looks about right...", "Just double-checking...",
+    "Hmm hmm hmm...", "Adding it up...",
+    "Okay let me see here...", "Just a sec...",
+    "Let me make sure...", "Reading the fine print...",
+    "Seems fair...", "Yep, looks good...",
+    "Everything checks out...", "Alright alright...",
+  ],
+  HAS_CHECK: [
+    "Let me finish this drink first...",
+    "I'm still enjoying this!", "Hold on, not done yet!",
+    "Almost finished!", "Just a few more sips...",
+    "Can't rush a good drink!", "Nearly there...",
+    "One sec, savoring this.", "Let me finish up.",
+    "Don't rush me!", "Patience, almost done!",
+    "The best part is the last sip.", "Getting there...",
+    "Just wrapping up!", "Give me a minute to finish.",
+    "So close to done...", "Last few sips!",
+    "Can't waste a drop!", "Finishing up, promise!",
+    "The check can wait, this can't!",
+  ],
+};
+
+/** Pick a deterministic-ish message from a pool using guest ID + timestamp */
+function _pick(pool, guestId) {
+  // Use guest ID + a slowly rotating index so it changes between visits
+  // but stays stable while the modal is open
+  const tick = Math.floor(Date.now() / 10000); // changes every 10s
+  const idx = (guestId * 7 + tick) % pool.length;
+  return pool[idx];
+}
+
 const PANEL_W = 460;
 const PANEL_H = 320;
 const PX = (CANVAS_W - PANEL_W) / 2;
@@ -145,28 +291,32 @@ export class GuestModal {
 
   _getMessage(guest) {
     if (guest.state === GUEST_STATE.ENJOYING && guest.hasCheck) {
-      return "Let me finish this drink first...";
+      return _pick(MESSAGES.HAS_CHECK, guest.id);
     }
 
     switch (guest.state) {
       case GUEST_STATE.SEATED:
-        return guest.greeted ? "Give me a moment..." : "Hi there!";
+        return guest.greeted
+          ? _pick(MESSAGES.SEATED_GREETED, guest.id)
+          : _pick(MESSAGES.SEATED_NEW, guest.id);
       case GUEST_STATE.LOOKING:
-        return guest.greeted ? "Hmm, still deciding..." : "Hmm, what looks good...";
+        return guest.greeted
+          ? _pick(MESSAGES.LOOKING_GREETED, guest.id)
+          : _pick(MESSAGES.LOOKING_NEW, guest.id);
       case GUEST_STATE.READY_TO_ORDER:
-        return "I'm ready to order!";
+        return _pick(MESSAGES.READY_TO_ORDER, guest.id);
       case GUEST_STATE.ORDER_TAKEN:
-        return "Thanks, I'll wait.";
+        return _pick(MESSAGES.ORDER_TAKEN, guest.id);
       case GUEST_STATE.WAITING_FOR_DRINK:
-        return "Waiting on my drink...";
+        return _pick(MESSAGES.WAITING_FOR_DRINK, guest.id);
       case GUEST_STATE.ENJOYING:
-        return "This is great!";
+        return _pick(MESSAGES.ENJOYING, guest.id);
       case GUEST_STATE.WANTS_ANOTHER:
-        return "I'd like another one!";
+        return _pick(MESSAGES.WANTS_ANOTHER, guest.id);
       case GUEST_STATE.READY_TO_PAY:
-        return "Check, please!";
+        return _pick(MESSAGES.READY_TO_PAY, guest.id);
       case GUEST_STATE.REVIEWING_CHECK:
-        return "Let me look at this...";
+        return _pick(MESSAGES.REVIEWING_CHECK, guest.id);
       default:
         return "...";
     }
