@@ -1,4 +1,5 @@
 /* global Phaser */
+import { GUEST_APPEARANCE_IDS } from '../data/guestAppearances.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -23,20 +24,15 @@ export class BootScene extends Phaser.Scene {
     // ── Sprites ──
     this.load.image('bartender', 'assets/sprites/bartender.png');
     this.load.spritesheet('bartender_walk', 'assets/sprites/bartender_walk.png', { frameWidth: 96, frameHeight: 144 });
-    this.load.spritesheet('guest_walk', 'assets/sprites/guest_walk.png', { frameWidth: 72, frameHeight: 96 });
     this.load.spritesheet('guest_drink', 'assets/sprites/guest_drink.png', { frameWidth: 72, frameHeight: 60 });
     this.load.image('bartender_carry', 'assets/sprites/bartender_carry.png');
     this.load.image('bartender_back', 'assets/sprites/bartender_back.png');
-    this.load.image('guest', 'assets/sprites/guest.png');
-    this.load.image('guest_red', 'assets/sprites/guest_red.png');
-    this.load.image('guest_green', 'assets/sprites/guest_green.png');
-    this.load.image('guest_purple', 'assets/sprites/guest_purple.png');
-    this.load.image('guest_orange', 'assets/sprites/guest_orange.png');
-    this.load.image('guest_sitting', 'assets/sprites/guest_sitting.png');
-    this.load.image('guest_sitting_red', 'assets/sprites/guest_sitting_red.png');
-    this.load.image('guest_sitting_green', 'assets/sprites/guest_sitting_green.png');
-    this.load.image('guest_sitting_purple', 'assets/sprites/guest_sitting_purple.png');
-    this.load.image('guest_sitting_orange', 'assets/sprites/guest_sitting_orange.png');
+    // Guest appearance variants — standing, sitting, walk per ID
+    for (const id of GUEST_APPEARANCE_IDS) {
+      this.load.image(`guest_${id}`, `assets/sprites/guest_${id}.png`);
+      this.load.image(`guest_sitting_${id}`, `assets/sprites/guest_sitting_${id}.png`);
+      this.load.spritesheet(`guest_walk_${id}`, `assets/sprites/guest_walk_${id}.png`, { frameWidth: 72, frameHeight: 96 });
+    }
     this.load.image('stool', 'assets/sprites/stool.png');
     this.load.image('glass_pint', 'assets/sprites/glass_pint.png');
     this.load.image('glass_wine', 'assets/sprites/glass_wine.png');
@@ -104,12 +100,14 @@ export class BootScene extends Phaser.Scene {
       frameRate: 6,
       repeat: -1,
     });
-    this.anims.create({
-      key: 'guest-walk',
-      frames: this.anims.generateFrameNumbers('guest_walk', { start: 0, end: 3 }),
-      frameRate: 6,
-      repeat: -1,
-    });
+    for (const id of GUEST_APPEARANCE_IDS) {
+      this.anims.create({
+        key: `guest-walk-${id}`,
+        frames: this.anims.generateFrameNumbers(`guest_walk_${id}`, { start: 0, end: 3 }),
+        frameRate: 6,
+        repeat: -1,
+      });
+    }
     this.anims.create({
       key: 'guest-drink',
       frames: this.anims.generateFrameNumbers('guest_drink', { start: 0, end: 3 }),

@@ -1,9 +1,7 @@
 import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
+import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
-
-const GUEST_SPRITES = ['guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange'];
-const GUEST_SITTING_SPRITES = ['guest_sitting', 'guest_sitting_red', 'guest_sitting_green', 'guest_sitting_purple', 'guest_sitting_orange'];
 
 // Sitting sprite geometry (24x20 source pixels)
 // Torso rows 12-17, arms on outer cols 13-17, hands at rows 18-19.
@@ -77,9 +75,9 @@ export class GuestLayer {
 
   _createGuestVisual(guest) {
     const scene = this.scene;
-    const spriteIdx = guest.id % GUEST_SPRITES.length;
+    const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
 
-    const sprite = scene.add.sprite(0, 0, GUEST_SPRITES[spriteIdx]).setScale(1.01).setDepth(5);
+    const sprite = scene.add.sprite(0, 0, `guest_${appearanceId}`).setScale(1.01).setDepth(5);
 
     // State popup icon — pops up and fades on state change
     const statePopup = scene.add.image(0, 0, 'icon_hourglass')
@@ -99,7 +97,7 @@ export class GuestLayer {
     }).setOrigin(0.5).setDepth(15).setVisible(false);
 
     return {
-      sprite, spriteIdx,
+      sprite, appearanceId,
       statePopup, statePopupTimer: 0, stateRepeatTimer: 0,
       moodPopup, moodPopupTimer: 0,
       orderText, sipGlass,
@@ -133,13 +131,13 @@ export class GuestLayer {
       vis.isSitting = seated;
       vis.wasWalking = walking;
       if (walking) {
-        vis.sprite.play('guest-walk');
+        vis.sprite.play(`guest-walk-${vis.appearanceId}`);
       } else if (seated) {
         vis.sprite.stop();
-        vis.sprite.setTexture(GUEST_SITTING_SPRITES[vis.spriteIdx]);
+        vis.sprite.setTexture(`guest_sitting_${vis.appearanceId}`);
       } else {
         vis.sprite.stop();
-        vis.sprite.setTexture(GUEST_SPRITES[vis.spriteIdx]);
+        vis.sprite.setTexture(`guest_${vis.appearanceId}`);
       }
     }
 

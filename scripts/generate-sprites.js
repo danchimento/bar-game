@@ -5,6 +5,7 @@
 const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
+const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
@@ -42,90 +43,38 @@ function createSprite(w, h, drawFn, filename) {
 console.log('Generating sprites...\n');
 
 // ============================================================
-// GUEST (24x32) - Simple seated person
+// GUEST STANDING (24x32) — generated per appearance
 // ============================================================
-createSprite(24, 32, ({ px, row, rect, col }) => {
-  const SK = '#d4a574'; const SKS = '#b8895e'; const HAIR = '#3a2518';
-  const HRH = '#5c3a28'; const EYE = '#181818'; const SHRT = '#4a6fa5';
-  const SRTS = '#3a5f95'; const PNT = '#2a2a3a';
+function drawGuestStanding({ px, row }, SHRT, SRTS) {
+  const { SK, SKS, HAIR, HRH, EYE, PNT } = GUEST_BASE;
 
-  // Hair
-  row(0, 8, 15, HAIR);
-  row(1, 7, 16, HAIR); px(10, 1, HRH); px(11, 1, HRH);
+  row(0, 8, 15, HAIR); row(1, 7, 16, HAIR); px(10, 1, HRH); px(11, 1, HRH);
   row(2, 7, 16, HAIR); px(9, 2, HRH);
-
-  // Face
   for (let y = 3; y <= 9; y++) row(y, 8, 15, SK);
-  // Hair sides
   for (let y = 3; y <= 5; y++) { px(7, y, HAIR); px(16, y, HAIR); }
-  // Ears
   px(7, 6, SKS); px(16, 6, SKS);
-  // Eyes
   px(10, 6, EYE); px(13, 6, EYE);
-  // Eyebrows
   row(5, 10, 11, HAIR); row(5, 13, 14, HAIR);
-  // Nose
   px(12, 7, SKS);
-  // Mouth
   px(11, 8, SKS); px(12, 8, '#c47050'); px(13, 8, SKS);
-  // Chin
   row(9, 9, 14, SKS);
-
-  // Neck
   row(10, 10, 13, SK); row(11, 10, 13, SK);
-
-  // Shirt / torso
   for (let y = 12; y <= 22; y++) row(y, 6, 17, SHRT);
-  // Shirt shadow/fold
   for (let y = 13; y <= 21; y++) { px(7, y, SRTS); px(16, y, SRTS); }
-  // Collar
   px(10, 12, SK); px(11, 12, SK); px(12, 12, SK); px(13, 12, SK);
-
-  // Arms
   for (let y = 13; y <= 18; y++) { px(5, y, SHRT); px(18, y, SHRT); }
   for (let y = 19; y <= 21; y++) { px(5, y, SK); px(18, y, SK); }
-
-  // Pants (seated, just a strip showing)
   for (let y = 23; y <= 26; y++) row(y, 6, 17, PNT);
-
-  // Legs (dangling from stool)
   for (let y = 27; y <= 31; y++) { row(y, 6, 10, PNT); row(y, 13, 17, PNT); }
-}, 'guest.png');
+}
 
-// ============================================================
-// GUEST VARIANTS (recolor shirts)
-// ============================================================
-const GUEST_COLORS = [
-  { name: 'guest_red.png', shirt: '#a54a4a', shadow: '#953a3a' },
-  { name: 'guest_green.png', shirt: '#4a8a4a', shadow: '#3a7a3a' },
-  { name: 'guest_purple.png', shirt: '#7a4a9a', shadow: '#6a3a8a' },
-  { name: 'guest_orange.png', shirt: '#c88040', shadow: '#b87030' },
-];
-for (const gc of GUEST_COLORS) {
-  createSprite(24, 32, ({ px, row, rect, col }) => {
-    const SK = '#d4a574'; const SKS = '#b8895e'; const HAIR = '#3a2518';
-    const HRH = '#5c3a28'; const EYE = '#181818';
-    const SHRT = gc.shirt; const SRTS = gc.shadow; const PNT = '#2a2a3a';
-
-    row(0, 8, 15, HAIR); row(1, 7, 16, HAIR); px(10, 1, HRH); px(11, 1, HRH);
-    row(2, 7, 16, HAIR); px(9, 2, HRH);
-    for (let y = 3; y <= 9; y++) row(y, 8, 15, SK);
-    for (let y = 3; y <= 5; y++) { px(7, y, HAIR); px(16, y, HAIR); }
-    px(7, 6, SKS); px(16, 6, SKS);
-    px(10, 6, EYE); px(13, 6, EYE);
-    row(5, 10, 11, HAIR); row(5, 13, 14, HAIR);
-    px(12, 7, SKS);
-    px(11, 8, SKS); px(12, 8, '#c47050'); px(13, 8, SKS);
-    row(9, 9, 14, SKS);
-    row(10, 10, 13, SK); row(11, 10, 13, SK);
-    for (let y = 12; y <= 22; y++) row(y, 6, 17, SHRT);
-    for (let y = 13; y <= 21; y++) { px(7, y, SRTS); px(16, y, SRTS); }
-    px(10, 12, SK); px(11, 12, SK); px(12, 12, SK); px(13, 12, SK);
-    for (let y = 13; y <= 18; y++) { px(5, y, SHRT); px(18, y, SHRT); }
-    for (let y = 19; y <= 21; y++) { px(5, y, SK); px(18, y, SK); }
-    for (let y = 23; y <= 26; y++) row(y, 6, 17, PNT);
-    for (let y = 27; y <= 31; y++) { row(y, 6, 10, PNT); row(y, 13, 17, PNT); }
-  }, gc.name);
+for (const app of GUEST_APPEARANCES) {
+  // Base (first) also gets the legacy name without suffix
+  const names = [`guest_${app.id}.png`];
+  if (app === GUEST_APPEARANCES[0]) names.push('guest.png');
+  for (const name of names) {
+    createSprite(24, 32, (ctx) => drawGuestStanding(ctx, app.shirt, app.shadow), name);
+  }
 }
 
 // ============================================================
@@ -133,8 +82,7 @@ for (const gc of GUEST_COLORS) {
 // No legs visible (hidden behind bar counter)
 // ============================================================
 function drawGuestSitting({ px, row, rect, col }, SHRT, SRTS) {
-  const SK = '#d4a574'; const SKS = '#b8895e'; const HAIR = '#3a2518';
-  const HRH = '#5c3a28'; const EYE = '#181818';
+  const { SK, SKS, HAIR, HRH, EYE } = GUEST_BASE;
 
   // Hair
   row(0, 8, 15, HAIR);
@@ -168,21 +116,12 @@ function drawGuestSitting({ px, row, rect, col }, SHRT, SRTS) {
   px(3, 19, SK); px(4, 19, SK); px(19, 19, SK); px(20, 19, SK);
 }
 
-createSprite(24, 20, (ctx) => {
-  drawGuestSitting(ctx, '#4a6fa5', '#3a5f95');
-}, 'guest_sitting.png');
-
-// Sitting variants
-const GUEST_SITTING_COLORS = [
-  { name: 'guest_sitting_red.png', shirt: '#a54a4a', shadow: '#953a3a' },
-  { name: 'guest_sitting_green.png', shirt: '#4a8a4a', shadow: '#3a7a3a' },
-  { name: 'guest_sitting_purple.png', shirt: '#7a4a9a', shadow: '#6a3a8a' },
-  { name: 'guest_sitting_orange.png', shirt: '#c88040', shadow: '#b87030' },
-];
-for (const gc of GUEST_SITTING_COLORS) {
-  createSprite(24, 20, (ctx) => {
-    drawGuestSitting(ctx, gc.shirt, gc.shadow);
-  }, gc.name);
+for (const app of GUEST_APPEARANCES) {
+  const names = [`guest_sitting_${app.id}.png`];
+  if (app === GUEST_APPEARANCES[0]) names.push('guest_sitting.png');
+  for (const name of names) {
+    createSprite(24, 20, (ctx) => drawGuestSitting(ctx, app.shirt, app.shadow), name);
+  }
 }
 
 // ============================================================

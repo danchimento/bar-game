@@ -6,6 +6,7 @@
 const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
+const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 
 const PIXEL = 3;
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
@@ -52,11 +53,10 @@ const BARTENDER = {
   SHOE: '#0e0e0e', SHOH: '#222222', BKLE: '#c8a840',
 };
 
-const GUEST = {
-  SK: '#d4a574', SKS: '#b8895e', HAIR: '#3a2518',
-  HRH: '#5c3a28', EYE: '#181818',
-  SHRT: '#4a6fa5', SRTS: '#3a5f95', PNT: '#2a2a3a',
-};
+// Guest palette built per-appearance from shared data
+function guestPalette(appearance) {
+  return { ...GUEST_BASE, SHRT: appearance.shirt, SRTS: appearance.shadow };
+}
 
 // ============================================================
 // BARTENDER WALK (32x48, 4 frames) — TRUE SIDE PROFILE
@@ -184,30 +184,30 @@ function drawGuestSideUpper(ctx, P) {
   px(11, 12, P.SK); px(12, 12, P.SK);
 }
 
-createSheet(24, 32, 4, (ctx, frame) => {
-  const P = GUEST;
-  drawGuestSideUpper(ctx, P);
-  const { px, row } = ctx;
+for (const app of GUEST_APPEARANCES) {
+  const P = guestPalette(app);
+  const names = [`guest_walk_${app.id}.png`];
+  if (app === GUEST_APPEARANCES[0]) names.push('guest_walk.png');
+  for (const filename of names) {
+    createSheet(24, 32, 4, (ctx, frame) => {
+      drawGuestSideUpper(ctx, P);
+      const { px, row } = ctx;
 
-  // Arms — one visible in front, one behind
-  const armSwing = [0, 1, 0, -1][frame];
-  // Back arm
-  for (let y = 13; y <= 18; y++) px(7, y - armSwing, P.SHRT);
-  for (let y = 19; y <= 21; y++) px(7, y - armSwing, P.SK);
-  // Front arm
-  for (let y = 13; y <= 18; y++) px(17, y + armSwing, P.SHRT);
-  for (let y = 19; y <= 21; y++) px(17, y + armSwing, P.SK);
+      const armSwing = [0, 1, 0, -1][frame];
+      for (let y = 13; y <= 18; y++) px(7, y - armSwing, P.SHRT);
+      for (let y = 19; y <= 21; y++) px(7, y - armSwing, P.SK);
+      for (let y = 13; y <= 18; y++) px(17, y + armSwing, P.SHRT);
+      for (let y = 19; y <= 21; y++) px(17, y + armSwing, P.SK);
 
-  // Legs — side profile stride
-  const legFwd = [0, 2, 0, -2][frame];
-  const legBck = [0, -1, 0, 1][frame];
-  // Back leg
-  for (let y = 23; y <= 26; y++) row(y + legBck, 8, 12, P.PNT);
-  for (let y = 27; y <= 31; y++) row(y + legBck, 8, 11, P.PNT);
-  // Front leg
-  for (let y = 23; y <= 26; y++) row(y + legFwd, 12, 16, P.PNT);
-  for (let y = 27; y <= 31; y++) row(y + legFwd, 13, 16, P.PNT);
-}, 'guest_walk.png');
+      const legFwd = [0, 2, 0, -2][frame];
+      const legBck = [0, -1, 0, 1][frame];
+      for (let y = 23; y <= 26; y++) row(y + legBck, 8, 12, P.PNT);
+      for (let y = 27; y <= 31; y++) row(y + legBck, 8, 11, P.PNT);
+      for (let y = 23; y <= 26; y++) row(y + legFwd, 12, 16, P.PNT);
+      for (let y = 27; y <= 31; y++) row(y + legFwd, 13, 16, P.PNT);
+    }, filename);
+  }
+}
 
 // ============================================================
 // GUEST DRINK (24x20, 4 frames) — sitting, lifts glass
@@ -245,7 +245,7 @@ const GL_COLOR = 'rgba(200,220,240,0.6)';
 const BEER = '#d4a030';
 
 createSheet(24, 20, 4, (ctx, frame) => {
-  const P = GUEST;
+  const P = guestPalette(GUEST_APPEARANCES[0]);
   drawGuestSittingBase(ctx, P);
   const { px, row } = ctx;
 

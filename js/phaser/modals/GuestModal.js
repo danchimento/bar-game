@@ -1,12 +1,5 @@
 import { CANVAS_W, CANVAS_H, GUEST_STATE } from '../../constants.js';
-
-const GUEST_SITTING_SPRITES = [
-  'guest_sitting', 'guest_sitting_red', 'guest_sitting_green',
-  'guest_sitting_purple', 'guest_sitting_orange',
-];
-const GUEST_SPRITES = [
-  'guest', 'guest_red', 'guest_green', 'guest_purple', 'guest_orange',
-];
+import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 
 // Messages shown based on guest state
 const STATE_MESSAGES = {
@@ -92,12 +85,12 @@ export class GuestModal {
     );
 
     // Guest sprite — zoomed in (large scale)
-    const spriteIdx = guest.id % GUEST_SITTING_SPRITES.length;
+    const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
     const seated = guest.state !== GUEST_STATE.LEAVING &&
                    guest.state !== GUEST_STATE.ANGRY_LEAVING &&
                    guest.state !== GUEST_STATE.ARRIVING &&
                    guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
-    const spriteKey = seated ? GUEST_SITTING_SPRITES[spriteIdx] : GUEST_SPRITES[spriteIdx];
+    const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
     const portrait = scene.add.image(portraitX, portraitY + 10, spriteKey)
       .setScale(3.0).setOrigin(0.5, 0.5);
     this.container.add(portrait);
