@@ -141,7 +141,6 @@ export class DrinkModal {
     if (this._pouringDrinkKey && DRINKS[this._pouringDrinkKey]) {
       fillRange = DRINKS[this._pouringDrinkKey].fillRange;
     } else if (glass.layers.length > 0) {
-      // Use the drink already in the glass
       const drinkKey = glass.layers[0].drinkKey;
       if (drinkKey && DRINKS[drinkKey]) fillRange = DRINKS[drinkKey].fillRange;
     }
@@ -150,56 +149,98 @@ export class DrinkModal {
     const s = 2.0; // matches glass scale
     const [minFill, maxFill] = fillRange;
 
-    // Get glass height for position calculation
-    let glassH;
-    if (glass.glassType === 'WINE_GLASS') {
-      glassH = (14 + 8 + 3) * s; // bowlH + stemH + base
-    } else if (glass.glassType === 'PLASTIC_CUP') {
-      glassH = 22 * s;
-    } else {
-      glassH = 28 * s;
-    }
-
-    // For wine, zone is relative to bowl only
-    const bowlH = glass.glassType === 'WINE_GLASS' ? 14 * s : glassH;
-    const bowlTop = glass.glassType === 'WINE_GLASS' ? gy - glassH : gy - glassH;
-
-    const zoneTopY = gy - bowlH * maxFill + (glass.glassType === 'WINE_GLASS' ? (glassH - bowlH) : 0);
-    const zoneBotY = gy - bowlH * minFill + (glass.glassType === 'WINE_GLASS' ? (glassH - bowlH) : 0);
-    const zoneH = zoneBotY - zoneTopY;
-
-    // Draw green zone markers on the right side of the glass
-    const markerX = gx + 22 * s;
-    const markerW = 3 * s;
-
     // Determine color based on current fill
     let zoneColor, zoneAlpha;
     if (fillPct >= minFill && fillPct <= maxFill) {
-      zoneColor = 0x4caf50; // green — in range
-      zoneAlpha = 0.9;
+      zoneColor = 0x4caf50; zoneAlpha = 0.25; // green — in range
     } else if (fillPct > maxFill) {
-      zoneColor = 0xf44336; // red — overfilled
-      zoneAlpha = 0.9;
+      zoneColor = 0xf44336; zoneAlpha = 0.25; // red — overfilled
     } else if (fillPct > 0) {
-      zoneColor = 0xff9800; // amber — underfilled but pouring
-      zoneAlpha = 0.7;
+      zoneColor = 0xff9800; zoneAlpha = 0.2;  // amber — underfilled
     } else {
-      zoneColor = 0x4caf50; // green — hasn't started
-      zoneAlpha = 0.5;
+      zoneColor = 0x4caf50; zoneAlpha = 0.15; // green — hasn't started
     }
 
-    // Green zone bracket lines
-    this.glassGfx.lineStyle(2, zoneColor, zoneAlpha);
-    // Top tick
-    this.glassGfx.lineBetween(markerX, zoneTopY, markerX + markerW, zoneTopY);
-    // Bottom tick
-    this.glassGfx.lineBetween(markerX, zoneBotY, markerX + markerW, zoneBotY);
-    // Vertical connector
-    this.glassGfx.lineBetween(markerX + markerW, zoneTopY, markerX + markerW, zoneBotY);
+    // Draw the zone as a translucent overlay inside the glass shape
+    if (glass.glassType === 'WINE_GLASS') {
+      this._drawZoneWine(gx, gy, s, minFill, maxFill, zoneColor, zoneAlpha);
+    } else if (glass.glassType === 'PLASTIC_CUP') {
+      this._drawZoneCup(gx, gy, s, minFill, maxFill, zoneColor, zoneAlpha);
+    } else {
+      this._drawZonePint(gx, gy, s, minFill, maxFill, zoneColor, zoneAlpha);
+    }
 
-    // Fill the zone area with translucent green
-    this.glassGfx.fillStyle(zoneColor, 0.15);
-    this.glassGfx.fillRect(markerX, zoneTopY, markerW + 1, zoneH);
+    // Thin horizontal line markers at min and max fill
+    const lineAlpha = zoneAlpha + 0.25;
+    this.glassGfx.lineStyle(1, zoneColor, lineAlpha);
+    if (glass.glassType === 'PINT' || !glass.glassType) {
+      const h = 28 * s, w = 18 * s, taper = 2 * s;
+      const botW = w - taper * 2, topW = w;
+      for (const pct of [minFill, maxFill]) {
+        const ly = gy - h * pct;
+        const lw = botW + (topW - botW) * pct;
+        this.glassGfx.lineBetween(gx - lw / 2 + 1, ly, gx + lw / 2 - 1, ly);
+      }
+    } else if (glass.glassType === 'PLASTIC_CUP') {
+      const w = 16 * s;
+      for (const pct of [minFill, maxFill]) {
+        const ly = gy - 22 * s * pct;
+        this.glassGfx.lineBetween(gx - w / 2 + 2, ly, gx + w / 2 - 2, ly);
+      }
+    } else { // WINE_GLASS
+      const bowlH = 14 * s, totalH = (14 + 8 + 3) * s, bowlW = 14 * s;
+      const bowlBot = gy - totalH + bowlH;
+      for (const pct of [minFill, maxFill]) {
+        const ly = bowlBot - bowlH * pct;
+        const fW = bowlW * (0.4 + 0.6 * Math.min(1, pct * 1.2));
+        this.glassGfx.lineBetween(gx - fW / 2 + 1, ly, gx + fW / 2 - 1, ly);
+      }
+    }
+  }
+
+  _drawZonePint(gx, gy, s, minFill, maxFill, color, alpha) {
+    const w = 18 * s, h = 28 * s, taper = 2 * s;
+    const botW = w - taper * 2, topW = w;
+    // Width at a given fill pct
+    const wAt = (pct) => botW + (topW - botW) * pct;
+    const yAt = (pct) => gy - h * pct;
+
+    this.glassGfx.fillStyle(color, alpha);
+    this.glassGfx.beginPath();
+    this.glassGfx.moveTo(gx - wAt(maxFill) / 2 + 1, yAt(maxFill));
+    this.glassGfx.lineTo(gx - wAt(minFill) / 2 + 1, yAt(minFill));
+    this.glassGfx.lineTo(gx + wAt(minFill) / 2 - 1, yAt(minFill));
+    this.glassGfx.lineTo(gx + wAt(maxFill) / 2 - 1, yAt(maxFill));
+    this.glassGfx.closePath();
+    this.glassGfx.fillPath();
+  }
+
+  _drawZoneCup(gx, gy, s, minFill, maxFill, color, alpha) {
+    const w = 16 * s, h = 22 * s;
+    const yAt = (pct) => gy - h * pct;
+    // Cup has very slight taper, simplify as rect inset
+    const hw = w / 2 - 1;
+
+    this.glassGfx.fillStyle(color, alpha);
+    this.glassGfx.fillRect(gx - hw, yAt(maxFill), hw * 2, yAt(minFill) - yAt(maxFill));
+  }
+
+  _drawZoneWine(gx, gy, s, minFill, maxFill, color, alpha) {
+    const bowlW = 14 * s, bowlH = 14 * s;
+    const totalH = (14 + 8 + 3) * s;
+    const bowlBot = gy - totalH + bowlH;
+    // Width at fill pct inside bowl
+    const wAt = (pct) => bowlW * (0.4 + 0.6 * Math.min(1, pct * 1.2));
+    const yAt = (pct) => bowlBot - bowlH * pct;
+
+    this.glassGfx.fillStyle(color, alpha);
+    this.glassGfx.beginPath();
+    this.glassGfx.moveTo(gx - wAt(maxFill) / 2 + 1, yAt(maxFill));
+    this.glassGfx.lineTo(gx - wAt(minFill) / 2 + 1, yAt(minFill));
+    this.glassGfx.lineTo(gx + wAt(minFill) / 2 - 1, yAt(minFill));
+    this.glassGfx.lineTo(gx + wAt(maxFill) / 2 - 1, yAt(maxFill));
+    this.glassGfx.closePath();
+    this.glassGfx.fillPath();
   }
 
   _drawOverflow(gx, gy, glass, liquidColor) {
