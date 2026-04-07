@@ -105,6 +105,7 @@ export class GuestLayer {
       lastState: guest.state,
       isSitting: false,
       wasWalking: false,
+      walkBobTimer: 0,
     };
   }
 
@@ -131,7 +132,10 @@ export class GuestLayer {
       vis.isSitting = seated;
       vis.wasWalking = walking;
       if (walking) {
-        vis.sprite.play(`guest-walk-${vis.appearanceId}`);
+        // Use front-facing standing sprite instead of side-view walk animation
+        vis.sprite.stop();
+        vis.sprite.setTexture(`guest_${vis.appearanceId}`);
+        vis.walkBobTimer = 0;
       } else if (seated) {
         vis.sprite.stop();
         vis.sprite.setTexture(`guest_sitting_${vis.appearanceId}`);
@@ -141,11 +145,21 @@ export class GuestLayer {
       }
     }
 
+    // Advance walk bob timer for walking guests
+    if (walking) {
+      vis.walkBobTimer += 1 / 60;
+    }
+
     // Sitting sprite: push down so BAR_OVERLAP_ROW aligns with bar surface.
     // Bar surface (depth 6) covers the lower torso, making guest flush against bar.
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
       vis.sprite.setPosition(x, BAR_SURFACE_Y + BAR_OVERLAP_OFFSET);
+    } else if (walking) {
+      // Subtle side-to-side bob to indicate walking
+      const bob = Math.sin(vis.walkBobTimer * 8) * 1.5;
+      vis.sprite.setOrigin(0.5, 0.5);
+      vis.sprite.setPosition(x + bob, y);
     } else {
       vis.sprite.setOrigin(0.5, 0.5);
       vis.sprite.setPosition(x, y);
