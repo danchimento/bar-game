@@ -371,35 +371,43 @@ createSprite(24, 24, ({ px, row, rect, col }) => {
 }, 'station_sink.png');
 
 // ============================================================
-// GLASS RACK (28x24)
+// GLASS RACK (84x24) — wide 3-section shelf unit
 // ============================================================
-createSprite(28, 24, ({ px, row, rect, col }) => {
+createSprite(84, 24, ({ px, row, rect, col }) => {
   const WOOD = '#5a4a38'; const WD = '#4a3a28'; const WH = '#6a5a48';
   const GL = 'rgba(200,220,240,0.4)';
 
   // Frame
-  rect(0, 0, 28, 24, WOOD);
-  row(0, 0, 27, WH); col(0, 0, 23, WD); col(27, 0, 23, WH);
-  row(23, 0, 27, WD);
+  rect(0, 0, 84, 24, WOOD);
+  row(0, 0, 83, WH); col(0, 0, 23, WD); col(83, 0, 23, WH);
+  row(23, 0, 83, WD);
 
-  // Shelves
-  row(11, 1, 26, WH); row(12, 1, 26, WD);
+  // Shelf divider
+  row(11, 1, 82, WH); row(12, 1, 82, WD);
 
   // Back panel (darker)
-  rect(1, 1, 26, 10, '#3a2a18');
-  rect(1, 13, 26, 10, '#3a2a18');
+  rect(1, 1, 82, 10, '#3a2a18');
+  rect(1, 13, 82, 10, '#3a2a18');
 
-  // Glasses on top shelf (3 small pint outlines)
-  for (const gx of [5, 12, 19]) {
-    col(gx, 3, 10, GL); col(gx + 4, 3, 10, GL);
-    row(10, gx, gx + 4, GL);
-    row(3, gx + 1, gx + 3, GL);
+  // Section dividers
+  col(28, 1, 22, WD); col(29, 1, 22, WH);
+  col(55, 1, 22, WD); col(56, 1, 22, WH);
+
+  // Glasses on top shelf (3 per section = 9 total)
+  for (const sx of [0, 28, 55]) {
+    for (const gx of [sx + 5, sx + 12, sx + 19]) {
+      col(gx, 3, 10, GL); col(gx + 4, 3, 10, GL);
+      row(10, gx, gx + 4, GL);
+      row(3, gx + 1, gx + 3, GL);
+    }
   }
   // Glasses on bottom shelf
-  for (const gx of [5, 12, 19]) {
-    col(gx, 15, 22, GL); col(gx + 4, 15, 22, GL);
-    row(22, gx, gx + 4, GL);
-    row(15, gx + 1, gx + 3, GL);
+  for (const sx of [0, 28, 55]) {
+    for (const gx of [sx + 5, sx + 12, sx + 19]) {
+      col(gx, 15, 22, GL); col(gx + 4, 15, 22, GL);
+      row(22, gx, gx + 4, GL);
+      row(15, gx + 1, gx + 3, GL);
+    }
   }
 }, 'station_glass_rack.png');
 
@@ -635,19 +643,19 @@ createSprite(64, 16, ({ px, rect }) => {
   px(3, 1, WOODH); px(50, 14, WOODH); px(20, 13, WOODD);
 }, 'tile_bar_top.png');
 
-// BAR CABINET TILE (64x16) — dark wood panel, seamless edges
+// BAR CABINET TILE (64x16) — same warm wood as bar top, seamless
 createSprite(64, 16, ({ px, rect, col }) => {
-  const PANEL = '#2a1a0e'; const PANELH = '#33220f'; const PANELD = '#1e1208';
+  const WOOD = '#8B4513'; const WOODH = '#9B5523'; const WOODD = '#7a3a0f';
 
-  rect(0, 0, 64, 16, PANEL);
-  // Vertical slat lines (subtle panel divisions, no border rows)
+  rect(0, 0, 64, 16, WOOD);
+  // Vertical slat lines (subtle panel divisions)
   for (let x = 15; x < 64; x += 16) {
-    col(x, 0, 15, PANELD);
-    col(x + 1, 0, 15, PANELH);
+    col(x, 0, 15, WOODD);
+    col(x + 1, 0, 15, WOODH);
   }
   // Subtle wood grain
   for (let x = 4; x < 64; x += 13) {
-    px(x, 6, PANELH); px(x + 1, 7, PANELH); px(x, 10, PANELH);
+    px(x, 6, WOODH); px(x + 1, 7, WOODH); px(x, 10, WOODH);
   }
 }, 'tile_cabinet.png');
 

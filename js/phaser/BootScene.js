@@ -22,6 +22,9 @@ export class BootScene extends Phaser.Scene {
 
     // ── Sprites ──
     this.load.image('bartender', 'assets/sprites/bartender.png');
+    this.load.spritesheet('bartender_walk', 'assets/sprites/bartender_walk.png', { frameWidth: 96, frameHeight: 144 });
+    this.load.spritesheet('guest_walk', 'assets/sprites/guest_walk.png', { frameWidth: 72, frameHeight: 96 });
+    this.load.spritesheet('guest_drink', 'assets/sprites/guest_drink.png', { frameWidth: 72, frameHeight: 60 });
     this.load.image('bartender_carry', 'assets/sprites/bartender_carry.png');
     this.load.image('guest', 'assets/sprites/guest.png');
     this.load.image('guest_red', 'assets/sprites/guest_red.png');
@@ -93,6 +96,26 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // ── Animations ──
+    this.anims.create({
+      key: 'bartender-walk',
+      frames: this.anims.generateFrameNumbers('bartender_walk', { start: 0, end: 3 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'guest-walk',
+      frames: this.anims.generateFrameNumbers('guest_walk', { start: 0, end: 3 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'guest-drink',
+      frames: this.anims.generateFrameNumbers('guest_drink', { start: 0, end: 3 }),
+      frameRate: 3,
+      repeat: 0,
+    });
+
     this.scene.start('Title');
   }
 }

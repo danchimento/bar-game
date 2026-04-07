@@ -11,7 +11,7 @@
 const STATION_TEMPLATES = {
   DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 90 },
   SINK:        { id: 'SINK',       label: 'Sink',  width: 80 },
-  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 90 },
+  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 200 },
   TAPS:        { id: 'TAPS',       label: 'Taps',  width: 120 },
   WINE:        { id: 'WINE',       label: 'Wine',  width: 100 },
   PREP:        { id: 'PREP',       label: 'Prep',  width: 100 },

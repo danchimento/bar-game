@@ -35,7 +35,7 @@ export class BarLayer {
       .setOrigin(0, 0).setDepth(6);
 
     // ── U-shaped bar legs — counter tile extends down from bar edges ──
-    const legWidth = 72;
+    const legWidth = 24;
     const legTop = BAR_SURFACE_Y;
     const legH = COUNTER_SURFACE_Y - legTop;
     // Left leg

@@ -79,7 +79,7 @@ export class GuestLayer {
     const scene = this.scene;
     const spriteIdx = guest.id % GUEST_SPRITES.length;
 
-    const sprite = scene.add.image(0, 0, GUEST_SPRITES[spriteIdx]).setScale(1.01).setDepth(5);
+    const sprite = scene.add.sprite(0, 0, GUEST_SPRITES[spriteIdx]).setScale(1.01).setDepth(5);
 
     // State popup icon — pops up and fades on state change
     const statePopup = scene.add.image(0, 0, 'icon_hourglass')
@@ -106,6 +106,7 @@ export class GuestLayer {
       lastMood: guest.mood,
       lastState: guest.state,
       isSitting: false,
+      wasWalking: false,
     };
   }
 
@@ -123,12 +124,23 @@ export class GuestLayer {
                    guest.state === GUEST_STATE.WANTS_ANOTHER ||
                    guest.state === GUEST_STATE.READY_TO_PAY ||
                    guest.state === GUEST_STATE.REVIEWING_CHECK;
-    if (seated !== vis.isSitting) {
+    const walking = guest.state === GUEST_STATE.ARRIVING ||
+                    guest.state === GUEST_STATE.LEAVING ||
+                    guest.state === GUEST_STATE.ANGRY_LEAVING ||
+                    guest.state === GUEST_STATE.WAITING_FOR_SEAT;
+
+    if (seated !== vis.isSitting || walking !== vis.wasWalking) {
       vis.isSitting = seated;
-      const key = seated
-        ? GUEST_SITTING_SPRITES[vis.spriteIdx]
-        : GUEST_SPRITES[vis.spriteIdx];
-      vis.sprite.setTexture(key);
+      vis.wasWalking = walking;
+      if (walking) {
+        vis.sprite.play('guest-walk');
+      } else if (seated) {
+        vis.sprite.stop();
+        vis.sprite.setTexture(GUEST_SITTING_SPRITES[vis.spriteIdx]);
+      } else {
+        vis.sprite.stop();
+        vis.sprite.setTexture(GUEST_SPRITES[vis.spriteIdx]);
+      }
     }
 
     // Sitting sprite: push down so BAR_OVERLAP_ROW aligns with bar surface.

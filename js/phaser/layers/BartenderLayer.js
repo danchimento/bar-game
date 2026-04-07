@@ -9,10 +9,11 @@ export class BartenderLayer {
   constructor(scene) {
     this.scene = scene;
 
-    // Bartender sprite
-    this.sprite = scene.add.image(480, WALK_TRACK_Y, 'bartender')
+    // Bartender sprite (use sprite for animation support)
+    this.sprite = scene.add.sprite(480, WALK_TRACK_Y, 'bartender')
       .setDepth(10)
       .setScale(1.05);
+    this._wasMoving = false;
 
     // Busy progress bar (hidden by default)
     this.busyBarBg = scene.add.rectangle(480, WALK_TRACK_Y + 35, 50, 5, 0x333333)
@@ -38,10 +39,24 @@ export class BartenderLayer {
     const carry = bartender.carrying;
     const isCarrying = !!carry;
 
-    // Swap between normal and carry sprite
-    this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
+    const isMoving = Math.abs(bartender.x - bartender.targetX) > 3;
     this.sprite.x = x;
     this.sprite.setFlipX(!bartender.facingRight);
+
+    // Walk animation when moving, static when idle or carrying
+    if (isMoving && !isCarrying) {
+      if (!this._wasMoving || this.sprite.texture.key !== 'bartender_walk') {
+        this.sprite.play('bartender-walk');
+      }
+    } else {
+      if (this._wasMoving || this.sprite.anims.isPlaying) {
+        this.sprite.stop();
+        this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
+      } else {
+        this.sprite.setTexture(isCarrying ? 'bartender_carry' : 'bartender');
+      }
+    }
+    this._wasMoving = isMoving;
 
     // Carry indicator — drawn to the right side of the bartender
     // (flipX mirrors the whole visual, so the extended arm + item follows)
