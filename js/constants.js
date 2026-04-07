@@ -1,8 +1,35 @@
 // ═══════════════════════════════════════════════════════════
 // CANVAS
 // ═══════════════════════════════════════════════════════════
-export const CANVAS_W = 960;
+// Height is fixed; width adapts to the device aspect ratio so
+// Phaser's FIT mode fills the screen edge-to-edge with zero
+// letterboxing and zero cropping.
 export const CANVAS_H = 540;
+export let   CANVAS_W = 960; // default 16:9, overwritten by initCanvas()
+
+/**
+ * Call once before creating the Phaser.Game to set the game width
+ * to match the device's actual aspect ratio.
+ */
+export function initCanvas() {
+  const vw = window.innerWidth  || document.documentElement.clientWidth  || 960;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 540;
+  const aspect = Math.max(vw, vh) / Math.min(vw, vh); // always landscape ratio
+  CANVAS_W = Math.round(CANVAS_H * aspect);
+
+  // Recompute width-dependent layout
+  BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
+  BAR_RIGHT = BAR_LEFT + BAR_MAX_W;
+  BARTENDER_START_X = Math.round(CANVAS_W / 2);
+
+  // Redistribute stations proportionally across the new width
+  const BASE_W = 960;
+  for (const st of STATIONS) {
+    st.x = Math.round(st._baseX * (CANVAS_W / BASE_W));
+  }
+
+  return CANVAS_W;
+}
 
 // ═══════════════════════════════════════════════════════════
 // ZONE LAYOUT — single source of truth for the spatial map
@@ -58,10 +85,10 @@ export const BAR_SURFACE_Y = ZONES.bar_top.top + 4;     // where the surface tex
 export const BAR_FRONT_Y = ZONES.bar_top.bottom - 5;    // bartender-side edge
 export const BAR_DEPTH_PX = BAR_FRONT_Y - BAR_SURFACE_Y;
 
-// Bar physical width (centered)
+// Bar physical width (centered) — recomputed by initCanvas()
 export const BAR_MAX_W = 860;
-export const BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
-export const BAR_RIGHT = BAR_LEFT + BAR_MAX_W;
+export let BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
+export let BAR_RIGHT = BAR_LEFT + BAR_MAX_W;
 
 // Bar cabinets (under the bar)
 export const BAR_CABINET_TOP = ZONES.bar_cabinet.top;
@@ -124,21 +151,21 @@ export function setSeatCount(n) {
 // STATIONS — static definitions (x positions set by levels.js)
 // ═══════════════════════════════════════════════════════════
 export const STATIONS = [
-  { id: 'DISHWASHER',  x: 60,  label: 'Dish',  icon: '🫧' },
-  { id: 'SINK',        x: 150, label: 'Sink',  icon: '🚰' },
-  { id: 'GLASS_RACK',  x: 250, label: 'Glass', icon: '🥃' },
-  { id: 'TAPS',        x: 380, label: 'Taps',  icon: '🍺' },
-  { id: 'WINE',        x: 510, label: 'Wine',  icon: '🍷' },
-  { id: 'PREP',        x: 650, label: 'Prep',  icon: '🔪' },
-  { id: 'POS',         x: 850, label: 'POS',   icon: '💻' },
-  { id: 'MENU',        x: 930, label: 'Menu',  icon: '📋' },
+  { id: 'DISHWASHER',  x: 60,  _baseX: 60,  label: 'Dish',  icon: '🫧' },
+  { id: 'SINK',        x: 150, _baseX: 150, label: 'Sink',  icon: '🚰' },
+  { id: 'GLASS_RACK',  x: 250, _baseX: 250, label: 'Glass', icon: '🥃' },
+  { id: 'TAPS',        x: 380, _baseX: 380, label: 'Taps',  icon: '🍺' },
+  { id: 'WINE',        x: 510, _baseX: 510, label: 'Wine',  icon: '🍷' },
+  { id: 'PREP',        x: 650, _baseX: 650, label: 'Prep',  icon: '🔪' },
+  { id: 'POS',         x: 850, _baseX: 850, label: 'POS',   icon: '💻' },
+  { id: 'MENU',        x: 930, _baseX: 930, label: 'Menu',  icon: '📋' },
 ];
 
 // ═══════════════════════════════════════════════════════════
 // BARTENDER
 // ═══════════════════════════════════════════════════════════
 export const BARTENDER_SPEED = 280;
-export const BARTENDER_START_X = 480;
+export let BARTENDER_START_X = 480;
 
 // ═══════════════════════════════════════════════════════════
 // GUEST STATES & MOOD

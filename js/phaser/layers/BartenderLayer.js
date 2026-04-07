@@ -1,4 +1,4 @@
-import { WALK_TRACK_Y } from '../../constants.js';
+import { WALK_TRACK_Y, BARTENDER_START_X } from '../../constants.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
@@ -10,24 +10,24 @@ export class BartenderLayer {
     this.scene = scene;
 
     // Bartender sprite (use sprite for animation support)
-    this.sprite = scene.add.sprite(480, WALK_TRACK_Y, 'bartender')
+    this.sprite = scene.add.sprite(BARTENDER_START_X, WALK_TRACK_Y, 'bartender')
       .setDepth(10)
       .setScale(1.05);
     this._wasMoving = false;
 
     // Busy progress bar (hidden by default)
-    this.busyBarBg = scene.add.rectangle(480, WALK_TRACK_Y + 35, 50, 5, 0x333333)
+    this.busyBarBg = scene.add.rectangle(BARTENDER_START_X, WALK_TRACK_Y + 35, 50, 5, 0x333333)
       .setDepth(11).setVisible(false);
-    this.busyBarFill = scene.add.rectangle(480, WALK_TRACK_Y + 35, 0, 5, 0x4caf50)
+    this.busyBarFill = scene.add.rectangle(BARTENDER_START_X, WALK_TRACK_Y + 35, 0, 5, 0x4caf50)
       .setOrigin(0, 0.5).setDepth(11).setVisible(false);
-    this.busyLabel = scene.add.text(480, WALK_TRACK_Y + 46, '', {
+    this.busyLabel = scene.add.text(BARTENDER_START_X, WALK_TRACK_Y + 46, '', {
       fontFamily: 'monospace', fontSize: '10px', color: '#e0e0e0',
     }).setOrigin(0.5).setDepth(11).setVisible(false);
 
     // Carry indicator — Graphics for drawing glass to the side
     this.carryGfx = scene.add.graphics().setDepth(12);
     // Fallback icon for non-glass items (check, dirty glass)
-    this.carryIcon = scene.add.image(480, WALK_TRACK_Y - 45, 'icon_dirty_glass')
+    this.carryIcon = scene.add.image(BARTENDER_START_X, WALK_TRACK_Y - 45, 'icon_dirty_glass')
       .setOrigin(0.5).setDepth(12).setVisible(false).setScale(1.02);
   }
 

@@ -1,4 +1,4 @@
-import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY, ORDER_REVEAL_TIME } from '../../constants.js';
+import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY, ORDER_REVEAL_TIME, CANVAS_W } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
@@ -309,7 +309,7 @@ export class GuestLayer {
   _updateWaitingBadge(count) {
     if (count > 0) {
       if (!this.waitingText) {
-        this.waitingText = this.scene.add.text(480, 82, '', {
+        this.waitingText = this.scene.add.text(Math.round(CANVAS_W / 2), 82, '', {
           fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold',
           color: '#ffc107', backgroundColor: 'rgba(0,0,0,0.6)',
           padding: { x: 10, y: 4 },

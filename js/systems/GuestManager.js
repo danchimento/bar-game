@@ -1,4 +1,4 @@
-import { GUEST_STATE, ACTION_DURATIONS, MOOD_MAX } from '../constants.js';
+import { GUEST_STATE, ACTION_DURATIONS, MOOD_MAX, CANVAS_W } from '../constants.js';
 import { DRINKS } from '../data/menu.js';
 import { Guest } from '../entities/Guest.js';
 
@@ -84,7 +84,7 @@ export class GuestManager {
 
   positionWaitingGuests() {
     const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
-    const startX = 480 - (waiting.length - 1) * 40 / 2;
+    const startX = Math.round(CANVAS_W / 2) - (waiting.length - 1) * 40 / 2;
     waiting.forEach((g, i) => {
       g.x = startX + i * 40;
     });

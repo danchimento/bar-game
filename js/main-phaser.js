@@ -1,5 +1,5 @@
 /* global Phaser */
-import { CANVAS_W, CANVAS_H } from './constants.js';
+import { CANVAS_W, CANVAS_H, initCanvas } from './constants.js';
 import { BootScene } from './phaser/BootScene.js';
 import { TitleScene } from './phaser/TitleScene.js';
 import { GamePlayScene } from './phaser/GamePlayScene.js';
@@ -16,7 +16,6 @@ function tryLockLandscape() {
   if (orientationLocked) return;
   orientationLocked = true;
 
-  // Try fullscreen + orientation lock (works on Android Chrome)
   const el = document.documentElement;
   const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
   if (requestFS) {
@@ -25,7 +24,6 @@ function tryLockLandscape() {
         return screen.orientation.lock('landscape').catch(() => {});
       }
     }).catch(() => {
-      // Fullscreen denied — try orientation lock alone
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
       }
@@ -36,6 +34,11 @@ function tryLockLandscape() {
 }
 document.addEventListener('pointerdown', tryLockLandscape, { once: true });
 
+// ── Adapt game width to device aspect ratio ──
+// Height stays fixed at 540; width stretches to fill the screen.
+// After this call, CANVAS_W reflects the actual device width.
+initCanvas();
+
 const config = {
   type: Phaser.AUTO,
   width: CANVAS_W,
@@ -44,11 +47,10 @@ const config = {
   backgroundColor: '#1a1a2e',
   audio: { noAudio: true },
   scale: {
-    mode: Phaser.Scale.ENVELOP,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: CANVAS_W,
     height: CANVAS_H,
-    min: { width: CANVAS_W / 2, height: CANVAS_H / 2 },
   },
   scene: [BootScene, TitleScene, GamePlayScene, LevelCompleteScene, ComponentViewerScene],
 };
