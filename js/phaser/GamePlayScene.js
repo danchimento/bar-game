@@ -76,6 +76,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.drinkModalState = {
       visible: false, type: null, items: [], stationX: 0,
       pouringIndex: -1, pourRate: 0, glassX: 0, glassTargetX: 0,
+      originX: 0, originY: 0, originW: 0, originH: 0,
     };
     this.prepModalState = { visible: false };
 

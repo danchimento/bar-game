@@ -197,6 +197,14 @@ export class StationActions {
     drinkModal.stationX = stationX;
     drinkModal.pouringIndex = -1;
 
+    // Animation origin for beer taps (station_taps: 40×32 at 0.72 scale)
+    if (type === 'beer') {
+      drinkModal.originX = stationX;
+      drinkModal.originY = COUNTER_SURFACE_Y;
+      drinkModal.originW = 29;
+      drinkModal.originH = 23;
+    }
+
     if (type === 'beer') {
       drinkModal.items = getAvailableDrinks().filter(d => DRINKS[d].type === 'beer');
       drinkModal.pourRate = 1.0 / ACTION_DURATIONS.POUR_BEER;
