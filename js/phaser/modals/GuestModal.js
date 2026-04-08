@@ -1,5 +1,6 @@
 import { CANVAS_W, CANVAS_H, GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
+import { BaseModal } from './BaseModal.js';
 
 // ── Message pools — random pick per guest for variety ──
 const MESSAGES = {
@@ -140,9 +141,7 @@ const MESSAGES = {
 
 /** Pick a deterministic-ish message from a pool using guest ID + timestamp */
 function _pick(pool, guestId) {
-  // Use guest ID + a slowly rotating index so it changes between visits
-  // but stays stable while the modal is open
-  const tick = Math.floor(Date.now() / 10000); // changes every 10s
+  const tick = Math.floor(Date.now() / 10000);
   const idx = (guestId * 7 + tick) % pool.length;
   return pool[idx];
 }
@@ -151,7 +150,7 @@ const PANEL_W = 460;
 const PANEL_H = 320;
 const PX = (CANVAS_W - PANEL_W) / 2;
 const PY = (CANVAS_H - PANEL_H) / 2;
-const LEFT_W = 160;  // left panel for guest portrait
+const LEFT_W = 160;
 const RIGHT_X = PX + LEFT_W + 20;
 const RIGHT_W = PANEL_W - LEFT_W - 40;
 const BTN_H = 36;
@@ -162,23 +161,19 @@ const BTN_GAP = 8;
  * Left: zoomed portrait of the guest.
  * Right: speech bubble message + context-dependent action buttons.
  */
-export class GuestModal {
+export class GuestModal extends BaseModal {
   constructor(scene) {
-    this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
+    super(scene, { closeEvent: 'guest-modal-close', dimAlpha: 0.65 });
     this._guest = null;
     this._getActions = null;
     this._actions = [];
-    // References for dynamic updates
     this._msgText = null;
-    this._btnObjects = [];  // [{bg, label}]
+    this._btnObjects = [];
     this._lastState = null;
     this._lastHasCheck = null;
     this._lastGreeted = null;
     this._btnStartY = 0;
   }
-
-  get visible() { return this.container.visible; }
 
   show(guest, getActions) {
     this._guest = guest;
@@ -187,26 +182,81 @@ export class GuestModal {
     this._lastState = guest.state;
     this._lastHasCheck = guest.hasCheck;
     this._lastGreeted = guest.greeted;
-    this._build();
-    this.container.setVisible(true);
+    super.show();
   }
 
-  hide() {
-    this.container.setVisible(false);
-    this.container.removeAll(true);
-    this._guest = null;
-    this._getActions = null;
-    this._actions = [];
-    this._msgText = null;
-    this._btnObjects = [];
-  }
-
-  /** Call each frame while visible to refresh message + actions */
-  update() {
-    if (!this.container.visible || !this._guest) return;
+  _build() {
+    const scene = this.scene;
     const guest = this._guest;
 
-    // Check if anything changed that would affect display
+    // Main panel (interactive to block dim clicks)
+    this._content.add(
+      scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, PANEL_W, PANEL_H, 0x1e1e2e)
+        .setStrokeStyle(2, 0x4a4a6a)
+        .setInteractive(),
+    );
+
+    // ── Left: Guest portrait area ──
+    const portraitX = PX + LEFT_W / 2;
+    const portraitY = PY + PANEL_H / 2;
+
+    this._content.add(
+      scene.add.rectangle(portraitX, portraitY, LEFT_W - 10, PANEL_H - 20, 0x151525)
+        .setStrokeStyle(1, 0x3a3a5a),
+    );
+
+    const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
+    const seated = guest.state !== GUEST_STATE.LEAVING &&
+                   guest.state !== GUEST_STATE.ANGRY_LEAVING &&
+                   guest.state !== GUEST_STATE.ARRIVING &&
+                   guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
+    const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
+    const portrait = scene.add.image(portraitX, portraitY + 10, spriteKey)
+      .setScale(3.0).setOrigin(0.5, 0.5);
+    this._content.add(portrait);
+
+    // ── Right side ──
+    let curY = PY + 24;
+
+    const guestLabel = scene.add.text(RIGHT_X, curY, `Customer #${guest.id + 1}`, {
+      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#e0e0e0',
+    });
+    this._content.add(guestLabel);
+    curY += 28;
+
+    // Speech bubble
+    const message = this._getMessage(guest);
+    const bubbleH = 60;
+    this._content.add(
+      scene.add.rectangle(RIGHT_X + RIGHT_W / 2, curY + bubbleH / 2, RIGHT_W, bubbleH, 0x2a2a3e)
+        .setStrokeStyle(1, 0x5a5a7a),
+    );
+    this._msgText = scene.add.text(RIGHT_X + 12, curY + 10, message, {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ffd54f',
+      wordWrap: { width: RIGHT_W - 24 },
+    });
+    this._content.add(this._msgText);
+    curY += bubbleH + 16;
+
+    // Action buttons
+    this._btnStartY = curY;
+    this._btnObjects = [];
+    this._buildButtons();
+
+    // Close button
+    const closeBtn = scene.add.rectangle(PX + PANEL_W - 22, PY + 16, 26, 22, 0xf44336)
+      .setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this._requestClose());
+    this._content.add(closeBtn);
+    this._content.add(scene.add.text(PX + PANEL_W - 22, PY + 16, 'X', {
+      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5));
+  }
+
+  _onUpdate(dt) {
+    if (!this._guest) return;
+    const guest = this._guest;
+
     const stateChanged = guest.state !== this._lastState;
     const checkChanged = guest.hasCheck !== this._lastHasCheck;
     const greetChanged = guest.greeted !== this._lastGreeted;
@@ -217,97 +267,22 @@ export class GuestModal {
     this._lastHasCheck = guest.hasCheck;
     this._lastGreeted = guest.greeted;
 
-    // Update message text
     if (this._msgText) {
       this._msgText.setText(this._getMessage(guest));
     }
 
-    // Rebuild action buttons
     if (this._getActions && typeof this._getActions === 'function') {
       this._actions = this._getActions(guest);
       this._rebuildButtons();
     }
   }
 
-  _build() {
-    this.container.removeAll(true);
-    const scene = this.scene;
-    const guest = this._guest;
-
-    // ── Dim overlay ──
-    const dim = scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.55)
-      .setInteractive();
-    dim.on('pointerdown', (ptr) => {
-      if (ptr.x < PX || ptr.x > PX + PANEL_W || ptr.y < PY || ptr.y > PY + PANEL_H) {
-        scene.events.emit('guest-modal-close');
-      }
-    });
-    this.container.add(dim);
-
-    // ── Main panel ──
-    this.container.add(
-      scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, PANEL_W, PANEL_H, 0x1e1e2e)
-        .setStrokeStyle(2, 0x4a4a6a)
-    );
-
-    // ── Left: Guest portrait area ──
-    const portraitX = PX + LEFT_W / 2;
-    const portraitY = PY + PANEL_H / 2;
-
-    // Portrait background
-    this.container.add(
-      scene.add.rectangle(portraitX, portraitY, LEFT_W - 10, PANEL_H - 20, 0x151525)
-        .setStrokeStyle(1, 0x3a3a5a)
-    );
-
-    // Guest sprite — zoomed in (large scale)
-    const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
-    const seated = guest.state !== GUEST_STATE.LEAVING &&
-                   guest.state !== GUEST_STATE.ANGRY_LEAVING &&
-                   guest.state !== GUEST_STATE.ARRIVING &&
-                   guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
-    const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
-    const portrait = scene.add.image(portraitX, portraitY + 10, spriteKey)
-      .setScale(3.0).setOrigin(0.5, 0.5);
-    this.container.add(portrait);
-
-    // ── Right side ──
-    let curY = PY + 24;
-
-    // Guest name / label
-    const guestLabel = scene.add.text(RIGHT_X, curY, `Customer #${guest.id + 1}`, {
-      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#e0e0e0',
-    });
-    this.container.add(guestLabel);
-    curY += 28;
-
-    // ── Speech bubble with message ──
-    const message = this._getMessage(guest);
-    const bubbleH = 60;
-    this.container.add(
-      scene.add.rectangle(RIGHT_X + RIGHT_W / 2, curY + bubbleH / 2, RIGHT_W, bubbleH, 0x2a2a3e)
-        .setStrokeStyle(1, 0x5a5a7a)
-    );
-    this._msgText = scene.add.text(RIGHT_X + 12, curY + 10, message, {
-      fontFamily: 'monospace', fontSize: '11px', color: '#ffd54f',
-      wordWrap: { width: RIGHT_W - 24 },
-    });
-    this.container.add(this._msgText);
-    curY += bubbleH + 16;
-
-    // ── Action buttons ──
-    this._btnStartY = curY;
+  _onTeardown() {
+    this._guest = null;
+    this._getActions = null;
+    this._actions = [];
+    this._msgText = null;
     this._btnObjects = [];
-    this._buildButtons();
-
-    // ── Close button ──
-    const closeBtn = scene.add.rectangle(PX + PANEL_W - 22, PY + 16, 26, 22, 0xf44336)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => scene.events.emit('guest-modal-close'));
-    this.container.add(closeBtn);
-    this.container.add(scene.add.text(PX + PANEL_W - 22, PY + 16, 'X', {
-      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5));
   }
 
   _buildButtons() {
@@ -316,7 +291,7 @@ export class GuestModal {
     for (const action of this._actions) {
       const btnY = curY + BTN_H / 2;
       const btnBg = scene.add.rectangle(RIGHT_X + RIGHT_W / 2, btnY, RIGHT_W, BTN_H,
-        action.disabled ? 0x2a2a2a : 0x3a5a3a
+        action.disabled ? 0x2a2a2a : 0x3a5a3a,
       ).setStrokeStyle(1, action.disabled ? 0x444444 : 0x5a8a5a);
 
       if (!action.disabled) {
@@ -324,7 +299,7 @@ export class GuestModal {
         btnBg.on('pointerover', () => btnBg.setFillStyle(0x4a7a4a));
         btnBg.on('pointerout', () => btnBg.setFillStyle(0x3a5a3a));
         btnBg.on('pointerdown', () => {
-          scene.events.emit('guest-modal-close');
+          this._requestClose();
           if (action.action) action.action();
         });
       }
@@ -334,20 +309,19 @@ export class GuestModal {
         color: action.disabled ? '#666666' : '#ffffff',
       }).setOrigin(0.5);
 
-      this.container.add(btnBg);
-      this.container.add(btnLabel);
+      this._content.add(btnBg);
+      this._content.add(btnLabel);
       this._btnObjects.push({ bg: btnBg, label: btnLabel });
       curY += BTN_H + BTN_GAP;
     }
   }
 
   _rebuildButtons() {
-    // Destroy old buttons
     for (const btn of this._btnObjects) {
       btn.bg.destroy();
       btn.label.destroy();
-      this.container.remove(btn.bg);
-      this.container.remove(btn.label);
+      this._content.remove(btn.bg);
+      this._content.remove(btn.label);
     }
     this._btnObjects = [];
     this._buildButtons();
@@ -384,9 +358,5 @@ export class GuestModal {
       default:
         return "...";
     }
-  }
-
-  destroy() {
-    this.container.destroy(true);
   }
 }

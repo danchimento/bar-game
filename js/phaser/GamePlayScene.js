@@ -193,13 +193,13 @@ export class GamePlayScene extends Phaser.Scene {
     this.hudUI.update(this.hud, this.levelTimer, this.activeDuration);
     this.barLayer.updateClock(this.levelTimer, this.activeDuration);
 
-    // Guest modal live update
+    // Guest modal — auto-close when guest leaves, otherwise update
     if (this.guestModal.visible) {
       const g = this.guestModal._guest;
       if (!g || g.state === GUEST_STATE.DONE || g.state === GUEST_STATE.LEAVING || g.state === GUEST_STATE.ANGRY_LEAVING) {
         this.guestModal.hide();
       } else {
-        this.guestModal.update();
+        this.guestModal.update(dt);
       }
     }
 
@@ -210,31 +210,20 @@ export class GamePlayScene extends Phaser.Scene {
       this.radialMenuUI.hide();
     }
 
-    // Check modals
-    if (this.glassModalState.visible && !this.glassModal.visible) {
+    // Check modals — unified polling via _syncModal helper
+    this._syncModal(this.glassModalState, this.glassModal, dt, () => {
       const gs = this.glassModalState;
       this.glassModal.show(this.level?.drinks || Object.keys(DRINKS), gs.originX, gs.originY, gs.originW, gs.originH);
-    }
-    if (!this.glassModalState.visible && this.glassModal.visible) this.glassModal.hide();
-    if (this.glassModal.visible) this.glassModal.update();
-
-    if (this.drinkModalState.visible && !this.drinkModal.visible) {
+    });
+    this._syncModal(this.drinkModalState, this.drinkModal, dt, () => {
       this.drinkModal.show(this.drinkModalState);
-    }
-    if (!this.drinkModalState.visible && this.drinkModal.visible) this.drinkModal.hide();
-    if (this.drinkModal.visible) {
-      this.drinkModal.update(this.barState, this.drinkModalState);
-    }
-
-    if (this.prepModalState.visible && !this.prepModal.visible) {
+    });
+    this._syncModal(this.prepModalState, this.prepModal, dt, () => {
       this.prepModal.show(this.barState.carriedGlass);
-    }
-    if (!this.prepModalState.visible && this.prepModal.visible) this.prepModal.hide();
-
-    if (this.pos.visible && !this.posModal.visible) {
+    });
+    this._syncModal(this.pos, this.posModal, dt, () => {
       this.posModal.show(this.pos, this.level?.drinks || Object.keys(DRINKS));
-    }
-    if (!this.pos.visible && this.posModal.visible) this.posModal.hide();
+    });
 
     // Level complete check
     const guests = this.guestManager.guests;
@@ -338,6 +327,10 @@ export class GamePlayScene extends Phaser.Scene {
     });
 
     // Prep modal events
+    this.events.on('prep-close', () => {
+      this.prepModalState.visible = false;
+      this._modalClosedThisFrame = true;
+    });
     this.events.on('prep-ice', () => this.stationActions.addIce());
     this.events.on('prep-garnish', (key) => this.stationActions.addGarnish(key));
     this.events.on('prep-mixer-start', (key) => {
@@ -398,6 +391,13 @@ export class GamePlayScene extends Phaser.Scene {
     return this.glassModalState.visible || this.drinkModalState.visible ||
            this.prepModalState.visible || this.pos.visible ||
            this.guestModal.visible;
+  }
+
+  /** Sync one modal's visibility with its state flag. */
+  _syncModal(stateObj, modal, dt, showFn) {
+    if (stateObj.visible && !modal.visible) showFn();
+    if (!stateObj.visible && modal.visible) modal.hide();
+    if (modal.visible) modal.update(dt);
   }
 
   // ─── GAME LOGIC HELPERS ──────────────────────────

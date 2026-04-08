@@ -1,6 +1,8 @@
 import { CANVAS_W, CANVAS_H } from '../../constants.js';
+import { DEPTH } from '../../constants/depths.js';
 import { DRINKS } from '../../data/menu.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
+import { BaseModal } from './BaseModal.js';
 
 /**
  * Drink selection and pouring modal.
@@ -11,40 +13,168 @@ import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
  * Hold-to-pour: pointerdown starts pour + glass slide, pointerup stops.
  * Pour stream always flows from tap when handle is pulled, even without a glass.
  */
-export class DrinkModal {
+export class DrinkModal extends BaseModal {
   constructor(scene) {
-    this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
+    super(scene, { closeEvent: 'drink-modal-close', dimAlpha: 0.65 });
+
     this.drinkButtons = [];
-    this.glassGfx = scene.add.graphics().setDepth(72);
-    this.pourStreamGfx = scene.add.graphics().setDepth(71);
-    this._overflowGfx = scene.add.graphics().setDepth(72);
-    this._overflowDrops = []; // particles for overflow animation
+    // Scene-level graphics (persist across show/hide, cleared per-frame)
+    this.glassGfx = scene.add.graphics().setDepth(DEPTH.MODAL_GLASS);
+    this.pourStreamGfx = scene.add.graphics().setDepth(DEPTH.MODAL_POUR_STREAM);
+    this._overflowGfx = scene.add.graphics().setDepth(DEPTH.MODAL_GLASS);
+    this._overflowDrops = [];
 
     // Glass slide state
-    this._glassCurrentX = 0;  // animated X position
-    this._glassTargetX = 0;   // where glass should be
-    this._glassRestX = 0;     // resting position (left of taps)
-    this._glassY = 0;         // fixed Y (bottom of glass)
-    this._spoutPositions = []; // X positions of each tap spout
+    this._glassCurrentX = 0;
+    this._glassTargetX = 0;
+    this._glassRestX = 0;
+    this._glassY = 0;
+    this._spoutPositions = [];
     this._pouringIndex = -1;
-    this._pouringDrinkKey = null; // track locally for pour stream color
-    this._tapSpoutY = 0;       // Y of tap spout (bottom of tap cylinder)
-    this._handles = [];        // handle/bottle references for visual feedback
+    this._pouringDrinkKey = null;
+    this._tapSpoutY = 0;
+    this._handles = [];
     this._isBeer = false;
     this._isWine = false;
+
+    // Stored show args
+    this._modalState = null;
   }
 
   show(drinkModalState) {
+    this._modalState = drinkModalState;
     this._pouringIndex = -1;
     this._pouringDrinkKey = null;
-    this._rebuild(drinkModalState);
-    this.container.setVisible(true);
+    super.show();
   }
 
-  hide() {
-    this.container.setVisible(false);
-    this.container.removeAll(true);
+  _build() {
+    this.drinkButtons = [];
+    this._handles = [];
+    this._spoutPositions = [];
+
+    const modal = this._modalState;
+    const items = modal.items;
+    if (!items.length) return;
+
+    this._isBeer = modal.type === 'beer';
+    this._isWine = modal.type === 'wine';
+
+    const scene = this.scene;
+    const spacing = this._isBeer ? 90 : 100;
+    const totalW = items.length * spacing;
+    const pw = Math.max(totalW + 140, 380);
+    const ph = this._isBeer ? 280 : 320;
+    const px = (CANVAS_W - pw) / 2;
+    const py = (CANVAS_H - ph) / 2 + 30;
+
+    // Panel (interactive to block dim clicks)
+    const bgColor = this._isBeer ? 0x2a1a0a : (this._isWine ? 0x2a1020 : 0x0a1a2a);
+    const borderColor = this._isBeer ? 0xd4a020 : (this._isWine ? 0x8b1a4a : 0x4a9ad4);
+    this._content.add(
+      scene.add.rectangle(CANVAS_W / 2, py + ph / 2, pw, ph, bgColor)
+        .setStrokeStyle(2, borderColor)
+        .setInteractive(),
+    );
+
+    // Taps/bottles area
+    const tapsAreaLeft = px + 90;
+    const startX = tapsAreaLeft + (pw - 90 - totalW) / 2 + spacing / 2;
+
+    this._glassRestX = px + 50;
+    this._glassCurrentX = this._glassRestX;
+    this._glassTargetX = this._glassRestX;
+
+    if (this._isBeer) {
+      this._buildBeerTaps(items, modal, startX, py, spacing);
+    } else if (this._isWine) {
+      this._buildWineBottles(items, modal, startX, py, spacing);
+    } else {
+      this._buildMixerButtons(items, modal, startX, py, spacing);
+    }
+
+    // Close button
+    const closeBtn = scene.add.rectangle(px + pw - 22, py + 16, 26, 22, 0xf44336)
+      .setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this._requestClose());
+    this._content.add(closeBtn);
+    this._content.add(scene.add.text(px + pw - 22, py + 16, 'X', {
+      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5));
+  }
+
+  /** Called each frame — animates pour stream + glass fill */
+  _onUpdate(dt) {
+    this.glassGfx.clear();
+    this.pourStreamGfx.clear();
+    this._overflowGfx.clear();
+
+    // Read live state from scene (barState and drinkModalState are mutable references)
+    const barState = this.scene.barState;
+    const drinkModalState = this.scene.drinkModalState;
+    if (!barState || !drinkModalState) return;
+
+    const glass = barState.carriedGlass;
+
+    this._pouringIndex = drinkModalState.pouringIndex;
+
+    if (this._pouringIndex >= 0 && this._pouringIndex < this._spoutPositions.length) {
+      this._glassTargetX = this._spoutPositions[this._pouringIndex];
+    } else {
+      this._glassTargetX = this._glassRestX;
+    }
+
+    // Animate glass X (time-based)
+    const slideSpeed = 800;
+    const dxSlide = this._glassTargetX - this._glassCurrentX;
+    const maxStep = slideSpeed * (dt || 0.016);
+    if (Math.abs(dxSlide) > 1) {
+      this._glassCurrentX += Math.sign(dxSlide) * Math.min(Math.abs(dxSlide), maxStep);
+    } else {
+      this._glassCurrentX = this._glassTargetX;
+    }
+
+    const gx = this._glassCurrentX;
+    const gy = this._glassY;
+
+    // Pour stream
+    if (this._pouringIndex >= 0 && this._pouringDrinkKey) {
+      const drink = DRINKS[this._pouringDrinkKey];
+      const pourColor = parseInt((drink?.color || '#f0c040').replace('#', ''), 16);
+      const spoutX = this._spoutPositions[this._pouringIndex] || gx;
+      const spoutY = this._tapSpoutY;
+      const streamEndY = glass ? (gy - 40) : (gy + 10);
+      const time = this.scene.time.now;
+
+      this.pourStreamGfx.fillStyle(pourColor, 0.85);
+      this.pourStreamGfx.fillRect(spoutX - 1, spoutY, 2.5, streamEndY - spoutY);
+      const dripPhase = (time % 180) / 180;
+      for (let i = 0; i < 3; i++) {
+        const t = (dripPhase + i * 0.33) % 1;
+        const dropY = spoutY + t * (streamEndY - spoutY + 6);
+        this.pourStreamGfx.fillCircle(spoutX + (i % 2 ? 1 : -1), dropY, 1.5);
+      }
+      if (glass) {
+        this.pourStreamGfx.fillStyle(pourColor, 0.4);
+        this.pourStreamGfx.fillCircle(gx - 2, streamEndY + 2, 2);
+        this.pourStreamGfx.fillCircle(gx + 2, streamEndY + 1, 1.5);
+      }
+    }
+
+    if (!glass) return;
+
+    const fillPct = glass.totalFill;
+    const liquidColor = getLiquidColor(glass.layers);
+    drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
+
+    this._drawGreenZone(gx, gy, glass, fillPct);
+
+    if (glass.overflow > 0) {
+      this._drawOverflow(gx, gy, glass, liquidColor, dt);
+    }
+  }
+
+  _onTeardown() {
     this.drinkButtons = [];
     this._handles = [];
     this._spoutPositions = [];
@@ -56,87 +186,9 @@ export class DrinkModal {
     this._overflowDrops = [];
   }
 
-  get visible() { return this.container.visible; }
-
-  /** Called each frame while visible — animates pour stream + glass fill */
-  update(barState, drinkModalState) {
-    this.glassGfx.clear();
-    this.pourStreamGfx.clear();
-    this._overflowGfx.clear();
-    if (!this.container.visible) return;
-
-    const glass = barState.carriedGlass;
-
-    // Update pouring index from modal state
-    this._pouringIndex = drinkModalState.pouringIndex;
-
-    // Decide glass target
-    if (this._pouringIndex >= 0 && this._pouringIndex < this._spoutPositions.length) {
-      this._glassTargetX = this._spoutPositions[this._pouringIndex];
-    } else {
-      this._glassTargetX = this._glassRestX;
-    }
-
-    // Animate glass X toward target
-    const slideSpeed = 800;
-    const dx = this._glassTargetX - this._glassCurrentX;
-    if (Math.abs(dx) > 1) {
-      this._glassCurrentX += Math.sign(dx) * Math.min(Math.abs(dx), slideSpeed / 60);
-    } else {
-      this._glassCurrentX = this._glassTargetX;
-    }
-
-    const gx = this._glassCurrentX;
-    const gy = this._glassY;
-
-    // ── Pour stream from taps (independent of glass) ──
-    if (this._pouringIndex >= 0 && this._pouringDrinkKey) {
-      const drink = DRINKS[this._pouringDrinkKey];
-      const pourColor = parseInt((drink?.color || '#f0c040').replace('#', ''), 16);
-      const spoutX = this._spoutPositions[this._pouringIndex] || gx;
-      const spoutY = this._tapSpoutY;
-      // Stream ends at glass top if glass present, otherwise flows past frame bottom
-      const streamEndY = glass ? (gy - 40) : (gy + 10);
-      const time = this.scene.time.now;
-
-      this.pourStreamGfx.fillStyle(pourColor, 0.85);
-      // Main stream
-      this.pourStreamGfx.fillRect(spoutX - 1, spoutY, 2.5, streamEndY - spoutY);
-      // Animated drip drops
-      const dripPhase = (time % 180) / 180;
-      for (let i = 0; i < 3; i++) {
-        const t = (dripPhase + i * 0.33) % 1;
-        const dropY = spoutY + t * (streamEndY - spoutY + 6);
-        this.pourStreamGfx.fillCircle(spoutX + (i % 2 ? 1 : -1), dropY, 1.5);
-      }
-      // Splash at glass (only if glass present)
-      if (glass) {
-        this.pourStreamGfx.fillStyle(pourColor, 0.4);
-        this.pourStreamGfx.fillCircle(gx - 2, streamEndY + 2, 2);
-        this.pourStreamGfx.fillCircle(gx + 2, streamEndY + 1, 1.5);
-      }
-    }
-
-    // ── Draw glass at current animated position (only if carrying one) ──
-    if (!glass) return;
-
-    const fillPct = glass.totalFill;
-    const liquidColor = getLiquidColor(glass.layers);
-    drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
-
-    // ── Green zone indicator on glass ──
-    this._drawGreenZone(gx, gy, glass, fillPct);
-
-    // ── Overflow animation ──
-    if (glass.overflow > 0) {
-      this._drawOverflow(gx, gy, glass, liquidColor);
-    }
-  }
-
   // ─── GREEN ZONE + OVERFLOW ──────────────────────────
 
   _drawGreenZone(gx, gy, glass, fillPct) {
-    // Find fill range for current drink being poured
     let fillRange = null;
     if (this._pouringDrinkKey && DRINKS[this._pouringDrinkKey]) {
       fillRange = DRINKS[this._pouringDrinkKey].fillRange;
@@ -146,22 +198,20 @@ export class DrinkModal {
     }
     if (!fillRange) return;
 
-    const s = 2.0; // matches glass scale
+    const s = 2.0;
     const [minFill, maxFill] = fillRange;
 
-    // Determine color based on current fill
     let zoneColor, zoneAlpha;
     if (fillPct >= minFill && fillPct <= maxFill) {
-      zoneColor = 0x4caf50; zoneAlpha = 0.25; // green — in range
+      zoneColor = 0x4caf50; zoneAlpha = 0.25;
     } else if (fillPct > maxFill) {
-      zoneColor = 0xf44336; zoneAlpha = 0.25; // red — overfilled
+      zoneColor = 0xf44336; zoneAlpha = 0.25;
     } else if (fillPct > 0) {
-      zoneColor = 0xff9800; zoneAlpha = 0.2;  // amber — underfilled
+      zoneColor = 0xff9800; zoneAlpha = 0.2;
     } else {
-      zoneColor = 0x4caf50; zoneAlpha = 0.15; // green — hasn't started
+      zoneColor = 0x4caf50; zoneAlpha = 0.15;
     }
 
-    // Draw the zone as a translucent overlay inside the glass shape
     if (glass.glassType === 'WINE_GLASS') {
       this._drawZoneWine(gx, gy, s, minFill, maxFill, zoneColor, zoneAlpha);
     } else if (glass.glassType === 'PLASTIC_CUP') {
@@ -170,7 +220,6 @@ export class DrinkModal {
       this._drawZonePint(gx, gy, s, minFill, maxFill, zoneColor, zoneAlpha);
     }
 
-    // Thin horizontal line markers at min and max fill
     const lineAlpha = zoneAlpha + 0.25;
     this.glassGfx.lineStyle(1, zoneColor, lineAlpha);
     if (glass.glassType === 'PINT' || !glass.glassType) {
@@ -187,7 +236,7 @@ export class DrinkModal {
         const ly = gy - 22 * s * pct;
         this.glassGfx.lineBetween(gx - w / 2 + 2, ly, gx + w / 2 - 2, ly);
       }
-    } else { // WINE_GLASS
+    } else {
       const bowlH = 14 * s, totalH = (14 + 8 + 3) * s, bowlW = 14 * s;
       const bowlBot = gy - totalH + bowlH;
       for (const pct of [minFill, maxFill]) {
@@ -201,7 +250,6 @@ export class DrinkModal {
   _drawZonePint(gx, gy, s, minFill, maxFill, color, alpha) {
     const w = 18 * s, h = 28 * s, taper = 2 * s;
     const botW = w - taper * 2, topW = w;
-    // Width at a given fill pct
     const wAt = (pct) => botW + (topW - botW) * pct;
     const yAt = (pct) => gy - h * pct;
 
@@ -218,9 +266,7 @@ export class DrinkModal {
   _drawZoneCup(gx, gy, s, minFill, maxFill, color, alpha) {
     const w = 16 * s, h = 22 * s;
     const yAt = (pct) => gy - h * pct;
-    // Cup has very slight taper, simplify as rect inset
     const hw = w / 2 - 1;
-
     this.glassGfx.fillStyle(color, alpha);
     this.glassGfx.fillRect(gx - hw, yAt(maxFill), hw * 2, yAt(minFill) - yAt(maxFill));
   }
@@ -229,7 +275,6 @@ export class DrinkModal {
     const bowlW = 14 * s, bowlH = 14 * s;
     const totalH = (14 + 8 + 3) * s;
     const bowlBot = gy - totalH + bowlH;
-    // Width at fill pct inside bowl
     const wAt = (pct) => bowlW * (0.4 + 0.6 * Math.min(1, pct * 1.2));
     const yAt = (pct) => bowlBot - bowlH * pct;
 
@@ -243,18 +288,17 @@ export class DrinkModal {
     this.glassGfx.fillPath();
   }
 
-  _drawOverflow(gx, gy, glass, liquidColor) {
+  _drawOverflow(gx, gy, glass, liquidColor, dt) {
     const s = 2.0;
     const glassH = glass.glassType === 'WINE_GLASS' ? (14 + 8 + 3) * s
       : glass.glassType === 'PLASTIC_CUP' ? 22 * s : 28 * s;
     const glassW = glass.glassType === 'WINE_GLASS' ? 14 * s
       : glass.glassType === 'PLASTIC_CUP' ? 16 * s : 18 * s;
     const rimY = gy - glassH;
-    const time = this.scene.time.now;
 
-    // Spawn new drip particles
-    const spawnRate = Math.min(glass.overflow * 10, 3); // more overflow = more drips
-    if (Math.random() < spawnRate * (1 / 60)) {
+    // Spawn new drip particles (time-based)
+    const spawnRate = Math.min(glass.overflow * 10, 3);
+    if (Math.random() < spawnRate * (dt || 0.016)) {
       const side = Math.random() < 0.5 ? -1 : 1;
       this._overflowDrops.push({
         x: gx + side * (glassW / 2 - 2),
@@ -266,14 +310,15 @@ export class DrinkModal {
       });
     }
 
-    // Update and draw drip particles
+    // Update and draw particles (time-based physics)
     const gfx = this._overflowGfx;
+    const frameDt = dt || 0.016;
     for (let i = this._overflowDrops.length - 1; i >= 0; i--) {
       const drop = this._overflowDrops[i];
-      drop.x += drop.vx;
-      drop.y += drop.vy;
-      drop.vy += 0.15; // gravity
-      drop.life -= 0.02;
+      drop.x += drop.vx * frameDt * 60;
+      drop.y += drop.vy * frameDt * 60;
+      drop.vy += 9 * frameDt;    // gravity (px/s²)
+      drop.life -= 1.2 * frameDt; // decay (1/s)
 
       if (drop.life <= 0 || drop.y > gy + 30) {
         this._overflowDrops.splice(i, 1);
@@ -284,7 +329,7 @@ export class DrinkModal {
       gfx.fillCircle(drop.x, drop.y, drop.size);
     }
 
-    // Liquid bulge at rim (pooling over the edge)
+    // Liquid bulge at rim
     const bulgeAmount = Math.min(glass.overflow * 2, 1);
     gfx.fillStyle(liquidColor, 0.6 * bulgeAmount);
     const bulgeW = glassW + 4 * bulgeAmount;
@@ -292,110 +337,35 @@ export class DrinkModal {
     gfx.fillEllipse(gx, rimY, bulgeW, bulgeH);
   }
 
-  // ─── REBUILD ────────────────────────────────────────
-
-  _rebuild(modal) {
-    this.container.removeAll(true);
-    this.drinkButtons = [];
-    this._handles = [];
-    this._spoutPositions = [];
-
-    const items = modal.items;
-    if (!items.length) return;
-
-    this._isBeer = modal.type === 'beer';
-    this._isWine = modal.type === 'wine';
-
-    const spacing = this._isBeer ? 90 : 100;
-    const totalW = items.length * spacing;
-    const pw = Math.max(totalW + 140, 380);
-    const ph = this._isBeer ? 280 : 320;
-    const px = (CANVAS_W - pw) / 2;
-    const py = (CANVAS_H - ph) / 2 + 30; // shifted down to give handles room
-
-    // Dim overlay
-    const dim = this.scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.6)
-      .setInteractive();
-    dim.on('pointerdown', (ptr) => {
-      if (ptr.x < px || ptr.x > px + pw || ptr.y < py || ptr.y > py + ph) {
-        this.scene.events.emit('drink-modal-close');
-      }
-    });
-    this.container.add(dim);
-
-    // Panel
-    const bgColor = this._isBeer ? 0x2a1a0a : (this._isWine ? 0x2a1020 : 0x0a1a2a);
-    const borderColor = this._isBeer ? 0xd4a020 : (this._isWine ? 0x8b1a4a : 0x4a9ad4);
-    this.container.add(
-      this.scene.add.rectangle(CANVAS_W / 2, py + ph / 2, pw, ph, bgColor)
-        .setStrokeStyle(2, borderColor)
-    );
-
-    // (no title — clean modal)
-
-    // Taps/bottles area starts offset to make room for glass rest area
-    const tapsAreaLeft = px + 90;
-    const startX = tapsAreaLeft + (pw - 90 - totalW) / 2 + spacing / 2;
-
-    // Glass resting position (left of taps area)
-    this._glassRestX = px + 50;
-    this._glassCurrentX = this._glassRestX;
-    this._glassTargetX = this._glassRestX;
-
-    // Build taps or bottles
-    if (this._isBeer) {
-      this._buildBeerTaps(items, modal, startX, py, spacing);
-    } else if (this._isWine) {
-      this._buildWineBottles(items, modal, startX, py, spacing);
-    } else {
-      this._buildMixerButtons(items, modal, startX, py, spacing);
-    }
-
-    // Close button
-    const closeBtn = this.scene.add.rectangle(px + pw - 22, py + 16, 26, 22, 0xf44336)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => this.scene.events.emit('drink-modal-close'));
-    this.container.add(closeBtn);
-    this.container.add(this.scene.add.text(px + pw - 22, py + 16, 'X', {
-      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5));
-  }
-
   // ─── BEER TAPS ──────────────────────────────────────
 
   _buildBeerTaps(items, modal, startX, py, spacing) {
+    const scene = this.scene;
     const TAP_COUNT = 3;
     const frameScale = 1.5;
     const handleScale = 1.3;
     const frameCX = CANVAS_W / 2;
     const frameTopY = py + 50;
 
-    // Sprite is 60x40 pixel-art at 3x = 180x120 PNG
     const frameImgW = 180;
     const frameImgH = 120;
-    const frame = this.scene.add.image(frameCX, frameTopY, 'tap_frame')
+    const frame = scene.add.image(frameCX, frameTopY, 'tap_frame')
       .setOrigin(0.5, 0).setScale(frameScale);
-    this.container.add(frame);
+    this._content.add(frame);
 
-    // Tap positions: art [15,30,45] → PNG [45,90,135]
     const scaledW = frameImgW * frameScale;
     const frameLeft = frameCX - scaledW / 2;
     const tapXPositions = [45, 90, 135].map(px => frameLeft + px * frameScale);
 
-    // Key Y positions
-    const pxToScreen = 3 * frameScale; // art pixel → screen pixel
-    const crossbarY = frameTopY + 3 * pxToScreen;  // crossbar center at art y=3
-    // Visual frame bottom at art y=32 (bottom of feet, content ends there)
+    const pxToScreen = 3 * frameScale;
+    const crossbarY = frameTopY + 3 * pxToScreen;
     const visualFrameBottomY = frameTopY + 32 * pxToScreen;
-    // Tap spout at art y=12 (bottom of cylinder)
     this._tapSpoutY = frameTopY + 12 * pxToScreen;
 
-    // Record spout positions
     for (let i = 0; i < TAP_COUNT; i++) {
       this._spoutPositions.push(tapXPositions[i]);
     }
 
-    // ── Handles (only on active taps) ──
     for (let i = 0; i < TAP_COUNT; i++) {
       const tx = tapXPositions[i];
       const hasItem = i < items.length;
@@ -406,18 +376,16 @@ export class DrinkModal {
         const handleKey = `handle_${drinkKey.toLowerCase()}`;
         const handlePulledKey = `handle_${drinkKey.toLowerCase()}_pulled`;
 
-        // Handle sits on top of the tap cylinder
-        const handle = this.scene.add.image(tx, crossbarY - 4, handleKey)
+        const handle = scene.add.image(tx, crossbarY - 4, handleKey)
           .setOrigin(0.5, 1).setScale(handleScale);
-        this.container.add(handle);
+        this._content.add(handle);
         this._handles.push({ handle, handleKey, handlePulledKey, x: tx });
 
-        // Interactive zone covering handle + tap area
-        const zone = this.scene.add.zone(tx, crossbarY - 20, 65, 120)
+        const zone = scene.add.zone(tx, crossbarY - 20, 65, 120)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => {
           this._pouringDrinkKey = drinkKey;
-          this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
+          scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
           handle.setTexture(handlePulledKey);
         });
         zone.on('pointerup', () => {
@@ -428,28 +396,27 @@ export class DrinkModal {
           handle.setTexture(handleKey);
           this._pouringDrinkKey = null;
         });
-        this.container.add(zone);
+        this._content.add(zone);
         this.drinkButtons.push(zone);
       } else {
         this._handles.push(null);
       }
     }
 
-    // Glass bottom aligned with visual frame bottom
     this._glassY = visualFrameBottomY;
   }
 
   // ─── WINE BOTTLES ───────────────────────────────────
 
   _buildWineBottles(items, modal, startX, py, spacing) {
+    const scene = this.scene;
     const shelfY = py + 55;
 
-    // Shelf
     const shelfLeft = startX - spacing / 2 - 10;
     const shelfRight = startX + (items.length - 1) * spacing + spacing / 2 + 10;
-    this.container.add(
-      this.scene.add.rectangle((shelfLeft + shelfRight) / 2, shelfY + 100, shelfRight - shelfLeft, 5, 0x4a3a28)
-        .setStrokeStyle(1, 0x5a4a38)
+    this._content.add(
+      scene.add.rectangle((shelfLeft + shelfRight) / 2, shelfY + 100, shelfRight - shelfLeft, 5, 0x4a3a28)
+        .setStrokeStyle(1, 0x5a4a38),
     );
 
     for (let i = 0; i < items.length; i++) {
@@ -461,46 +428,37 @@ export class DrinkModal {
       const colorInt = parseInt(drink.color.replace('#', ''), 16);
       const isDark = drink.color === '#6b1a2a';
 
-      // Bottle body
       const bottleH = 80;
       const bottleW = 22;
       const bottleY = shelfY + 10;
 
-      const body = this.scene.add.rectangle(bx, bottleY + bottleH / 2, bottleW, bottleH, colorInt)
+      const body = scene.add.rectangle(bx, bottleY + bottleH / 2, bottleW, bottleH, colorInt)
         .setStrokeStyle(1, isDark ? 0x4a0a1a : 0xb8b080);
-      this.container.add(body);
+      this._content.add(body);
       this._handles.push(body);
 
-      // Bottle neck
-      this.container.add(this.scene.add.rectangle(bx, bottleY - 4, 10, 18, colorInt)
+      this._content.add(scene.add.rectangle(bx, bottleY - 4, 10, 18, colorInt)
         .setStrokeStyle(1, isDark ? 0x4a0a1a : 0xb8b080));
-
-      // Cork/cap
-      this.container.add(this.scene.add.rectangle(bx, bottleY - 14, 8, 4,
+      this._content.add(scene.add.rectangle(bx, bottleY - 14, 8, 4,
         isDark ? 0x8b4513 : 0xc8b870));
-
-      // Label
-      this.container.add(this.scene.add.rectangle(bx, bottleY + bottleH / 2 - 5, bottleW - 4, 20,
+      this._content.add(scene.add.rectangle(bx, bottleY + bottleH / 2 - 5, bottleW - 4, 20,
         isDark ? 0xd4c8a0 : 0x3a2a1a));
 
-      // Spout position (bottom of bottle)
       this._spoutPositions.push(bx);
 
-      // Name + price below shelf
-      this.container.add(this.scene.add.text(bx, shelfY + 112, drink.name, {
+      this._content.add(scene.add.text(bx, shelfY + 112, drink.name, {
         fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
         wordWrap: { width: 90 }, align: 'center',
       }).setOrigin(0.5));
-      this.container.add(this.scene.add.text(bx, shelfY + 126, `$${drink.price}`, {
+      this._content.add(scene.add.text(bx, shelfY + 126, `$${drink.price}`, {
         fontFamily: 'monospace', fontSize: '8px', color: '#999999',
       }).setOrigin(0.5));
 
-      // Interactive zone covering bottle
-      const zone = this.scene.add.zone(bx, bottleY + bottleH / 2, bottleW + 20, bottleH + 20)
+      const zone = scene.add.zone(bx, bottleY + bottleH / 2, bottleW + 20, bottleH + 20)
         .setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => {
         this._pouringDrinkKey = drinkKey;
-        this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
+        scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
         body.setStrokeStyle(2, 0xffd54f);
       });
       zone.on('pointerup', () => {
@@ -511,18 +469,18 @@ export class DrinkModal {
         body.setStrokeStyle(1, isDark ? 0x4a0a1a : 0xb8b080);
         this._pouringDrinkKey = null;
       });
-      this.container.add(zone);
+      this._content.add(zone);
       this.drinkButtons.push(zone);
     }
 
-    // Glass Y sits on the shelf
     this._glassY = shelfY + 97;
-    this._tapSpoutY = shelfY + 90 + 10; // bottom of bottle
+    this._tapSpoutY = shelfY + 90 + 10;
   }
 
   // ─── MIXER / SODA ───────────────────────────────────
 
   _buildMixerButtons(items, modal, startX, py, spacing) {
+    const scene = this.scene;
     const btnY = py + 70;
     const btnW = 90;
     const btnH = 80;
@@ -535,13 +493,13 @@ export class DrinkModal {
       const bx = startX + i * spacing;
       const colorInt = parseInt(drink.color.replace('#', ''), 16);
 
-      const btn = this.scene.add.rectangle(bx, btnY + btnH / 2, btnW, btnH, 0x2a3a4a)
+      const btn = scene.add.rectangle(bx, btnY + btnH / 2, btnW, btnH, 0x2a3a4a)
         .setStrokeStyle(2, 0x4a6a8a).setInteractive({ useHandCursor: true });
       this._handles.push(btn);
 
       btn.on('pointerdown', () => {
         this._pouringDrinkKey = drinkKey;
-        this.scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
+        scene.events.emit('drink-pour-start', drinkKey, i, modal.pourRate);
         btn.setStrokeStyle(3, 0xffd54f);
       });
       btn.on('pointerup', () => {
@@ -553,15 +511,12 @@ export class DrinkModal {
         this._pouringDrinkKey = null;
       });
 
-      this.container.add(btn);
+      this._content.add(btn);
       this.drinkButtons.push(btn);
       this._spoutPositions.push(bx);
 
-      // Color circle
-      this.container.add(this.scene.add.circle(bx, btnY + 25, 12, colorInt));
-
-      // Name
-      this.container.add(this.scene.add.text(bx, btnY + btnH / 2 + 8, drink.name, {
+      this._content.add(scene.add.circle(bx, btnY + 25, 12, colorInt));
+      this._content.add(scene.add.text(bx, btnY + btnH / 2 + 8, drink.name, {
         fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold', color: '#cccccc',
         wordWrap: { width: btnW - 6 }, align: 'center',
       }).setOrigin(0.5));
@@ -572,7 +527,7 @@ export class DrinkModal {
   }
 
   destroy() {
-    this.container.destroy(true);
+    super.destroy();
     this.glassGfx.destroy();
     this.pourStreamGfx.destroy();
     this._overflowGfx.destroy();

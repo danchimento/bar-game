@@ -6,101 +6,23 @@ import { GlassState } from '../entities/GlassState.js';
  * StationActions — owns station tap routing, radial option building,
  * and modal open/close logic for bar stations.
  *
- * Modal tap handlers (handleGlassModalTap, etc.) stay on Game.js since
- * they are throwaway input-routing code that Phaser replaces.
+ * Station taps are routed via a data-driven dispatch table.
  */
 export class StationActions {
   constructor() {
     this.ctx = null;
   }
 
-  /** Set/update the shared context. Called at level start. */
   setContext(ctx) {
     this.ctx = ctx;
-    // { bartender, barState, hud, stats, walkThenAct, startPour,
-    //   getAvailableDrinks, getStations, drinkModal, glassModal, prepModal, pos }
   }
 
-  // ─── STATION TAP ──────────────────────────────────
+  // ─── STATION TAP — data-driven dispatch ───────────
 
   handleStationTap(station) {
-    const { bartender: bt, barState, hud, stats, walkThenAct } = this.ctx;
-
-    switch (station.id) {
-      case 'GLASS_RACK':
-        if (bt.carrying) {
-          hud.showMessage('Hands full!', 1);
-          return;
-        }
-        walkThenAct(station.x, () => {
-          this.openGlassModal(station);
-        });
-        break;
-
-      case 'DISHWASHER':
-        if (bt.carrying === 'DIRTY_GLASS') {
-          walkThenAct(station.x, () => {
-            bt.startAction(ACTION_DURATIONS.DISHWASHER, 'Loading...', () => {
-              bt.carrying = null;
-              hud.showMessage('Glasses cleaned', 1);
-            });
-          });
-        } else {
-          hud.showMessage('Need dirty glasses', 1);
-        }
-        break;
-
-      case 'SINK':
-        if (barState.carriedGlass) {
-          walkThenAct(station.x, () => {
-            bt.startAction(0.4, 'Dumping...', () => {
-              stats.drinksWasted++;
-              barState.carriedGlass = null;
-              bt.carrying = null;
-              hud.showMessage('Dumped', 1);
-            });
-          });
-        } else {
-          hud.showMessage('Nothing to dump', 1);
-        }
-        break;
-
-      case 'TAPS':
-        walkThenAct(station.x, () => {
-          this.openDrinkModal('beer', station.x);
-        });
-        break;
-
-      case 'WINE':
-        walkThenAct(station.x, () => {
-          this.openDrinkModal('wine', station.x);
-        });
-        break;
-
-      case 'PREP':
-        walkThenAct(station.x, () => {
-          this.ctx.prepModal.visible = true;
-        });
-        break;
-
-      case 'TRASH':
-        if (bt.carrying) {
-          walkThenAct(station.x, () => {
-            bt.startAction(0.3, 'Tossing...', () => {
-              stats.drinksWasted++;
-              barState.carriedGlass = null;
-              bt.carrying = null;
-              hud.showMessage('Trashed', 0.8);
-            });
-          });
-        } else {
-          hud.showMessage('Nothing to toss', 1);
-        }
-        break;
-
-      case 'POS':
-        this.openPOS();
-        break;
+    const handler = STATION_TAP_HANDLERS[station.id];
+    if (handler) {
+      handler(this, station);
     }
   }
 
@@ -343,3 +265,75 @@ export class StationActions {
     hud.showMessage('Ice added', 1);
   }
 }
+
+// ─── STATION TAP DISPATCH TABLE ─────────────────────
+
+const STATION_TAP_HANDLERS = {
+  GLASS_RACK(actions, station) {
+    const { bartender: bt, hud, walkThenAct } = actions.ctx;
+    if (bt.carrying) { hud.showMessage('Hands full!', 1); return; }
+    walkThenAct(station.x, () => actions.openGlassModal(station));
+  },
+
+  DISHWASHER(actions, station) {
+    const { bartender: bt, hud, walkThenAct } = actions.ctx;
+    if (bt.carrying === 'DIRTY_GLASS') {
+      walkThenAct(station.x, () => {
+        bt.startAction(ACTION_DURATIONS.DISHWASHER, 'Loading...', () => {
+          bt.carrying = null;
+          hud.showMessage('Glasses cleaned', 1);
+        });
+      });
+    } else {
+      hud.showMessage('Need dirty glasses', 1);
+    }
+  },
+
+  SINK(actions, station) {
+    const { barState, bartender: bt, hud, stats, walkThenAct } = actions.ctx;
+    if (barState.carriedGlass) {
+      walkThenAct(station.x, () => {
+        bt.startAction(0.4, 'Dumping...', () => {
+          stats.drinksWasted++;
+          barState.carriedGlass = null;
+          bt.carrying = null;
+          hud.showMessage('Dumped', 1);
+        });
+      });
+    } else {
+      hud.showMessage('Nothing to dump', 1);
+    }
+  },
+
+  TAPS(actions, station) {
+    actions.ctx.walkThenAct(station.x, () => actions.openDrinkModal('beer', station.x));
+  },
+
+  WINE(actions, station) {
+    actions.ctx.walkThenAct(station.x, () => actions.openDrinkModal('wine', station.x));
+  },
+
+  PREP(actions, station) {
+    actions.ctx.walkThenAct(station.x, () => { actions.ctx.prepModal.visible = true; });
+  },
+
+  TRASH(actions, station) {
+    const { bartender: bt, barState, hud, stats, walkThenAct } = actions.ctx;
+    if (bt.carrying) {
+      walkThenAct(station.x, () => {
+        bt.startAction(0.3, 'Tossing...', () => {
+          stats.drinksWasted++;
+          barState.carriedGlass = null;
+          bt.carrying = null;
+          hud.showMessage('Trashed', 0.8);
+        });
+      });
+    } else {
+      hud.showMessage('Nothing to toss', 1);
+    }
+  },
+
+  POS(actions) {
+    actions.openPOS();
+  },
+};

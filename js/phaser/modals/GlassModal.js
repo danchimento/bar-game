@@ -1,6 +1,6 @@
-import { CANVAS_W, CANVAS_H } from '../../constants.js';
 import { GLASSES, DRINKS } from '../../data/menu.js';
 import { drawGlass } from '../utils/GlassRenderer.js';
+import { BaseModal } from './BaseModal.js';
 
 /**
  * Glass cabinet interaction — split-panel design.
@@ -11,10 +11,9 @@ import { drawGlass } from '../utils/GlassRenderer.js';
  * Both panels are equal width/height, side by side with small padding.
  * Opens with a zoom animation from the station position; closes in reverse.
  */
-export class GlassModal {
+export class GlassModal extends BaseModal {
   constructor(scene) {
-    this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
+    super(scene, { closeEvent: 'glass-modal-close', dimAlpha: 0.65 });
 
     this._availableDrinks = [];
     this._shelves = [];
@@ -22,25 +21,9 @@ export class GlassModal {
     this._selectedText = null;
     this._takeBtn = null;
     this._takeBtnLabel = null;
-
-    // Sub-objects created per show/hide cycle
-    this._dimOverlay = null;
-    this._content = null;
     this._glassGfx = null;
 
-    // Animation state
-    this._animating = false;
-    this._closing = false;
-    this._animStartTime = 0;
-    this._animDuration = 250; // ms
-    this._originX = CANVAS_W / 2;
-    this._originY = CANVAS_H / 2;
-    this._originW = 60;
-    this._originH = 17;
-    this._pendingEvent = null;
-    this._pendingEventData = null;
-
-    // Layout constants (content bounding box)
+    // Panel layout (used for zoom animation sizing)
     this._panelW = 280;
     this._panelH = 310;
     this._gap = 12;
@@ -51,124 +34,12 @@ export class GlassModal {
   show(availableDrinks, originX, originY, originW, originH) {
     this._availableDrinks = availableDrinks || Object.keys(DRINKS);
     this._selectedGlass = null;
-    this._originX = originX ?? CANVAS_W / 2;
-    this._originY = originY ?? CANVAS_H / 2;
-    this._originW = originW ?? 60;
-    this._originH = originH ?? 17;
-    this._closing = false;
-    this._pendingEvent = null;
-
-    this._build();
-    this.container.setVisible(true);
-
-    // Start open animation
-    this._animating = true;
-    this._animStartTime = this.scene.time.now;
-    this._applyProgress(0);
+    super.show({
+      origin: { x: originX, y: originY, w: originW, h: originH },
+    });
   }
-
-  hide() {
-    this._teardown();
-  }
-
-  get visible() { return this.container.visible; }
-
-  update() {
-    if (!this.container.visible) return;
-
-    // Drive animation (open or close)
-    if (this._animating) {
-      const elapsed = this.scene.time.now - this._animStartTime;
-      const rawT = Math.min(elapsed / this._animDuration, 1);
-
-      if (this._closing) {
-        // Reverse: progress goes 1 → 0 with ease-in (mirror of ease-out)
-        const fwd = 1 - rawT;
-        const eased = 1 - Math.pow(1 - fwd, 3);
-        this._applyProgress(eased);
-        if (rawT >= 1) {
-          this._animating = false;
-          if (this._pendingEvent) {
-            this.scene.events.emit(this._pendingEvent, this._pendingEventData);
-          }
-          this._teardown();
-          return;
-        }
-      } else {
-        // Forward: progress goes 0 → 1 with ease-out
-        const eased = 1 - Math.pow(1 - rawT, 3);
-        this._applyProgress(eased);
-        if (rawT >= 1) {
-          this._animating = false;
-          this._applyProgress(1);
-        }
-      }
-    }
-
-    // Smooth glass lift offsets
-    this._updateGlassLifts();
-    this._drawGlasses();
-  }
-
-  // ─── ANIMATION ────────────────────────────────────
-
-  /**
-   * p=0 → station size & position.  p=1 → full size at screen center.
-   * Content container is scaled/positioned; dim overlay fades independently.
-   */
-  _applyProgress(p) {
-    const targetX = CANVAS_W / 2;
-    const targetY = CANVAS_H / 2;
-
-    // Position: lerp station origin → screen center
-    const cx = this._originX + (targetX - this._originX) * p;
-    const cy = this._originY + (targetY - this._originY) * p;
-
-    // Scale: lerp station-size ratio → 1.0
-    const startSX = this._originW / this._contentW;
-    const startSY = this._originH / this._contentH;
-    const sx = startSX + (1 - startSX) * p;
-    const sy = startSY + (1 - startSY) * p;
-
-    if (this._content) {
-      this._content.setPosition(cx, cy);
-      this._content.setScale(sx, sy);
-    }
-
-    // Dim overlay fades in/out independently — never scaled
-    if (this._dimOverlay) {
-      this._dimOverlay.setAlpha(0.65 * p);
-    }
-  }
-
-  _requestClose(eventName, eventData) {
-    if (this._closing) return;
-    this._closing = true;
-    this._animating = true;
-    this._animStartTime = this.scene.time.now;
-    this._pendingEvent = eventName;
-    this._pendingEventData = eventData;
-  }
-
-  _teardown() {
-    this.container.setVisible(false);
-    this.container.removeAll(true);   // recursively destroys _dimOverlay, _content, _glassGfx
-    this._content = null;
-    this._dimOverlay = null;
-    this._glassGfx = null;
-    this._shelves = [];
-    this._selectedGlass = null;
-    this._selectedText = null;
-    this._takeBtn = null;
-    this._takeBtnLabel = null;
-    this._animating = false;
-    this._closing = false;
-  }
-
-  // ─── BUILD ────────────────────────────────────────
 
   _build() {
-    this.container.removeAll(true);
     this._shelves = [];
     const scene = this.scene;
 
@@ -180,28 +51,15 @@ export class GlassModal {
     const leftCX = -totalW / 2 + panelW / 2;
     const rightCX = totalW / 2 - panelW / 2;
 
-    // ── Dim overlay — lives in outer container, NOT in content ──
-    this._dimOverlay = scene.add.rectangle(
-      CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.65,
-    ).setInteractive();
-    this._dimOverlay.on('pointerdown', () => this._requestClose('glass-modal-close'));
-    this.container.add(this._dimOverlay);
-
-    // ── Content container (scaled & positioned by animation) ──
-    this._content = scene.add.container(CANVAS_W / 2, CANVAS_H / 2);
-    this.container.add(this._content);
-
     // ── LEFT: Glass Cabinet ──
     const cabinetLeft = leftCX - panelW / 2;
     const cabinetTop = -panelH / 2;
 
-    // Cabinet outer frame (dark wood)
     const cabinetBg = scene.add.rectangle(leftCX, 0, panelW, panelH, 0x2a1a0e)
       .setStrokeStyle(4, 0x5a3a20)
       .setInteractive(); // blocks clicks reaching dim
     this._content.add(cabinetBg);
 
-    // Cabinet inner area (recessed)
     const pad = 14;
     this._content.add(
       scene.add.rectangle(leftCX, 0, panelW - pad * 2, panelH - pad * 2, 0x1e140a)
@@ -283,14 +141,12 @@ export class GlassModal {
     );
     curY += 24;
 
-    // Dynamic glass name
     this._selectedText = scene.add.text(rightCX, curY, 'None', {
       fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
     }).setOrigin(0.5);
     this._content.add(this._selectedText);
     curY += 60;
 
-    // "Take Glass" button (disabled until selection)
     const btnW = 160, btnH = 40;
     this._takeBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x2a2a2a)
       .setStrokeStyle(1, 0x444444);
@@ -301,7 +157,6 @@ export class GlassModal {
     this._content.add(this._takeBtnLabel);
     curY += btnH + 20;
 
-    // "Step Away" button
     const stepBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x3a2a2a)
       .setStrokeStyle(1, 0x6a4a4a)
       .setInteractive({ useHandCursor: true });
@@ -309,7 +164,7 @@ export class GlassModal {
     stepBtn.on('pointerout', () => stepBtn.setFillStyle(0x3a2a2a));
     stepBtn.on('pointerdown', () => {
       if (this._closing) return;
-      this._requestClose('glass-modal-close');
+      this._requestClose();
     });
     this._content.add(stepBtn);
     this._content.add(
@@ -318,9 +173,23 @@ export class GlassModal {
       }).setOrigin(0.5),
     );
 
-    // ── Glass graphics — added last inside content so it renders on top ──
+    // Glass graphics — added last inside content so it renders on top
     this._glassGfx = scene.add.graphics();
     this._content.add(this._glassGfx);
+  }
+
+  _onUpdate(dt) {
+    this._updateGlassLifts(dt);
+    this._drawGlasses();
+  }
+
+  _onTeardown() {
+    this._shelves = [];
+    this._selectedGlass = null;
+    this._selectedText = null;
+    this._takeBtn = null;
+    this._takeBtnLabel = null;
+    this._glassGfx = null;
   }
 
   // ─── GLASS SELECTION ──────────────────────────────
@@ -369,9 +238,8 @@ export class GlassModal {
 
   // ─── GLASS RENDERING ─────────────────────────────
 
-  /** Smoothly animate each glass's vertical offset toward its target */
-  _updateGlassLifts() {
-    const speed = 0.2;
+  _updateGlassLifts(dt) {
+    const decay = 1 - Math.pow(0.001, dt || 0.016);
     for (const shelf of this._shelves) {
       if (!shelf.active) continue;
       for (const g of shelf.glasses) {
@@ -379,7 +247,7 @@ export class GlassModal {
           this._selectedGlass.shelfIdx === shelf.shelfIdx &&
           this._selectedGlass.glassIdx === g.glassIdx;
         const target = isSelected ? -10 : 0;
-        g.liftY += (target - g.liftY) * speed;
+        g.liftY += (target - g.liftY) * decay;
         if (Math.abs(g.liftY - target) < 0.3) g.liftY = target;
       }
     }
@@ -395,10 +263,5 @@ export class GlassModal {
         drawGlass(this._glassGfx, g.x, g.y + g.liftY, shelf.glassKey, 0, 0x888888, 1.5);
       }
     }
-  }
-
-  destroy() {
-    this.container.destroy(true);
-    if (this._glassGfx) this._glassGfx.destroy();
   }
 }
