@@ -72,7 +72,7 @@ export class GamePlayScene extends Phaser.Scene {
       visible: false, mode: 'SELECT_SEAT', selectedSeat: null,
       seatOrders: [], tab: new Map(),
     };
-    this.glassModalState = { visible: false, originX: 0, originY: 0 };
+    this.glassModalState = { visible: false, originX: 0, originY: 0, originW: 60, originH: 17 };
     this.drinkModalState = {
       visible: false, type: null, items: [], stationX: 0,
       pouringIndex: -1, pourRate: 0, glassX: 0, glassTargetX: 0,
@@ -212,7 +212,8 @@ export class GamePlayScene extends Phaser.Scene {
 
     // Check modals
     if (this.glassModalState.visible && !this.glassModal.visible) {
-      this.glassModal.show(this.level?.drinks || Object.keys(DRINKS), this.glassModalState.originX, this.glassModalState.originY);
+      const gs = this.glassModalState;
+      this.glassModal.show(this.level?.drinks || Object.keys(DRINKS), gs.originX, gs.originY, gs.originW, gs.originH);
     }
     if (!this.glassModalState.visible && this.glassModal.visible) this.glassModal.hide();
     if (this.glassModal.visible) this.glassModal.update();

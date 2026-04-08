@@ -263,6 +263,9 @@ export class StationActions {
     const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
     st.originX = station ? station.x : CANVAS_W / 2;
     st.originY = station ? cabinetMidY : 270;
+    // Glass rack sprite: 84×24 at 0.72 scale
+    st.originW = 60;
+    st.originH = 17;
   }
 
   openDrinkModal(type, stationX) {
