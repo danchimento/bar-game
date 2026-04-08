@@ -7,6 +7,9 @@ import { drawGlass } from '../utils/GlassRenderer.js';
  * Left:  wooden cabinet with three shelves of glasses.
  *        Tapping a glass lifts it to show it's selected.
  * Right: interaction panel with selected type, "Take Glass", and "Step Away".
+ *
+ * Both panels are equal width/height, side by side with small padding.
+ * Opens with a zoom-in animation originating from the station position.
  */
 export class GlassModal {
   constructor(scene) {
@@ -19,13 +22,28 @@ export class GlassModal {
     this._selectedText = null;
     this._takeBtn = null;
     this._takeBtnLabel = null;
+
+    // Zoom animation state
+    this._animating = false;
+    this._animProgress = 0;
+    this._animDuration = 250; // ms
+    this._originX = CANVAS_W / 2;
+    this._originY = CANVAS_H / 2;
   }
 
-  show(availableDrinks) {
+  show(availableDrinks, originX, originY) {
     this._availableDrinks = availableDrinks || Object.keys(DRINKS);
     this._selectedGlass = null;
+    this._originX = originX ?? CANVAS_W / 2;
+    this._originY = originY ?? CANVAS_H / 2;
     this._build();
     this.container.setVisible(true);
+
+    // Start zoom-in animation
+    this._animating = true;
+    this._animProgress = 0;
+    this._animStartTime = this.scene.time.now;
+    this._applyScale(0);
   }
 
   hide() {
@@ -37,13 +55,51 @@ export class GlassModal {
     this._selectedText = null;
     this._takeBtn = null;
     this._takeBtnLabel = null;
+    this._animating = false;
   }
 
   get visible() { return this.container.visible; }
 
   update() {
     if (!this.container.visible) return;
+
+    // Drive zoom animation
+    if (this._animating) {
+      const elapsed = this.scene.time.now - this._animStartTime;
+      const t = Math.min(elapsed / this._animDuration, 1);
+      // iOS-style ease-out curve (fast start, smooth deceleration)
+      const eased = 1 - Math.pow(1 - t, 3);
+      this._applyScale(eased);
+      if (t >= 1) {
+        this._animating = false;
+        this._applyScale(1);
+      }
+    }
+
     this._drawGlasses();
+  }
+
+  /** Apply scale transform for zoom animation */
+  _applyScale(progress) {
+    const scale = progress;
+    // Pivot from station origin: offset the container so it appears
+    // to grow outward from that point
+    const cx = CANVAS_W / 2;
+    const cy = CANVAS_H / 2;
+    const offsetX = (this._originX - cx) * (1 - progress);
+    const offsetY = (this._originY - cy) * (1 - progress);
+
+    this.container.setScale(scale);
+    this.container.setPosition(offsetX, offsetY);
+
+    // Scale glass graphics to match
+    this._glassGfx.setScale(scale);
+    this._glassGfx.setPosition(offsetX, offsetY);
+
+    // Fade in the dim overlay along with the scale
+    if (this._dimOverlay) {
+      this._dimOverlay.setAlpha(0.55 * progress);
+    }
   }
 
   _build() {
@@ -51,21 +107,26 @@ export class GlassModal {
     this._shelves = [];
     const scene = this.scene;
 
+    // ── Panel sizing — both panels are equal ──
+    const panelW = 280, panelH = 310;
+    const gap = 12; // padding between the two panels
+    const totalW = panelW * 2 + gap;
+    const leftCX = Math.round(CANVAS_W / 2 - totalW / 2 + panelW / 2);
+    const rightCX = Math.round(CANVAS_W / 2 + totalW / 2 - panelW / 2);
+    const panelCY = Math.round(CANVAS_H / 2);
+
     // ── Dim overlay ──
-    const dim = scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.55)
+    this._dimOverlay = scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.55)
       .setInteractive();
-    dim.on('pointerdown', () => scene.events.emit('glass-modal-close'));
-    this.container.add(dim);
+    this._dimOverlay.on('pointerdown', () => scene.events.emit('glass-modal-close'));
+    this.container.add(this._dimOverlay);
 
     // ── LEFT: Glass Cabinet ──
-    const cabinetW = 340, cabinetH = 320;
-    const cabinetCX = Math.round(CANVAS_W * 0.32);
-    const cabinetCY = Math.round(CANVAS_H / 2);
-    const cabinetLeft = cabinetCX - cabinetW / 2;
-    const cabinetTop = cabinetCY - cabinetH / 2;
+    const cabinetLeft = leftCX - panelW / 2;
+    const cabinetTop = panelCY - panelH / 2;
 
     // Cabinet outer frame (dark wood)
-    const cabinetBg = scene.add.rectangle(cabinetCX, cabinetCY, cabinetW, cabinetH, 0x2a1a0e)
+    const cabinetBg = scene.add.rectangle(leftCX, panelCY, panelW, panelH, 0x2a1a0e)
       .setStrokeStyle(4, 0x5a3a20)
       .setInteractive(); // blocks clicks from reaching dim
     this.container.add(cabinetBg);
@@ -73,7 +134,7 @@ export class GlassModal {
     // Cabinet inner area (recessed)
     const pad = 14;
     this.container.add(
-      scene.add.rectangle(cabinetCX, cabinetCY, cabinetW - pad * 2, cabinetH - pad * 2, 0x1e140a)
+      scene.add.rectangle(leftCX, panelCY, panelW - pad * 2, panelH - pad * 2, 0x1e140a)
         .setStrokeStyle(1, 0x3a2a18)
     );
 
@@ -91,9 +152,9 @@ export class GlassModal {
     ];
 
     const shelfAreaTop = cabinetTop + 30;
-    const shelfH = (cabinetH - 50) / shelfDefs.length;
+    const shelfH = (panelH - 50) / shelfDefs.length;
     const innerLeft = cabinetLeft + pad + 10;
-    const innerRight = cabinetLeft + cabinetW - pad - 10;
+    const innerRight = cabinetLeft + panelW - pad - 10;
     const shelfW = innerRight - innerLeft;
 
     for (let si = 0; si < shelfDefs.length; si++) {
@@ -103,7 +164,7 @@ export class GlassModal {
 
       // Shelf label
       this.container.add(
-        scene.add.text(cabinetCX, shelfAreaTop + si * shelfH + 14, def.label, {
+        scene.add.text(leftCX, shelfAreaTop + si * shelfH + 14, def.label, {
           fontFamily: 'monospace', fontSize: '10px',
           color: hasType ? '#8a7a6a' : '#4a4040',
         }).setOrigin(0.5)
@@ -111,7 +172,7 @@ export class GlassModal {
 
       // Shelf plank
       this.container.add(
-        scene.add.rectangle(cabinetCX, shelfBaseY, shelfW, 5, 0x5a4a30)
+        scene.add.rectangle(leftCX, shelfBaseY, shelfW, 5, 0x5a4a30)
           .setStrokeStyle(1, 0x6a5a40)
       );
 
@@ -120,7 +181,7 @@ export class GlassModal {
       if (hasType) {
         const glassSpacing = Math.min(55, (shelfW - 20) / def.count);
         const totalGlassW = (def.count - 1) * glassSpacing;
-        const glassStartX = cabinetCX - totalGlassW / 2;
+        const glassStartX = leftCX - totalGlassW / 2;
 
         for (let gi = 0; gi < def.count; gi++) {
           const gx = glassStartX + gi * glassSpacing;
@@ -138,45 +199,42 @@ export class GlassModal {
     }
 
     // ── RIGHT: Interaction Panel ──
-    const panelW = 200, panelH = 220;
-    const panelCX = Math.round(CANVAS_W * 0.72);
-    const panelCY = Math.round(CANVAS_H / 2);
     const panelTop = panelCY - panelH / 2;
 
-    const panelBg = scene.add.rectangle(panelCX, panelCY, panelW, panelH, 0x1e1e2e)
+    const panelBg = scene.add.rectangle(rightCX, panelCY, panelW, panelH, 0x1e1e2e)
       .setStrokeStyle(2, 0x4a4a6a)
       .setInteractive(); // blocks clicks from reaching dim
     this.container.add(panelBg);
 
     // "Selected:" header
-    let curY = panelTop + 30;
+    let curY = panelTop + 50;
     this.container.add(
-      scene.add.text(panelCX, curY, 'Selected:', {
+      scene.add.text(rightCX, curY, 'Selected:', {
         fontFamily: 'monospace', fontSize: '11px', color: '#888888',
       }).setOrigin(0.5)
     );
     curY += 24;
 
     // Selected glass name (updates dynamically)
-    this._selectedText = scene.add.text(panelCX, curY, 'None', {
+    this._selectedText = scene.add.text(rightCX, curY, 'None', {
       fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
     }).setOrigin(0.5);
     this.container.add(this._selectedText);
-    curY += 44;
+    curY += 60;
 
     // "Take Glass" button (starts disabled)
     const btnW = 160, btnH = 40;
-    this._takeBtn = scene.add.rectangle(panelCX, curY, btnW, btnH, 0x2a2a2a)
+    this._takeBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x2a2a2a)
       .setStrokeStyle(1, 0x444444);
     this.container.add(this._takeBtn);
-    this._takeBtnLabel = scene.add.text(panelCX, curY, 'Take Glass', {
+    this._takeBtnLabel = scene.add.text(rightCX, curY, 'Take Glass', {
       fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#666666',
     }).setOrigin(0.5);
     this.container.add(this._takeBtnLabel);
-    curY += btnH + 16;
+    curY += btnH + 20;
 
     // "Step Away" button
-    const stepBtn = scene.add.rectangle(panelCX, curY, btnW, btnH, 0x3a2a2a)
+    const stepBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x3a2a2a)
       .setStrokeStyle(1, 0x6a4a4a)
       .setInteractive({ useHandCursor: true });
     stepBtn.on('pointerover', () => stepBtn.setFillStyle(0x4a3a3a));
@@ -184,7 +242,7 @@ export class GlassModal {
     stepBtn.on('pointerdown', () => scene.events.emit('glass-modal-close'));
     this.container.add(stepBtn);
     this.container.add(
-      scene.add.text(panelCX, curY, 'Step Away', {
+      scene.add.text(rightCX, curY, 'Step Away', {
         fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#cc8888',
       }).setOrigin(0.5)
     );

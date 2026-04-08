@@ -1,4 +1,4 @@
-import { CANVAS_W, ACTION_DURATIONS } from '../constants.js';
+import { CANVAS_W, ACTION_DURATIONS, BAR_CABINET_TOP, BAR_CABINET_BOTTOM, COUNTER_SURFACE_Y, COUNTER_Y } from '../constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
 import { GlassState } from '../entities/GlassState.js';
 
@@ -33,7 +33,7 @@ export class StationActions {
           return;
         }
         walkThenAct(station.x, () => {
-          this.openGlassModal();
+          this.openGlassModal(station);
         });
         break;
 
@@ -256,8 +256,13 @@ export class StationActions {
 
   // ─── MODAL OPENERS ────────────────────────────────
 
-  openGlassModal() {
-    this.ctx.glassModal.visible = true;
+  openGlassModal(station) {
+    const st = this.ctx.glassModal;
+    st.visible = true;
+    // Station origin for zoom animation
+    const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
+    st.originX = station ? station.x : CANVAS_W / 2;
+    st.originY = station ? cabinetMidY : 270;
   }
 
   openDrinkModal(type, stationX) {
