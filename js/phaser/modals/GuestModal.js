@@ -1,4 +1,4 @@
-import { CANVAS_W, CANVAS_H, GUEST_STATE } from '../../constants.js';
+import { GUEST_STATE, BAR_SURFACE_Y } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { BaseModal } from './BaseModal.js';
 
@@ -146,18 +146,19 @@ function _pick(pool, guestId) {
   return pool[idx];
 }
 
-const PANEL_W = 460;
-const PANEL_H = 320;
-const PX = (CANVAS_W - PANEL_W) / 2;
-const PY = (CANVAS_H - PANEL_H) / 2;
-const LEFT_W = 160;
-const RIGHT_X = PX + LEFT_W + 20;
-const RIGHT_W = PANEL_W - LEFT_W - 40;
+// ── Layout constants (local coords, centered at 0,0) ──
+const PANEL_W = 280;
+const PANEL_H = 310;
+const GAP = 12;
+const CONTENT_W = PANEL_W * 2 + GAP; // 572
+const LEFT_CX = -CONTENT_W / 2 + PANEL_W / 2;   // -146
+const RIGHT_CX = CONTENT_W / 2 - PANEL_W / 2;   // 146
 const BTN_H = 36;
 const BTN_GAP = 8;
+const BTN_W = PANEL_W - 40;
 
 /**
- * Customer interaction modal.
+ * Customer interaction modal — split-panel layout with zoom animation.
  * Left: zoomed portrait of the guest.
  * Right: speech bubble message + context-dependent action buttons.
  */
@@ -173,6 +174,10 @@ export class GuestModal extends BaseModal {
     this._lastHasCheck = null;
     this._lastGreeted = null;
     this._btnStartY = 0;
+
+    // Content dimensions for zoom animation
+    this._contentW = CONTENT_W;
+    this._contentH = PANEL_H;
   }
 
   show(guest, getActions) {
@@ -182,75 +187,72 @@ export class GuestModal extends BaseModal {
     this._lastState = guest.state;
     this._lastHasCheck = guest.hasCheck;
     this._lastGreeted = guest.greeted;
-    super.show();
+
+    // Zoom animation origin: the guest's on-screen position
+    const originX = guest.seat?.x ?? guest.x;
+    const originY = BAR_SURFACE_Y + 5;  // approximate seated guest center
+    super.show({
+      origin: { x: originX, y: originY, w: 24, h: 30 },
+    });
   }
 
   _build() {
     const scene = this.scene;
     const guest = this._guest;
 
-    // Main panel (interactive to block dim clicks)
+    // ── LEFT: Portrait panel ──
     this._content.add(
-      scene.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, PANEL_W, PANEL_H, 0x1e1e2e)
+      scene.add.rectangle(LEFT_CX, 0, PANEL_W, PANEL_H, 0x151525)
         .setStrokeStyle(2, 0x4a4a6a)
         .setInteractive(),
     );
 
-    // ── Left: Guest portrait area ──
-    const portraitX = PX + LEFT_W / 2;
-    const portraitY = PY + PANEL_H / 2;
-
-    this._content.add(
-      scene.add.rectangle(portraitX, portraitY, LEFT_W - 10, PANEL_H - 20, 0x151525)
-        .setStrokeStyle(1, 0x3a3a5a),
-    );
-
+    // Portrait sprite (zoomed large)
     const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
     const seated = guest.state !== GUEST_STATE.LEAVING &&
                    guest.state !== GUEST_STATE.ANGRY_LEAVING &&
                    guest.state !== GUEST_STATE.ARRIVING &&
                    guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
     const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
-    const portrait = scene.add.image(portraitX, portraitY + 10, spriteKey)
-      .setScale(3.0).setOrigin(0.5, 0.5);
+    const portrait = scene.add.image(LEFT_CX, 10, spriteKey)
+      .setScale(5.0).setOrigin(0.5, 0.5);
     this._content.add(portrait);
 
-    // ── Right side ──
-    let curY = PY + 24;
+    // ── RIGHT: Interaction panel ──
+    this._content.add(
+      scene.add.rectangle(RIGHT_CX, 0, PANEL_W, PANEL_H, 0x1e1e2e)
+        .setStrokeStyle(2, 0x4a4a6a)
+        .setInteractive(),
+    );
 
-    const guestLabel = scene.add.text(RIGHT_X, curY, `Customer #${guest.id + 1}`, {
-      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#e0e0e0',
-    });
-    this._content.add(guestLabel);
-    curY += 28;
+    // Customer name
+    let curY = -PANEL_H / 2 + 24;
+    this._content.add(
+      scene.add.text(RIGHT_CX, curY, `Customer #${guest.id + 1}`, {
+        fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#e0e0e0',
+      }).setOrigin(0.5),
+    );
+    curY += 24;
 
     // Speech bubble
     const message = this._getMessage(guest);
+    const bubbleW = PANEL_W - 30;
     const bubbleH = 60;
     this._content.add(
-      scene.add.rectangle(RIGHT_X + RIGHT_W / 2, curY + bubbleH / 2, RIGHT_W, bubbleH, 0x2a2a3e)
+      scene.add.rectangle(RIGHT_CX, curY + bubbleH / 2, bubbleW, bubbleH, 0x2a2a3e)
         .setStrokeStyle(1, 0x5a5a7a),
     );
-    this._msgText = scene.add.text(RIGHT_X + 12, curY + 10, message, {
+    this._msgText = scene.add.text(RIGHT_CX - bubbleW / 2 + 12, curY + 10, message, {
       fontFamily: 'monospace', fontSize: '11px', color: '#ffd54f',
-      wordWrap: { width: RIGHT_W - 24 },
+      wordWrap: { width: bubbleW - 24 },
     });
     this._content.add(this._msgText);
-    curY += bubbleH + 16;
+    curY += bubbleH + 20;
 
     // Action buttons
     this._btnStartY = curY;
     this._btnObjects = [];
     this._buildButtons();
-
-    // Close button
-    const closeBtn = scene.add.rectangle(PX + PANEL_W - 22, PY + 16, 26, 22, 0xf44336)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => this._requestClose());
-    this._content.add(closeBtn);
-    this._content.add(scene.add.text(PX + PANEL_W - 22, PY + 16, 'X', {
-      fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5));
   }
 
   _onUpdate(dt) {
@@ -290,7 +292,7 @@ export class GuestModal extends BaseModal {
     let curY = this._btnStartY;
     for (const action of this._actions) {
       const btnY = curY + BTN_H / 2;
-      const btnBg = scene.add.rectangle(RIGHT_X + RIGHT_W / 2, btnY, RIGHT_W, BTN_H,
+      const btnBg = scene.add.rectangle(RIGHT_CX, btnY, BTN_W, BTN_H,
         action.disabled ? 0x2a2a2a : 0x3a5a3a,
       ).setStrokeStyle(1, action.disabled ? 0x444444 : 0x5a8a5a);
 
@@ -299,12 +301,13 @@ export class GuestModal extends BaseModal {
         btnBg.on('pointerover', () => btnBg.setFillStyle(0x4a7a4a));
         btnBg.on('pointerout', () => btnBg.setFillStyle(0x3a5a3a));
         btnBg.on('pointerdown', () => {
+          if (this._closing) return;
           this._requestClose();
           if (action.action) action.action();
         });
       }
 
-      const btnLabel = scene.add.text(RIGHT_X + RIGHT_W / 2, btnY, action.label, {
+      const btnLabel = scene.add.text(RIGHT_CX, btnY, action.label, {
         fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold',
         color: action.disabled ? '#666666' : '#ffffff',
       }).setOrigin(0.5);
