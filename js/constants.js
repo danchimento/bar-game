@@ -4,7 +4,7 @@
 // Height is fixed; width adapts to the device aspect ratio so
 // Phaser's FIT mode fills the screen edge-to-edge with zero
 // letterboxing and zero cropping.
-export const CANVAS_H = 540;
+export const CANVAS_H = 576;
 export let   CANVAS_W = 960; // default 16:9, overwritten by initCanvas()
 
 /**

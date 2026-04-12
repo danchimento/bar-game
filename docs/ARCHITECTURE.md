@@ -49,6 +49,57 @@ js/
       GlassRenderer.js      # drawGlass() utility
 ```
 
+## Screen Layout
+
+### Tile Grid
+
+The layout is built on a **16px tile grid**. `TILE = 16` is exported from
+`BarLayout.js`. Canvas height is **576px = 36 tiles**. Width is dynamic
+(device aspect ratio) but structure widths snap to tile multiples.
+
+### Scene Model — Structures on a Ground Plane
+
+The screen is a side-view diorama. The scene contains **structures** (physical
+objects) placed on a ground plane, rendered top-to-bottom = far-to-near:
+
+```
+tile  0 ┌─────────────────────────────────────────┐
+        │  WALL  (5 tiles = 80px)                  │
+tile  5 ├─────────────────────────────────────────┤
+        │  customer area  (12 tiles = 192px)       │  ← derived gap
+        │  waiting line at top, stools at bottom   │
+tile 17 ├═════════════════════════════════════════┤
+        │  BAR COUNTER surface (2 tiles = 32px)    │  ← structure
+tile 19 ├─────────────────────────────────────────┤
+        │  BAR COUNTER cabinet (3 tiles = 48px)    │  ← structure face
+tile 22 ├═════════════════════════════════════════┤
+        │  bartender area  (12 tiles = 192px)      │  ← derived gap
+        │  walk track, service mat                 │
+tile 34 ├─────────────────────────────────────────┤
+        │  BACK COUNTER  (2 tiles = 32px)          │  ← structure
+tile 36 └─────────────────────────────────────────┘  576px
+```
+
+**Structures** are the physical objects (wall, bar counter, back counter).
+**Derived spaces** (customer area, bartender area) are the gaps between
+structures — they are computed, not declared.
+
+### Station Footprints
+
+All station widths are tile multiples (defined in `STATION_TEMPLATES`):
+
+| Station | Tiles | Pixels |
+|---------|-------|--------|
+| GLASS_RACK | 12 | 192 |
+| TAPS | 8 | 128 |
+| DISHWASHER | 6 | 96 |
+| WINE | 6 | 96 |
+| PREP | 6 | 96 |
+| POS | 5 | 80 |
+| SINK | 5 | 80 |
+| TRASH | 4 | 64 |
+| MENU | 3 | 48 |
+
 ## Key Architecture Patterns
 
 ### BarLayout — Single Source of Truth (`layout/BarLayout.js`)
@@ -57,9 +108,11 @@ js/
 `GamePlayScene.create()`, passed by reference to every layer, entity, and system.
 
 BarLayout owns:
-- **Zone computation** — proportional weights (wall 14%, guest area 34%, etc.)
-  resolve to pixel Y-ranges via the same `resolveZones()` algorithm
+- **Structures** — wall, barCounter (surface + cabinet), backCounter, each
+  with pixel bounds derived from tile positions
+- **Derived spaces** — customerArea, bartenderArea (gaps between structures)
 - **All Y-coordinates** — `barSurfaceY`, `walkTrackY`, `counterSurfaceY`, etc.
+  (backward-compatible properties derived from structures)
 - **Station positions** — distributed evenly from a level's station list, each
   with an `x` coordinate and a parametric `t ∈ [0, 1]` along the bar path
 - **Seat positions** — distributed evenly from the level's seat count, each

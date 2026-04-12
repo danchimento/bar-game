@@ -17,6 +17,15 @@ payments.
 
 ## Architecture Rules
 
+### Tile Grid & Screen Layout
+- **Tile size: 16px** (`TILE` exported from `js/layout/BarLayout.js`)
+- **Canvas: 576px tall** (36 tiles), width is dynamic (device aspect ratio)
+- The scene is a **side-view diorama** of structures on a ground plane:
+  - **Wall** (tiles 0–4), **Bar counter** (tiles 17–21, surface + cabinet), **Back counter** (tiles 34–35)
+  - **Customer area** (tiles 5–16) and **Bartender area** (tiles 22–33) are derived gaps between structures
+- Station footprints and structure dimensions are always tile multiples
+- See `docs/ARCHITECTURE.md` → "Screen Layout" for the full tile map
+
 ### BarLayout (spatial positioning)
 - **`BarLayout`** (`js/layout/BarLayout.js`) is the **single source of truth** for all spatial positions
 - Station positions, seat positions, bar bounds, zone coordinates, walk track Y — all come from BarLayout

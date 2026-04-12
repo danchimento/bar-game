@@ -8,16 +8,17 @@
 //   starThresholds – tip+revenue targets for 1/2/3 stars
 //   settings    – optional per-level setting overrides
 
+// Station footprints — widths in pixels, snapped to tile multiples (TILE = 16)
 export const STATION_TEMPLATES = {
-  DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 90 },
-  SINK:        { id: 'SINK',       label: 'Sink',  width: 80 },
-  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 200 },
-  TAPS:        { id: 'TAPS',       label: 'Taps',  width: 120 },
-  WINE:        { id: 'WINE',       label: 'Wine',  width: 100 },
-  PREP:        { id: 'PREP',       label: 'Prep',  width: 100 },
-  POS:         { id: 'POS',        label: 'POS',   width: 80 },
-  TRASH:       { id: 'TRASH',      label: 'Trash', width: 60 },
-  MENU:        { id: 'MENU',       label: 'Menu',  width: 50 },
+  DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 96 },   // 6 tiles
+  SINK:        { id: 'SINK',       label: 'Sink',  width: 80 },   // 5 tiles
+  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 192 },  // 12 tiles
+  TAPS:        { id: 'TAPS',       label: 'Taps',  width: 128 },  // 8 tiles
+  WINE:        { id: 'WINE',       label: 'Wine',  width: 96 },   // 6 tiles
+  PREP:        { id: 'PREP',       label: 'Prep',  width: 96 },   // 6 tiles
+  POS:         { id: 'POS',        label: 'POS',   width: 80 },   // 5 tiles
+  TRASH:       { id: 'TRASH',      label: 'Trash', width: 64 },   // 4 tiles
+  MENU:        { id: 'MENU',       label: 'Menu',  width: 48 },   // 3 tiles
 };
 
 /** Build a stations array with automatic x positions from an ordered list of IDs.

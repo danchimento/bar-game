@@ -2,50 +2,52 @@ import { STATION_SCALE, COUNTER_BASE_ROWS } from '../constants/layout.js';
 import { STATION_TEMPLATES } from '../data/levels.js';
 
 /**
- * BarLayout — single source of truth for all spatial layout.
+ * BarLayout — single source of truth for all spatial positions.
  *
- * Created once per level in GamePlayScene.create(). Passed by reference to
- * every layer, entity, and system that needs position information.
+ * ## Tile grid
  *
- * Zones use the same proportional weight system as before. Station and seat
- * positions are computed from ordered lists (no hardcoded X values).
+ * The layout is built on a 16px tile grid. CANVAS_H (576px) = 36 tiles.
+ * Width is dynamic (device aspect ratio) but station footprints and bar
+ * width snap to tile multiples.
  *
- * ## Bar path (future extensibility)
+ * ## Scene model
  *
- * Stations and seats are placed at parameter t ∈ [0, 1] along a path.
- * For straight bars, t maps linearly to X. Later, t can follow a curve
- * for wrap-around bar layouts.
+ * The screen is a side-view diorama. The scene contains STRUCTURES placed
+ * on a ground plane, rendered top-to-bottom = far-to-near:
  *
- *   counterPathAt(t) → back counter (stations)
- *   barPathAt(t)     → customer-facing bar (seats)
+ *   ┌─────────────────────────────────────────┐  tile 0
+ *   │  WALL (5 tiles, 80px)                   │  Back wall, clock
+ *   ├─────────────────────────────────────────┤  tile 5
+ *   │  customer area (12 tiles, 192px)        │  Derived gap — guests
+ *   │  (waiting line at top, stools at bottom) │  walk in and sit here
+ *   ├═════════════════════════════════════════┤  tile 17
+ *   │  BAR COUNTER surface (2 tiles, 32px)    │  Top face — drinks sit here
+ *   ├─────────────────────────────────────────┤  tile 19
+ *   │  BAR COUNTER cabinet (3 tiles, 48px)    │  Front face — under-bar storage
+ *   ├═════════════════════════════════════════┤  tile 22
+ *   │  bartender area (12 tiles, 192px)       │  Derived gap — bartender
+ *   │  (walk track, service mat)              │  moves here
+ *   ├─────────────────────────────────────────┤  tile 34
+ *   │  BACK COUNTER (2 tiles, 32px)           │  Stations (taps, POS, etc.)
+ *   └─────────────────────────────────────────┘  tile 36 (576px)
+ *
+ * Structures are the physical objects. The customer area and bartender area
+ * are NOT declared — they are the gaps between structures.
+ *
+ * ## Bar path (future)
+ *
+ * Stations and seats have a parametric `t ∈ [0, 1]` along the bar.
+ * For straight bars, t maps linearly to X. Later, curves.
  */
 
-// ─── Zone weight definitions ────────────────────────
-const ZONE_DEFS = [
-  { id: 'wall',        weight: 0.14 },
-  { id: 'guest_area',  weight: 0.34 },
-  { id: 'bar_top',     weight: 0.06 },
-  { id: 'bar_cabinet', weight: 0.09 },
-  { id: 'floor',       weight: 0.33 },
-  { id: 'counter',     weight: 0.04 },
-];
+export const TILE = 16;
 
-/** Resolve zone defs into pixel ranges */
-function resolveZones(defs, totalH) {
-  const totalWeight = defs.reduce((s, z) => s + z.weight, 0);
-  const zones = {};
-  let y = 0;
-  for (const def of defs) {
-    const h = Math.round((def.weight / totalWeight) * totalH);
-    zones[def.id] = { top: y, bottom: y + h, height: h, center: y + h / 2 };
-    y += h;
-  }
-  const last = defs[defs.length - 1];
-  zones[last.id].bottom = totalH;
-  zones[last.id].height = totalH - zones[last.id].top;
-  zones[last.id].center = zones[last.id].top + zones[last.id].height / 2;
-  return zones;
-}
+// ─── Structure definitions (tile positions) ─────────
+const STRUCTURES = {
+  wall:         { topTile: 0,  tiles: 5 },
+  bar_counter:  { topTile: 17, surfaceTiles: 2, cabinetTiles: 3 },
+  back_counter: { topTile: 34, tiles: 2 },
+};
 
 // ─── Station placement rules ────────────────────────
 const STATION_PLACEMENT = {
@@ -64,60 +66,91 @@ export class BarLayout {
   /**
    * @param {Object} config
    * @param {number} config.canvasW
-   * @param {number} config.canvasH
-   * @param {number} [config.barWidth=860]
+   * @param {number} config.canvasH - should be 576 (36 tiles)
+   * @param {number} [config.barWidth=864] - snapped to tile multiple (54 tiles)
    * @param {number} config.seatCount
-   * @param {Array}  config.stations - from level: [{ id, width, label, ... }]
+   * @param {Array}  config.stations - from level definition
    */
   constructor(config) {
-    const { canvasW, canvasH, barWidth = 860, seatCount, stations } = config;
+    const { canvasW, canvasH, barWidth = 54 * TILE, seatCount, stations } = config;
 
     this.canvasW = canvasW;
     this.canvasH = canvasH;
+    this.tile = TILE;
 
-    // ── Zones (proportional, same for all levels) ──
-    this.zones = resolveZones(ZONE_DEFS, canvasH);
+    // ── Structures (pixel bounds from tile positions) ──
+    const w = STRUCTURES.wall;
+    const bc = STRUCTURES.bar_counter;
+    const rc = STRUCTURES.back_counter;
 
-    // ── Bar bounds ──
+    this.wall = {
+      top: w.topTile * TILE,
+      bottom: (w.topTile + w.tiles) * TILE,
+      height: w.tiles * TILE,
+    };
+
+    this.barCounter = {
+      surfaceTop: bc.topTile * TILE,
+      surfaceBottom: (bc.topTile + bc.surfaceTiles) * TILE,
+      surfaceHeight: bc.surfaceTiles * TILE,
+      cabinetTop: (bc.topTile + bc.surfaceTiles) * TILE,
+      cabinetBottom: (bc.topTile + bc.surfaceTiles + bc.cabinetTiles) * TILE,
+      cabinetHeight: bc.cabinetTiles * TILE,
+    };
+
+    this.backCounter = {
+      top: rc.topTile * TILE,
+      bottom: (rc.topTile + rc.tiles) * TILE,
+      height: rc.tiles * TILE,
+    };
+
+    // ── Derived spaces (gaps between structures) ──
+    this.customerArea = {
+      top: this.wall.bottom,
+      bottom: this.barCounter.surfaceTop,
+      height: this.barCounter.surfaceTop - this.wall.bottom,
+    };
+
+    this.bartenderArea = {
+      top: this.barCounter.cabinetBottom,
+      bottom: this.backCounter.top,
+      height: this.backCounter.top - this.barCounter.cabinetBottom,
+    };
+
+    // ── Bar bounds (horizontal) ──
     this.barWidth = barWidth;
-    this.barLeft = (canvasW - barWidth) / 2;
+    this.barLeft = Math.round((canvasW - barWidth) / 2);
     this.barRight = this.barLeft + barWidth;
 
-    // ── Derived Y coordinates ──
-    const z = this.zones;
-
-    // Guest area
-    this.waitingY = z.wall.bottom + 30;
-    this.guestY = z.guest_area.bottom - 20;
-    this.seatY = z.guest_area.bottom - 5;
-
-    // Bar top surface
-    this.barTopY = z.bar_top.top;
-    this.barSurfaceY = z.bar_top.top + 4;
-    this.barFrontY = z.bar_top.bottom - 5;
-    this.barDepthPx = this.barFrontY - this.barSurfaceY;
+    // ── Backward-compatible Y coordinates ──
+    // (read by layers — derived from structures, not declared independently)
+    this.barTopY = this.barCounter.surfaceTop;
+    this.barSurfaceY = this.barCounter.surfaceTop;
+    this.barFrontY = this.barCounter.surfaceBottom;
+    this.barDepthPx = this.barCounter.surfaceHeight;
     this.barInch = this.barDepthPx / 30;
 
-    // Bar cabinets
-    this.cabinetTop = z.bar_cabinet.top;
-    this.cabinetBottom = z.bar_cabinet.bottom;
-    this.cabinetMidY = (z.bar_cabinet.top + z.bar_cabinet.bottom) / 2;
+    this.cabinetTop = this.barCounter.cabinetTop;
+    this.cabinetBottom = this.barCounter.cabinetBottom;
+    this.cabinetMidY = Math.round((this.cabinetTop + this.cabinetBottom) / 2);
 
-    // Floor
-    this.floorY = z.floor.top;
-    this.serviceMatY = z.floor.top + 15;
-    this.walkTrackY = Math.round(z.floor.top + z.floor.height * 0.35);
+    this.floorY = this.bartenderArea.top;
+    this.serviceMatY = this.bartenderArea.top + TILE;
+    this.walkTrackY = Math.round(this.bartenderArea.top + this.bartenderArea.height * 0.35);
 
-    // Back counter
-    this.counterSurfaceY = z.counter.top;
-    this.counterH = z.counter.height;
-    this.counterY = z.counter.center;
-    this.stationY = z.counter.center;
+    this.counterSurfaceY = this.backCounter.top;
+    this.counterH = this.backCounter.height;
+    this.counterY = Math.round((this.backCounter.top + this.backCounter.bottom) / 2);
+    this.stationY = this.counterY;
+
+    this.waitingY = this.wall.bottom + 2 * TILE;
+    this.guestY = this.customerArea.bottom - TILE;
+    this.seatY = this.customerArea.bottom - 4;
 
     // ── Bartender ──
     this.bartenderStartX = Math.round(canvasW / 2);
 
-    // ── Stations (from level config) ──
+    // ── Stations ──
     this.stations = this._layoutStations(stations);
 
     // ── Seats ──
@@ -126,7 +159,6 @@ export class BarLayout {
 
   // ─── BAR PATH (straight for now) ──────────────────
 
-  /** Back counter path: t ∈ [0,1] → { x, y, angle } */
   counterPathAt(t) {
     return {
       x: this.barLeft + t * this.barWidth,
@@ -135,7 +167,6 @@ export class BarLayout {
     };
   }
 
-  /** Customer-facing bar path: t ∈ [0,1] → { x, y, angle } */
   barPathAt(t) {
     return {
       x: this.barLeft + t * this.barWidth,
@@ -146,7 +177,6 @@ export class BarLayout {
 
   // ─── POSITION HELPERS ─────────────────────────────
 
-  /** Get screen position for a station, accounting for placement type */
   stationScreenPos(station) {
     const placement = STATION_PLACEMENT[station.id] || 'on_counter';
     let y;
@@ -167,29 +197,21 @@ export class BarLayout {
     return { x: station.x, y, placement };
   }
 
-  /** Get screen position for a seat */
   seatScreenPos(seatId) {
     const seat = this.seats[seatId];
     return { x: seat.x, y: this.seatY };
   }
 
-  /** Bartender walk bounds */
   get walkBounds() {
     return { minX: this.barLeft, maxX: this.barRight };
   }
 
-  /** Convert bar-depth inches from customer edge to screen Y */
   barY(inchesFromEdge) {
     return this.barSurfaceY + inchesFromEdge * this.barInch;
   }
 
   // ─── INTERNAL LAYOUT ──────────────────────────────
 
-  /**
-   * Distribute stations evenly with gaps across the counter.
-   * Accepts either pre-built station objects (from layoutStations()) or
-   * processes them to add x positions and t parameters.
-   */
   _layoutStations(stations) {
     if (!stations || !stations.length) return [];
 
@@ -208,14 +230,14 @@ export class BarLayout {
       return { ...tmpl, ...(typeof st === 'string' ? { id: st } : st) };
     });
 
-    const totalWidth = 900;
-    const marginLeft = 30;
-    const totalStationWidth = templates.reduce((s, t) => s + (t.width || 50), 0);
+    const totalWidth = this.barWidth - 2 * TILE; // 1-tile margin each side
+    const marginLeft = this.barLeft + TILE;
+    const totalStationWidth = templates.reduce((s, t) => s + (t.width || 3 * TILE), 0);
     const gap = (totalWidth - totalStationWidth) / (templates.length + 1);
     let x = marginLeft + gap;
 
     return templates.map(st => {
-      const w = st.width || 50;
+      const w = st.width || 3 * TILE;
       const cx = Math.round(x + w / 2);
       const t = (cx - this.barLeft) / this.barWidth;
       x += w + gap;
@@ -223,13 +245,9 @@ export class BarLayout {
     });
   }
 
-  /**
-   * Distribute seats evenly along the bar front.
-   * Absorbs the logic from constants.js setSeatCount().
-   */
   _layoutSeats(count) {
     const seats = [];
-    const margin = 120;
+    const margin = 7 * TILE; // 112px margin on each side
     const usableWidth = this.canvasW - margin * 2;
     const gap = usableWidth / (count + 1);
     for (let i = 0; i < count; i++) {
