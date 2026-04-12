@@ -38,6 +38,22 @@ export class TitleScene extends Phaser.Scene {
     btnBg.on('pointerout', () => { btnBg.setFillStyle(0x3a2a1a); btnText.setColor('#e8c170'); });
     btnBg.on('pointerdown', () => this._showCalendar());
 
+    // Layout toggle (bottom right)
+    const currentMode = localStorage.getItem('barRushLayout') || 'landscape';
+    const modeLabel = currentMode === 'portrait' ? 'Portrait' : 'Landscape';
+    const layoutBtn = this.add.text(CANVAS_W - 80, CANVAS_H - 30,
+      `Layout: ${modeLabel}`, {
+        fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#8888bb',
+        backgroundColor: '#2a2a4a', padding: { x: 8, y: 4 },
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    layoutBtn.on('pointerdown', () => {
+      const newMode = currentMode === 'portrait' ? 'landscape' : 'portrait';
+      localStorage.setItem('barRushLayout', newMode);
+      window.location.reload();
+    });
+    layoutBtn.on('pointerover', () => layoutBtn.setColor('#bbbbee'));
+    layoutBtn.on('pointerout', () => layoutBtn.setColor('#8888bb'));
+
     // Components button (bottom left)
     const compBtn = this.add.text(80, CANVAS_H - 30, 'Components', {
       fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#8888bb',

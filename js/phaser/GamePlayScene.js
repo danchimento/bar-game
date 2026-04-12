@@ -46,6 +46,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.level = LEVELS[this.levelIndex];
     this.barLayout = new BarLayout({
       canvasW: CANVAS_W, canvasH: CANVAS_H,
+      mode: localStorage.getItem('barRushLayout') || 'landscape',
       seatCount: this.level.seats || 3,
       stations: this.level.stationIds || this.level.stations,
     });

@@ -10,34 +10,9 @@ import { ComponentViewerScene } from './phaser/ComponentViewerScene.js';
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('selectstart', e => e.preventDefault());
 
-// Try to lock orientation on first user tap (requires fullscreen on most browsers)
-let orientationLocked = false;
-function tryLockLandscape() {
-  if (orientationLocked) return;
-  orientationLocked = true;
-
-  const el = document.documentElement;
-  const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-  if (requestFS) {
-    requestFS.call(el).then(() => {
-      if (screen.orientation && screen.orientation.lock) {
-        return screen.orientation.lock('landscape').catch(() => {});
-      }
-    }).catch(() => {
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {});
-      }
-    });
-  } else if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock('landscape').catch(() => {});
-  }
-}
-document.addEventListener('pointerdown', tryLockLandscape, { once: true });
-
-// ── Adapt game width to device aspect ratio ──
-// Height stays fixed at 540; width stretches to fill the screen.
-// After this call, CANVAS_W reflects the actual device width.
-initCanvas();
+// ── Layout mode (persisted in localStorage) ──
+const layoutMode = localStorage.getItem('barRushLayout') || 'landscape';
+initCanvas(layoutMode);
 
 const config = {
   type: Phaser.AUTO,

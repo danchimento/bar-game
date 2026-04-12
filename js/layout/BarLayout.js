@@ -6,33 +6,25 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *
  * ## Tile grid
  *
- * The layout is built on a 16px tile grid. CANVAS_H (576px) = 36 tiles.
- * Width is dynamic (device aspect ratio) but station footprints and bar
- * width snap to tile multiples.
+ * The layout is built on a 16px tile grid. Structure positions are defined
+ * in tile counts. Two layout modes are supported:
  *
- * ## Scene model
+ * ### Landscape (default) — 36 tiles tall, width adapts to device
  *
- * The screen is a side-view diorama. The scene contains STRUCTURES placed
- * on a ground plane, rendered top-to-bottom = far-to-near:
+ *   ┌──────────────────────────────────────────┐  tile 0
+ *   │  WALL (5 tiles)                          │
+ *   ├──────────────────────────────────────────┤  tile 5
+ *   │  customer area (12 tiles)                │  ← derived gap
+ *   ├═════════════════════════════════════════─┤  tile 17
+ *   │  BAR COUNTER surface (2) + cabinet (3)   │
+ *   ├═════════════════════════════════════════─┤  tile 22
+ *   │  bartender area (12 tiles)               │  ← derived gap
+ *   ├──────────────────────────────────────────┤  tile 34
+ *   │  BACK COUNTER (2 tiles)                  │
+ *   └──────────────────────────────────────────┘  tile 36
  *
- *   ┌─────────────────────────────────────────┐  tile 0
- *   │  WALL (5 tiles, 80px)                   │  Back wall, clock
- *   ├─────────────────────────────────────────┤  tile 5
- *   │  customer area (12 tiles, 192px)        │  Derived gap — guests
- *   │  (waiting line at top, stools at bottom) │  walk in and sit here
- *   ├═════════════════════════════════════════┤  tile 17
- *   │  BAR COUNTER surface (2 tiles, 32px)    │  Top face — drinks sit here
- *   ├─────────────────────────────────────────┤  tile 19
- *   │  BAR COUNTER cabinet (3 tiles, 48px)    │  Front face — under-bar storage
- *   ├═════════════════════════════════════════┤  tile 22
- *   │  bartender area (12 tiles, 192px)       │  Derived gap — bartender
- *   │  (walk track, service mat)              │  moves here
- *   ├─────────────────────────────────────────┤  tile 34
- *   │  BACK COUNTER (2 tiles, 32px)           │  Stations (taps, POS, etc.)
- *   └─────────────────────────────────────────┘  tile 36 (576px)
- *
- * Structures are the physical objects. The customer area and bartender area
- * are NOT declared — they are the gaps between structures.
+ * ### Portrait — 36 tiles wide, height adapts to device
+ *   Same structures, more vertical space. Customer and bartender areas expand.
  *
  * ## Bar path (future)
  *
@@ -42,11 +34,24 @@ import { STATION_TEMPLATES } from '../data/levels.js';
 
 export const TILE = 16;
 
-// ─── Structure definitions (tile positions) ─────────
-const STRUCTURES = {
-  wall:         { topTile: 0,  tiles: 5 },
-  bar_counter:  { topTile: 17, surfaceTiles: 2, cabinetTiles: 3 },
-  back_counter: { topTile: 34, tiles: 2 },
+// ─── Structure presets per layout mode ──────────────
+const LAYOUT_PRESETS = {
+  landscape: {
+    structures: {
+      wall:         { topTile: 0,  tiles: 5 },
+      bar_counter:  { topTile: 17, surfaceTiles: 2, cabinetTiles: 3 },
+      back_counter: { topTile: 34, tiles: 2 },
+    },
+    barTiles: 54,  // 864px
+  },
+  portrait: {
+    structures: {
+      wall:         { topTile: 0,  tiles: 6 },
+      bar_counter:  { topTile: 28, surfaceTiles: 2, cabinetTiles: 4 },
+      back_counter: { topTile: 60, tiles: 2 },
+    },
+    barTiles: 32,  // 512px
+  },
 };
 
 // ─── Station placement rules ────────────────────────
@@ -66,22 +71,25 @@ export class BarLayout {
   /**
    * @param {Object} config
    * @param {number} config.canvasW
-   * @param {number} config.canvasH - should be 576 (36 tiles)
-   * @param {number} [config.barWidth=864] - snapped to tile multiple (54 tiles)
+   * @param {number} config.canvasH
+   * @param {'landscape'|'portrait'} [config.mode='landscape']
    * @param {number} config.seatCount
    * @param {Array}  config.stations - from level definition
    */
   constructor(config) {
-    const { canvasW, canvasH, barWidth = 54 * TILE, seatCount, stations } = config;
+    const { canvasW, canvasH, seatCount, stations } = config;
+    const mode = config.mode || 'landscape';
+    const preset = LAYOUT_PRESETS[mode] || LAYOUT_PRESETS.landscape;
+    const barWidth = config.barWidth || preset.barTiles * TILE;
 
     this.canvasW = canvasW;
     this.canvasH = canvasH;
     this.tile = TILE;
 
     // ── Structures (pixel bounds from tile positions) ──
-    const w = STRUCTURES.wall;
-    const bc = STRUCTURES.bar_counter;
-    const rc = STRUCTURES.back_counter;
+    const w = preset.structures.wall;
+    const bc = preset.structures.bar_counter;
+    const rc = preset.structures.back_counter;
 
     this.wall = {
       top: w.topTile * TILE,
@@ -242,7 +250,14 @@ export class BarLayout {
 
     const totalWidth = this.barWidth - 2 * TILE; // 1-tile margin each side
     const marginLeft = this.barLeft + TILE;
-    const totalStationWidth = templates.reduce((s, t) => s + (t.width || 3 * TILE), 0);
+    let totalStationWidth = templates.reduce((s, t) => s + (t.width || 3 * TILE), 0);
+
+    // If stations are too wide for the bar, scale them down proportionally
+    if (totalStationWidth > totalWidth * 0.9) {
+      const scale = (totalWidth * 0.85) / totalStationWidth;
+      for (const t of templates) t.width = Math.round((t.width || 3 * TILE) * scale);
+      totalStationWidth = templates.reduce((s, t) => s + t.width, 0);
+    }
     const gap = (totalWidth - totalStationWidth) / (templates.length + 1);
     let x = marginLeft + gap;
 

@@ -4,18 +4,25 @@
 // Height is fixed; width adapts to the device aspect ratio so
 // Phaser's FIT mode fills the screen edge-to-edge with zero
 // letterboxing and zero cropping.
-export const CANVAS_H = 576;
-export let   CANVAS_W = 960; // default 16:9, overwritten by initCanvas()
+export let CANVAS_H = 576;
+export let CANVAS_W = 960; // default 16:9, overwritten by initCanvas()
 
 /**
- * Call once before creating the Phaser.Game to set the game width
- * to match the device's actual aspect ratio.
+ * Call once before creating the Phaser.Game.
+ * @param {'landscape'|'portrait'} mode
  */
-export function initCanvas() {
+export function initCanvas(mode = 'landscape') {
   const vw = window.innerWidth  || document.documentElement.clientWidth  || 960;
   const vh = window.innerHeight || document.documentElement.clientHeight || 540;
-  const aspect = Math.max(vw, vh) / Math.min(vw, vh); // always landscape ratio
-  CANVAS_W = Math.round(CANVAS_H * aspect);
+  const aspect = Math.max(vw, vh) / Math.min(vw, vh);
+
+  if (mode === 'portrait') {
+    CANVAS_W = 576;                           // fixed width (36 tiles)
+    CANVAS_H = Math.round(CANVAS_W * aspect); // height adapts to device
+  } else {
+    CANVAS_H = 576;                           // fixed height (36 tiles)
+    CANVAS_W = Math.round(CANVAS_H * aspect); // width adapts to device
+  }
 
   // Recompute width-dependent layout
   BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
