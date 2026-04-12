@@ -40,7 +40,7 @@ export class Guest {
       this.y = barLayout.doorY;
       this.targetX = this.seat.x;
       this.targetY = barLayout.guestY;
-      this._movePhase = 'walk_x'; // walk_x → walk_y → arrived
+      this._movePhase = 'walk_down'; // walk_down → walk_x → walk_y → arrived
       this.state = GUEST_STATE.ARRIVING;
     } else {
       this.seat = null;
@@ -153,12 +153,12 @@ export class Guest {
     const bl = this._bl;
     this.seatId = seatId;
     this.seat = bl.seats[seatId];
-    // Start at door, walk L-shape to seat
+    // Start at door, walk down → horizontal → down to seat
     this.x = bl.doorX;
     this.y = bl.doorY;
     this.targetX = this.seat.x;
     this.targetY = bl.guestY;
-    this._movePhase = 'walk_x';
+    this._movePhase = 'walk_down';
     this.state = GUEST_STATE.ARRIVING;
   }
 
@@ -259,11 +259,20 @@ export class Guest {
 
   // ─── L-SHAPED MOVEMENT ────────────────────────────
 
-  /** Arrival: door → walk_x to seat X → walk_y down to seat Y */
+  /** Arrival: door → walk_down to walk lane → walk_x to seat X → walk_y to seat */
   _updateArrival(dt) {
-    if (this._movePhase === 'walk_x') {
+    if (this._movePhase === 'walk_down') {
+      // Walk down from door to the horizontal walk lane
+      const walkY = this._bl.guestWalkY;
+      if (this.y >= walkY - 2) {
+        this.y = walkY;
+        this._movePhase = 'walk_x';
+      } else {
+        this.y += WALK_SPEED_Y * dt;
+        if (this.y > walkY) this.y = walkY;
+      }
+    } else if (this._movePhase === 'walk_x') {
       // Walk horizontally at guestWalkY lane
-      this.y = this._bl.guestWalkY;
       const dx = this.targetX - this.x;
       if (Math.abs(dx) < 2) {
         this.x = this.targetX;

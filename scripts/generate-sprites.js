@@ -542,6 +542,34 @@ createSprite(16, 24, ({ px, row, rect, col }) => {
 }, 'station_trash.png');
 
 // ============================================================
+// DOOR (10x16) — simple door in the back wall
+// ============================================================
+createSprite(10, 16, ({ px, row, rect, col }) => {
+  const FRAME = '#5a4a30';   // wood frame
+  const DOOR  = '#4a3a20';   // door panel (darker wood)
+  const KNOB  = '#c8b870';   // brass knob
+  const SHADOW = '#1a1a2e';  // dark interior behind door
+
+  // Frame
+  col(0, 0, 15, FRAME); col(9, 0, 15, FRAME);  // sides
+  row(0, 0, 9, FRAME);                           // top
+  row(15, 0, 9, FRAME);                          // threshold
+
+  // Door panel (slightly recessed)
+  rect(1, 1, 8, 14, DOOR);
+
+  // Panel detail — two recessed rectangles
+  rect(2, 2, 6, 5, SHADOW);   // upper panel
+  rect(2, 9, 6, 5, SHADOW);   // lower panel
+  rect(3, 3, 4, 3, '#3a2a18'); // upper panel inner
+  rect(3, 10, 4, 3, '#3a2a18'); // lower panel inner
+
+  // Knob (right side, center)
+  px(7, 8, KNOB);
+  px(7, 7, '#a89860');
+}, 'door.png');
+
+// ============================================================
 // ZONE TILES — tileable textures for each spatial zone (64px wide)
 // ============================================================
 

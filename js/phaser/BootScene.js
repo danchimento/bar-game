@@ -34,6 +34,7 @@ export class BootScene extends Phaser.Scene {
       this.load.spritesheet(`guest_walk_${id}`, `assets/sprites/guest_walk_${id}.png`, { frameWidth: 72, frameHeight: 96 });
     }
     this.load.image('stool', 'assets/sprites/stool.png');
+    this.load.image('door', 'assets/sprites/door.png');
     this.load.image('glass_pint', 'assets/sprites/glass_pint.png');
     this.load.image('glass_wine', 'assets/sprites/glass_wine.png');
     this.load.image('glass_cup', 'assets/sprites/glass_cup.png');

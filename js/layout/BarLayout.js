@@ -150,7 +150,8 @@ export class BarLayout {
     // ── Door (top-center of wall) ──
     this.doorX = Math.round(canvasW / 2);
     this.doorY = this.wall.bottom;     // guests emerge at bottom of wall
-    this.guestWalkY = this.wall.bottom + TILE;  // horizontal walk lane (1 tile below wall)
+    // Horizontal walk lane — halfway between wall and bar (midpoint of customer area)
+    this.guestWalkY = Math.round((this.customerArea.top + this.customerArea.bottom) / 2);
 
     // ── Bartender ──
     this.bartenderStartX = Math.round(canvasW / 2);
