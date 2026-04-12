@@ -47,7 +47,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.barLayout = new BarLayout({
       canvasW: CANVAS_W, canvasH: CANVAS_H,
       seatCount: this.level.seats || 3,
-      stations: this.level.stations,
+      stations: this.level.stationIds || this.level.stations,
     });
     this.seats = this.barLayout.seats;
 

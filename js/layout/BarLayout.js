@@ -229,7 +229,11 @@ export class BarLayout {
       }));
     }
 
-    // Otherwise, distribute from IDs using STATION_TEMPLATES
+    // Ensure MENU is always present
+    const ids = stations.map(st => typeof st === 'string' ? st : st.id);
+    if (!ids.includes('MENU')) stations = [...stations, 'MENU'];
+
+    // Distribute from IDs using STATION_TEMPLATES
     const templates = stations.map(st => {
       const tmpl = STATION_TEMPLATES[st.id || st] || {};
       return { ...tmpl, ...(typeof st === 'string' ? { id: st } : st) };

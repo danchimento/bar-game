@@ -44,7 +44,7 @@ export const LEVELS = [
     day: 1,
     seats: 3,
     duration: 240,
-    stations: layoutStations(['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
+    stationIds: ['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
     drinks: ['GOLD_LAGER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -67,7 +67,7 @@ export const LEVELS = [
     day: 2,
     seats: 3,
     duration: 270,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
+    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -92,7 +92,7 @@ export const LEVELS = [
     day: 3,
     seats: 4,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH']),
+    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -119,7 +119,7 @@ export const LEVELS = [
     day: 4,
     seats: 4,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
+    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['HARVEST_MOON'] },
@@ -147,7 +147,7 @@ export const LEVELS = [
     day: 5,
     seats: 5,
     duration: 300,
-    stations: layoutStations(['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH']),
+    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 3,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },

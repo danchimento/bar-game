@@ -19,9 +19,9 @@ export class StationLayer {
     const scene = this.scene;
     const bl = this._bl;
 
-    // ── Back counter — tiled wood strip ──
+    // ── Back counter — tiled wood strip (matches bar width) ──
     const counterTile = scene.add.tileSprite(
-      0, bl.counterSurfaceY, bl.canvasW, bl.counterH, 'tile_counter',
+      bl.barLeft, bl.counterSurfaceY, bl.barWidth, bl.counterH, 'tile_counter',
     ).setOrigin(0, 0).setDepth(DEPTH.STATION_COUNTER);
     this.counterObjects.push(counterTile);
 

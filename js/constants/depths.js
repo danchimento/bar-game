@@ -23,8 +23,8 @@ export const DEPTH = {
   BARTENDER_CARRY:  12,   // Carried item icon above bartender
 
   // Stations (back counter)
-  STATION_SPRITE:   14,   // Station images (on_counter placement)
-  STATION_COUNTER:  15,   // Counter tile sprite
+  STATION_COUNTER:  14,   // Counter tile sprite (behind station sprites)
+  STATION_SPRITE:   15,   // Station images (on_counter placement)
   STATION_EMBEDDED: 16,   // Stations embedded in counter (sink)
   STATION_ZONE:     17,   // Station interactive zones (topmost game layer)
 
