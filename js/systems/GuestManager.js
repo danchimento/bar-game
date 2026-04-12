@@ -1,4 +1,4 @@
-import { GUEST_STATE, ACTION_DURATIONS, MOOD_MAX, CANVAS_W } from '../constants.js';
+import { GUEST_STATE, ACTION_DURATIONS, MOOD_MAX } from '../constants.js';
 import { DRINKS } from '../data/menu.js';
 import { Guest } from '../entities/Guest.js';
 
@@ -39,13 +39,13 @@ export class GuestManager {
 
         if (available.length > 0) {
           const seat = available[Math.floor(Math.random() * available.length)];
-          const guest = new Guest(seat.id, next.type, finalPrefs);
+          const guest = new Guest(seat.id, next.type, finalPrefs, this.ctx.barLayout);
           guest.settings = settings;
           if (!hasPrep) guest.wantsWater = false;
           this.guests.push(guest);
         } else {
           // No seat — guest waits behind the bar
-          const guest = new Guest(null, next.type, finalPrefs);
+          const guest = new Guest(null, next.type, finalPrefs, this.ctx.barLayout);
           guest.settings = settings;
           if (!hasPrep) guest.wantsWater = false;
           this.guests.push(guest);
@@ -83,10 +83,13 @@ export class GuestManager {
   }
 
   positionWaitingGuests() {
+    const bl = this.ctx.barLayout;
     const waiting = this.guests.filter(g => g.state === GUEST_STATE.WAITING_FOR_SEAT);
-    const startX = Math.round(CANVAS_W / 2) - (waiting.length - 1) * 40 / 2;
+    // Line up near the door
+    const startX = bl.doorX - (waiting.length - 1) * 40 / 2;
     waiting.forEach((g, i) => {
-      g.x = startX + i * 40;
+      g.x = Math.round(startX + i * 40);
+      g.y = bl.waitingY;
     });
   }
 
