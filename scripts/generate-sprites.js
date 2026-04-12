@@ -542,31 +542,35 @@ createSprite(16, 24, ({ px, row, rect, col }) => {
 }, 'station_trash.png');
 
 // ============================================================
-// DOOR (10x16) — simple door in the back wall
+// DOOR (16x36) — door in the back wall, sized to fit a guest
 // ============================================================
-createSprite(10, 16, ({ px, row, rect, col }) => {
+createSprite(16, 36, ({ px, row, rect, col }) => {
   const FRAME = '#5a4a30';   // wood frame
   const DOOR  = '#4a3a20';   // door panel (darker wood)
   const KNOB  = '#c8b870';   // brass knob
-  const SHADOW = '#1a1a2e';  // dark interior behind door
+  const INNER = '#3a2a18';   // recessed panel interior
+  const SHADOW = '#1a1a2e';  // dark gap
 
   // Frame
-  col(0, 0, 15, FRAME); col(9, 0, 15, FRAME);  // sides
-  row(0, 0, 9, FRAME);                           // top
-  row(15, 0, 9, FRAME);                          // threshold
+  col(0, 0, 35, FRAME); col(15, 0, 35, FRAME);  // sides
+  col(1, 0, 35, FRAME);  col(14, 0, 35, FRAME);  // thicker sides
+  row(0, 0, 15, FRAME); row(1, 0, 15, FRAME);     // top (2px)
+  row(35, 0, 15, FRAME);                           // threshold
 
-  // Door panel (slightly recessed)
-  rect(1, 1, 8, 14, DOOR);
+  // Door panel
+  rect(2, 2, 12, 33, DOOR);
 
-  // Panel detail — two recessed rectangles
-  rect(2, 2, 6, 5, SHADOW);   // upper panel
-  rect(2, 9, 6, 5, SHADOW);   // lower panel
-  rect(3, 3, 4, 3, '#3a2a18'); // upper panel inner
-  rect(3, 10, 4, 3, '#3a2a18'); // lower panel inner
+  // Upper panel (recessed)
+  rect(3, 4, 10, 12, SHADOW);
+  rect(4, 5, 8, 10, INNER);
 
-  // Knob (right side, center)
-  px(7, 8, KNOB);
-  px(7, 7, '#a89860');
+  // Lower panel (recessed)
+  rect(3, 19, 10, 12, SHADOW);
+  rect(4, 20, 8, 10, INNER);
+
+  // Knob (right side)
+  px(12, 17, KNOB); px(12, 18, KNOB);
+  px(11, 17, '#a89860');
 }, 'door.png');
 
 // ============================================================
