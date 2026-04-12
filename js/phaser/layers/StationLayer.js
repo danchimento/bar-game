@@ -1,5 +1,5 @@
 import { DEPTH } from '../../constants/depths.js';
-import { STATION_SCALE, STATION_ZONE_H } from '../../constants/layout.js';
+import { STATION_ZONE_H } from '../../constants/layout.js';
 
 /**
  * Back counter (tiled strip at screen bottom) and station sprites.
@@ -37,17 +37,17 @@ export class StationLayer {
       switch (placement) {
         case 'on_counter':
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(DEPTH.STATION_SPRITE);
+            .setOrigin(0.5, 1).setDepth(DEPTH.STATION_SPRITE);
           zoneY = bl.counterSurfaceY;
           break;
         case 'in_counter':
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(DEPTH.STATION_EMBEDDED);
+            .setOrigin(0.5, 0.5).setDepth(DEPTH.STATION_EMBEDDED);
           zoneY = bl.counterY;
           break;
         case 'under_bar':
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(DEPTH.BAR_ITEMS);
+            .setOrigin(0.5, 0.5).setDepth(DEPTH.BAR_ITEMS);
           zoneY = bl.cabinetMidY;
           break;
       }

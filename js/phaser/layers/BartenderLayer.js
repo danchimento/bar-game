@@ -18,7 +18,7 @@ export class BartenderLayer {
 
     this.sprite = scene.add.sprite(startX, trackY, 'bartender')
       .setDepth(DEPTH.BARTENDER)
-      .setScale(1.05);
+;
     this._wasMoving = false;
 
     // Busy progress bar
@@ -33,7 +33,7 @@ export class BartenderLayer {
     // Carry indicator
     this.carryGfx = scene.add.graphics().setDepth(DEPTH.BARTENDER_CARRY);
     this.carryIcon = scene.add.image(startX, trackY - 45, 'icon_dirty_glass')
-      .setOrigin(0.5).setDepth(DEPTH.BARTENDER_CARRY).setVisible(false).setScale(1.02);
+      .setOrigin(0.5).setDepth(DEPTH.BARTENDER_CARRY).setVisible(false);
   }
 
   update(bartender, barState) {

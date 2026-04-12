@@ -23,15 +23,15 @@ export class BootScene extends Phaser.Scene {
 
     // ── Sprites ──
     this.load.image('bartender', 'assets/sprites/bartender.png');
-    this.load.spritesheet('bartender_walk', 'assets/sprites/bartender_walk.png', { frameWidth: 96, frameHeight: 144 });
-    this.load.spritesheet('guest_drink', 'assets/sprites/guest_drink.png', { frameWidth: 72, frameHeight: 60 });
+    this.load.spritesheet('bartender_walk', 'assets/sprites/bartender_walk.png', { frameWidth: 64, frameHeight: 96 });
+    this.load.spritesheet('guest_drink', 'assets/sprites/guest_drink.png', { frameWidth: 48, frameHeight: 40 });
     this.load.image('bartender_carry', 'assets/sprites/bartender_carry.png');
     this.load.image('bartender_back', 'assets/sprites/bartender_back.png');
     // Guest appearance variants — standing, sitting, walk per ID
     for (const id of GUEST_APPEARANCE_IDS) {
       this.load.image(`guest_${id}`, `assets/sprites/guest_${id}.png`);
       this.load.image(`guest_sitting_${id}`, `assets/sprites/guest_sitting_${id}.png`);
-      this.load.spritesheet(`guest_walk_${id}`, `assets/sprites/guest_walk_${id}.png`, { frameWidth: 72, frameHeight: 96 });
+      this.load.spritesheet(`guest_walk_${id}`, `assets/sprites/guest_walk_${id}.png`, { frameWidth: 48, frameHeight: 64 });
     }
     this.load.image('stool', 'assets/sprites/stool.png');
     this.load.image('door', 'assets/sprites/door.png');

@@ -10,7 +10,7 @@ const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCALE = 3;
+const SCALE = 2;  // art pixels — each pixel-art pixel = 2×2 screen pixels
 
 function createSprite(w, h, drawFn, filename) {
   const canvas = createCanvas(w * SCALE, h * SCALE);
@@ -36,8 +36,7 @@ function createSprite(w, h, drawFn, filename) {
   const buf = canvas.toBuffer('image/png');
   const outPath = path.join(OUT, filename);
   fs.writeFileSync(outPath, buf);
-  console.log(`  ${filename} (${w}x${h} @${SCALE}x → ${canvas.width}x${canvas.height})`);
-  return buf;
+  console.log(`  ${filename} (${w}x${h} art → ${canvas.width}x${canvas.height}px)`);  return buf;
 }
 
 console.log('Generating sprites...\n');

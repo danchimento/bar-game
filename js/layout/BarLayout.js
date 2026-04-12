@@ -1,4 +1,4 @@
-import { STATION_SCALE, COUNTER_BASE_ROWS } from '../constants/layout.js';
+import { COUNTER_BASE_ROWS } from '../constants/layout.js';
 import { STATION_TEMPLATES } from '../data/levels.js';
 
 /**
@@ -189,7 +189,7 @@ export class BarLayout {
     switch (placement) {
       case 'on_counter': {
         const baseRows = COUNTER_BASE_ROWS[station.id] || 3;
-        const sinkPx = baseRows * STATION_SCALE;
+        const sinkPx = baseRows;  // rows are already in screen pixels at 1:1
         y = this.counterSurfaceY + this.counterH * 0.5 + sinkPx;
         break;
       }

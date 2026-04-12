@@ -3,16 +3,12 @@ import { DRINKS } from '../../data/menu.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
-// Sitting sprite geometry (24x20 source pixels)
-// Torso rows 12-17, arms on outer cols 13-17, hands at rows 18-19.
-// We want the bar surface to overlap the lower torso so there's no gap.
-// BAR_OVERLAP_ROW is the sprite row that aligns with BAR_SURFACE_Y —
-// everything below this row gets hidden behind the bar (depth 6 > depth 5).
-const SIT_SPRITE_H = 20;
-const SIT_SCALE = 1.01;  // 25% larger than original 0.81
-const BAR_OVERLAP_ROW = 15; // bar covers rows 15-19 (lower torso + hands)
-// Push sprite down so BAR_OVERLAP_ROW lands at BAR_SURFACE_Y
-const BAR_OVERLAP_OFFSET = (SIT_SPRITE_H - BAR_OVERLAP_ROW) * SIT_SCALE;
+// Sitting sprite geometry — screen pixel values (sprites render at 1:1)
+// Sprite is 48×40px on screen. We push the sprite down so the lower torso
+// is hidden behind the bar surface (depth 6 > depth 5).
+const SIT_SPRITE_SCREEN_H = 40;   // 20 art × 2 scale
+const BAR_OVERLAP_SCREEN_ROW = 30; // art row 15 × 2 scale
+const BAR_OVERLAP_OFFSET = SIT_SPRITE_SCREEN_H - BAR_OVERLAP_SCREEN_ROW; // 10px
 
 /**
  * Manages visual representations of guests.
@@ -78,7 +74,7 @@ export class GuestLayer {
     const scene = this.scene;
     const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
 
-    const sprite = scene.add.sprite(0, 0, `guest_${appearanceId}`).setScale(1.01).setDepth(5);
+    const sprite = scene.add.sprite(0, 0, `guest_${appearanceId}`).setDepth(5);
 
     // State popup icon — pops up and fades on state change
     const statePopup = scene.add.image(0, 0, 'icon_hourglass')
@@ -167,7 +163,7 @@ export class GuestLayer {
     }
 
     // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
+    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_SCREEN_H : y - 35;
     const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──

@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════
 // STATION RENDERING
 // ═══════════════════════════════════════════════════════════
-export const STATION_SCALE = 0.72;
+// STATION_SCALE removed — sprites render at 1:1 (generated at screen size)
 export const STATION_ZONE_H = 77;
 
 /** How many source-pixel rows each station sprite sinks into the counter */
@@ -27,9 +27,8 @@ export const BARTENDER_BUSY_BAR_OFFSET_Y = 35; // pixels below walk track
 // ═══════════════════════════════════════════════════════════
 // GUEST RENDERING
 // ═══════════════════════════════════════════════════════════
-export const GUEST_SIT_SPRITE_H = 20;        // source pixel height of sitting sprite
-export const GUEST_SIT_SCALE = 1.01;          // slight scale-up
-export const GUEST_BAR_OVERLAP_ROW = 15;      // which sprite row aligns with bar edge
+export const GUEST_SIT_SCREEN_H = 40;         // sitting sprite screen height (20 art × 2)
+export const GUEST_BAR_OVERLAP_PX = 30;       // screen pixels from top where bar overlaps
 export const GUEST_STANDING_OFFSET_Y = 35;    // standing sprite center offset
 export const GUEST_MOUTH_OFFSET_X = 6;        // mouth X relative to guest center
 export const GUEST_MOUTH_OFFSET_Y = 5;        // mouth Y above guest center
