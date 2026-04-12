@@ -1,4 +1,4 @@
-import { CANVAS_W, CANVAS_H, SEATS, BAR_LEFT, BAR_RIGHT } from '../../constants.js';
+import { CANVAS_W, CANVAS_H } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { BaseModal } from './BaseModal.js';
 
@@ -68,8 +68,10 @@ export class POSModal extends BaseModal {
     this._content.add(scene.add.rectangle(px + pw / 2, barY, barW, 20, 0x3a2a1a));
 
     // Seat circles
-    for (let i = 0; i < SEATS.length; i++) {
-      const t = (SEATS[i].x - BAR_LEFT) / (BAR_RIGHT - BAR_LEFT);
+    const bl = this.scene.barLayout;
+    const seats = bl.seats;
+    for (let i = 0; i < seats.length; i++) {
+      const t = (seats[i].x - bl.barLeft) / (bl.barRight - bl.barLeft);
       const sx = barLeft + t * barW;
       const tab = posTab.get(i) || [];
       const hasTab = tab.length > 0;

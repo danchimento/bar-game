@@ -1,9 +1,10 @@
-import { BARTENDER_SPEED, BARTENDER_START_X, WALK_TRACK_Y, BAR_LEFT, BAR_RIGHT } from '../constants.js';
+import { BARTENDER_SPEED } from '../constants.js';
 
 export class Bartender {
-  constructor() {
-    this.x = BARTENDER_START_X;
-    this.y = WALK_TRACK_Y;
+  constructor(barLayout) {
+    this.x = barLayout.bartenderStartX;
+    this.y = barLayout.walkTrackY;
+    this._walkBounds = barLayout.walkBounds;
     this.targetX = this.x;
     this.carrying = null; // null, 'CLEAN_GLASS', 'DIRTY_GLASS', 'DRINK_<type>', 'CHECK_<seatId>'
     this.busy = false;
@@ -16,7 +17,7 @@ export class Bartender {
 
   moveTo(x) {
     if (this.busy) return;
-    this.targetX = Math.max(BAR_LEFT, Math.min(BAR_RIGHT, x));
+    this.targetX = Math.max(this._walkBounds.minX, Math.min(this._walkBounds.maxX, x));
   }
 
   isNear(x, threshold = 30) {
@@ -36,7 +37,6 @@ export class Bartender {
   }
 
   putDown() {
-    // Returns whatever was being carried, sets carrying to null
     const item = this.carrying;
     this.carrying = null;
     return item;

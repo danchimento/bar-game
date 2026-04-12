@@ -8,7 +8,7 @@
 //   starThresholds – tip+revenue targets for 1/2/3 stars
 //   settings    – optional per-level setting overrides
 
-const STATION_TEMPLATES = {
+export const STATION_TEMPLATES = {
   DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 90 },
   SINK:        { id: 'SINK',       label: 'Sink',  width: 80 },
   GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 200 },

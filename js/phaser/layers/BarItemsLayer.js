@@ -1,4 +1,4 @@
-import { SEATS, BAR_SURFACE_Y, SEAT_Y, SERVICE_MAT_Y, barY } from '../../constants.js';
+// Layout reads from BarLayout (passed to constructor)
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
@@ -6,8 +6,9 @@ import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
  * Drinks at seats now render as actual glass shapes with fill levels.
  */
 export class BarItemsLayer {
-  constructor(scene) {
+  constructor(scene, barLayout) {
     this.scene = scene;
+    this._bl = barLayout;
     this.dirtySprites = new Map();
     this.cashSprites = new Map();
     this.drinkGfx = scene.add.graphics().setDepth(9);
@@ -19,8 +20,8 @@ export class BarItemsLayer {
 
   /** Create one permanent interactive zone per seat covering the full seat area */
   _buildSeatZones() {
-    for (const seat of SEATS) {
-      const zone = this.scene.add.zone(seat.x, SEAT_Y - 10, 70, 80)
+    for (const seat of this._bl.seats) {
+      const zone = this.scene.add.zone(seat.x, this._bl.seatY - 10, 70, 80)
         .setInteractive({ useHandCursor: true }).setDepth(10);
       zone.on('pointerdown', () => this.scene.events.emit('seat-zone-tap', seat.id));
       this.seatZones.push(zone);
@@ -45,9 +46,9 @@ export class BarItemsLayer {
 
   _syncDirtySeats(dirtySeats) {
     for (const seatId of dirtySeats) {
-      if (!this.dirtySprites.has(seatId) && SEATS[seatId]) {
-        const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x, barY(8), 'spill').setDepth(7);
+      if (!this.dirtySprites.has(seatId) && this._bl.seats[seatId]) {
+        const seat = this._bl.seats[seatId];
+        const sp = this.scene.add.image(seat.x, this._bl.barY(8), 'spill').setDepth(7);
         this.dirtySprites.set(seatId, { sp });
       }
     }
@@ -61,9 +62,9 @@ export class BarItemsLayer {
 
   _syncCash(cashOnBar) {
     for (const [seatId] of cashOnBar) {
-      if (!this.cashSprites.has(seatId) && SEATS[seatId]) {
-        const seat = SEATS[seatId];
-        const sp = this.scene.add.image(seat.x - 20, barY(6), 'cash').setDepth(7);
+      if (!this.cashSprites.has(seatId) && this._bl.seats[seatId]) {
+        const seat = this._bl.seats[seatId];
+        const sp = this.scene.add.image(seat.x - 20, this._bl.barY(6), 'cash').setDepth(7);
         this.cashSprites.set(seatId, { sp });
       }
     }
@@ -79,7 +80,7 @@ export class BarItemsLayer {
     this.drinkGfx.clear();
     for (const [seatId, glasses] of drinksAtSeats) {
       if (glasses.length === 0) continue;
-      const seat = SEATS[seatId];
+      const seat = this._bl.seats[seatId];
       if (!seat) continue;
 
       // Draw each glass at the seat, skip if being sipped
@@ -88,7 +89,7 @@ export class BarItemsLayer {
         const glass = glasses[i];
         const offsetX = (i - (glasses.length - 1) / 2) * 14;
         const gx = seat.x + offsetX;
-        const gy = barY(10);  // ~10 inches from customer edge (about a foot in)
+        const gy = this._bl.barY(10);  // ~10 inches from customer edge (about a foot in)
         const fillPct = glass.totalFill;
         const liquidColor = getLiquidColor(glass.layers);
         drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.96);
@@ -104,7 +105,7 @@ export class BarItemsLayer {
 
     for (const drink of serviceMat) {
       const gx = drink.x;
-      const gy = SERVICE_MAT_Y + 10;
+      const gy = this._bl.serviceMatY + 10;
 
       // Draw the glass with its contents
       if (drink.glass) {

@@ -1,4 +1,4 @@
-import { SEATS, ACTION_DURATIONS } from '../constants.js';
+import { ACTION_DURATIONS } from '../constants.js';
 
 /**
  * BarState — owns the bar's physical world state and operations on it.
@@ -102,7 +102,7 @@ export class BarState {
 
   // ─── SEAT CLEANUP ─────────────────────────────────
 
-  handleSeatCleanup(seatId, bartender, hud, stats, walkThenAct) {
+  handleSeatCleanup(seatId, bartender, hud, stats, walkThenAct, seats) {
     const hasCash = this.cashOnBar.has(seatId);
     const hasDirty = this.dirtySeats.has(seatId);
 
@@ -113,7 +113,7 @@ export class BarState {
       return;
     }
 
-    const seatX = SEATS[seatId].x;
+    const seatX = seats[seatId].x;
     walkThenAct(seatX, () => {
       if (hasCash) {
         bartender.startAction(ACTION_DURATIONS.COLLECT_CASH, 'Collecting...', () => {

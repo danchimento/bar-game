@@ -1,39 +1,44 @@
-import { WALK_TRACK_Y, BARTENDER_START_X } from '../../constants.js';
+import { DEPTH } from '../../constants/depths.js';
+import {
+  BARTENDER_CARRY_OFFSET_X, BARTENDER_CARRY_OFFSET_Y, BARTENDER_BUSY_BAR_OFFSET_Y,
+} from '../../constants/layout.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 /**
  * Bartender sprite + carried item graphic + busy progress bar.
- * Swaps to carry sprite when holding something, with the item drawn to the side.
+ * Reads walkTrackY and start position from BarLayout.
  */
 export class BartenderLayer {
-  constructor(scene) {
+  constructor(scene, barLayout) {
     this.scene = scene;
+    this._walkTrackY = barLayout.walkTrackY;
 
-    // Bartender sprite (use sprite for animation support)
-    this.sprite = scene.add.sprite(BARTENDER_START_X, WALK_TRACK_Y, 'bartender')
-      .setDepth(10)
+    const startX = barLayout.bartenderStartX;
+    const trackY = barLayout.walkTrackY;
+
+    this.sprite = scene.add.sprite(startX, trackY, 'bartender')
+      .setDepth(DEPTH.BARTENDER)
       .setScale(1.05);
     this._wasMoving = false;
 
-    // Busy progress bar (hidden by default)
-    this.busyBarBg = scene.add.rectangle(BARTENDER_START_X, WALK_TRACK_Y + 35, 50, 5, 0x333333)
-      .setDepth(11).setVisible(false);
-    this.busyBarFill = scene.add.rectangle(BARTENDER_START_X, WALK_TRACK_Y + 35, 0, 5, 0x4caf50)
-      .setOrigin(0, 0.5).setDepth(11).setVisible(false);
-    this.busyLabel = scene.add.text(BARTENDER_START_X, WALK_TRACK_Y + 46, '', {
+    // Busy progress bar
+    this.busyBarBg = scene.add.rectangle(startX, trackY + BARTENDER_BUSY_BAR_OFFSET_Y, 50, 5, 0x333333)
+      .setDepth(DEPTH.BUSY_BAR).setVisible(false);
+    this.busyBarFill = scene.add.rectangle(startX, trackY + BARTENDER_BUSY_BAR_OFFSET_Y, 0, 5, 0x4caf50)
+      .setOrigin(0, 0.5).setDepth(DEPTH.BUSY_BAR).setVisible(false);
+    this.busyLabel = scene.add.text(startX, trackY + BARTENDER_BUSY_BAR_OFFSET_Y + 11, '', {
       fontFamily: 'monospace', fontSize: '10px', color: '#e0e0e0',
-    }).setOrigin(0.5).setDepth(11).setVisible(false);
+    }).setOrigin(0.5).setDepth(DEPTH.BUSY_BAR).setVisible(false);
 
-    // Carry indicator — Graphics for drawing glass to the side
-    this.carryGfx = scene.add.graphics().setDepth(12);
-    // Fallback icon for non-glass items (check, dirty glass)
-    this.carryIcon = scene.add.image(BARTENDER_START_X, WALK_TRACK_Y - 45, 'icon_dirty_glass')
-      .setOrigin(0.5).setDepth(12).setVisible(false).setScale(1.02);
+    // Carry indicator
+    this.carryGfx = scene.add.graphics().setDepth(DEPTH.BARTENDER_CARRY);
+    this.carryIcon = scene.add.image(startX, trackY - 45, 'icon_dirty_glass')
+      .setOrigin(0.5).setDepth(DEPTH.BARTENDER_CARRY).setVisible(false).setScale(1.02);
   }
 
-  /** Call every frame with the Bartender logic instance and barState */
   update(bartender, barState) {
     if (!bartender) return;
+    const trackY = this._walkTrackY;
 
     const x = bartender.x;
     const carry = bartender.carrying;
@@ -42,9 +47,6 @@ export class BartenderLayer {
     const isMoving = Math.abs(bartender.x - bartender.targetX) > 3;
     this.sprite.x = x;
 
-    // Walking: side-view walk animation, flipped for direction
-    // Idle: back view (facing bar, away from player)
-    // Carrying idle: carry sprite (side view, facing last direction)
     if (isMoving) {
       this.sprite.setFlipX(!bartender.facingRight);
       if (!isCarrying) {
@@ -67,17 +69,14 @@ export class BartenderLayer {
     }
     this._wasMoving = isMoving;
 
-    // Carry indicator — drawn to the right side of the bartender
-    // (flipX mirrors the whole visual, so the extended arm + item follows)
+    // Carry indicator
     this.carryGfx.clear();
     this.carryIcon.setVisible(false);
 
     if (carry) {
-      // Item position: offset to the right of the sprite (arm extends right in art)
-      // When flipped, Phaser mirrors everything, so always use positive offset
-      const sideOffset = bartender.facingRight ? 28 : -28;
+      const sideOffset = bartender.facingRight ? BARTENDER_CARRY_OFFSET_X : -BARTENDER_CARRY_OFFSET_X;
       const itemX = x + sideOffset;
-      const itemY = WALK_TRACK_Y - 22;
+      const itemY = trackY - BARTENDER_CARRY_OFFSET_Y;
 
       if (carry === 'DIRTY_GLASS') {
         this.carryIcon.setTexture('icon_dirty_glass').setPosition(itemX, itemY - 8).setVisible(true);
@@ -97,14 +96,14 @@ export class BartenderLayer {
     if (bartender.busy) {
       const progress = 1 - (bartender.busyTimer / bartender.busyDuration);
       const barW = 50;
-      this.busyBarBg.setPosition(x, WALK_TRACK_Y + 35).setVisible(true);
+      this.busyBarBg.setPosition(x, trackY + BARTENDER_BUSY_BAR_OFFSET_Y).setVisible(true);
       this.busyBarFill
-        .setPosition(x - barW / 2, WALK_TRACK_Y + 35)
+        .setPosition(x - barW / 2, trackY + BARTENDER_BUSY_BAR_OFFSET_Y)
         .setSize(barW * Math.min(1, progress), 5)
         .setVisible(true);
       this.busyLabel
         .setText(bartender.busyLabel)
-        .setPosition(x, WALK_TRACK_Y + 46)
+        .setPosition(x, trackY + BARTENDER_BUSY_BAR_OFFSET_Y + 11)
         .setVisible(true);
     } else {
       this.busyBarBg.setVisible(false);

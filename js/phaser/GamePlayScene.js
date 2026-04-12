@@ -1,11 +1,12 @@
 /* global Phaser */
 import {
-  CANVAS_W, CANVAS_H, SEATS, setSeatCount, GUEST_STATE,
-  ACTION_DURATIONS, BAR_TOP_Y, STATION_Y,
+  CANVAS_W, CANVAS_H, GUEST_STATE,
+  ACTION_DURATIONS,
   MOOD_GRACE_PERIOD, SETTLE_TIME, ENJOY_TIME_MIN, ENJOY_TIME_MAX, ORDER_REVEAL_TIME,
 } from '../constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
 import { LEVELS } from '../data/levels.js';
+import { BarLayout } from '../layout/BarLayout.js';
 import { Bartender } from '../entities/Bartender.js';
 import { GlassState } from '../entities/GlassState.js';
 import { BarState } from '../systems/BarState.js';
@@ -41,9 +42,14 @@ export class GamePlayScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('#1a1a2e');
 
-    // ── Game logic (unchanged modules) ──
+    // ── Layout — single source of truth for all positions ──
     this.level = LEVELS[this.levelIndex];
-    this.seats = setSeatCount(this.level.seats || 3);
+    this.barLayout = new BarLayout({
+      canvasW: CANVAS_W, canvasH: CANVAS_H,
+      seatCount: this.level.seats || 3,
+      stations: this.level.stations,
+    });
+    this.seats = this.barLayout.seats;
 
     this.settings = {
       moodDecayMultiplier: 1.0, gracePeriod: MOOD_GRACE_PERIOD,
@@ -57,7 +63,7 @@ export class GamePlayScene extends Phaser.Scene {
       }
     }
 
-    this.bartender = new Bartender();
+    this.bartender = new Bartender(this.barLayout);
     this.barState = new BarState();
     this.guestManager = new GuestManager();
     this.stationActions = new StationActions();
@@ -98,20 +104,22 @@ export class GamePlayScene extends Phaser.Scene {
     // Wire up game logic contexts
     this.guestManager.setContext({
       bartender: this.bartender, barState: this.barState,
+      barLayout: this.barLayout,
       hud: this.hud, stats: this.stats,
       settings: this.settings, seats: this.seats, radialMenu: this.radialMenu,
       posTab: this.pos.tab,
       walkThenAct: this.walkThenAct.bind(this),
-      getStations: () => this.level?.stations || [],
+      getStations: () => this.barLayout.stations,
     });
 
     this.stationActions.setContext({
       bartender: this.bartender, barState: this.barState,
+      barLayout: this.barLayout,
       hud: this.hud, stats: this.stats,
       walkThenAct: this.walkThenAct.bind(this),
       startPour: this.startPour.bind(this),
       getAvailableDrinks: () => this.level?.drinks || Object.keys(DRINKS),
-      getStations: () => this.level?.stations || [],
+      getStations: () => this.barLayout.stations,
       drinkModal: this.drinkModalState,
       glassModal: this.glassModalState,
       prepModal: this.prepModalState,
@@ -119,11 +127,12 @@ export class GamePlayScene extends Phaser.Scene {
     });
 
     // ── Phaser visual layers ──
-    this.barLayer = new BarLayer(this, this.seats);
-    this.stationLayer = new StationLayer(this, this.level.stations);
-    this.bartenderLayer = new BartenderLayer(this);
-    this.guestLayer = new GuestLayer(this);
-    this.barItemsLayer = new BarItemsLayer(this);
+    const bl = this.barLayout;
+    this.barLayer = new BarLayer(this, bl);
+    this.stationLayer = new StationLayer(this, bl);
+    this.bartenderLayer = new BartenderLayer(this, bl);
+    this.guestLayer = new GuestLayer(this, bl);
+    this.barItemsLayer = new BarItemsLayer(this, bl);
 
     // ── Phaser UI ──
     this.hudUI = new HudUI(this);
@@ -212,9 +221,10 @@ export class GamePlayScene extends Phaser.Scene {
     }
 
     // Check modals — unified polling via _syncModal helper
+    const availDrinks = this.level?.drinks || Object.keys(DRINKS);
     this._syncModal(this.glassModalState, this.glassModal, dt, () => {
       const gs = this.glassModalState;
-      this.glassModal.show(this.level?.drinks || Object.keys(DRINKS), gs.originX, gs.originY, gs.originW, gs.originH);
+      this.glassModal.show(availDrinks, gs.originX, gs.originY, gs.originW, gs.originH);
     });
     this._syncModal(this.drinkModalState, this.drinkModal, dt, () => {
       this.drinkModal.show(this.drinkModalState);
@@ -223,7 +233,7 @@ export class GamePlayScene extends Phaser.Scene {
       this.prepModal.show(this.barState.carriedGlass);
     });
     this._syncModal(this.pos, this.posModal, dt, () => {
-      this.posModal.show(this.pos, this.level?.drinks || Object.keys(DRINKS));
+      this.posModal.show(this.pos, availDrinks);
     });
 
     // Level complete check
@@ -279,7 +289,7 @@ export class GamePlayScene extends Phaser.Scene {
 
       // Priority 2: Cash or dirty seat → cleanup
       this.barState.handleSeatCleanup(seatId, this.bartender, this.hud, this.stats,
-        this.walkThenAct.bind(this));
+        this.walkThenAct.bind(this), this.seats);
     });
 
     // Guest modal close
@@ -292,7 +302,7 @@ export class GamePlayScene extends Phaser.Scene {
       if (this.paused || this._anyModalOpen() || this._modalClosedThisFrame) return;
       if (this.radialMenu.visible) return;
       const { x, y } = ptr;
-      if (y > BAR_TOP_Y && y < STATION_Y + 40) {
+      if (y > this.barLayout.barTopY && y < this.barLayout.stationY + 40) {
         this.bartender.moveTo(x);
         this.pendingAction = null;
       }

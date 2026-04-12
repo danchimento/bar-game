@@ -1,4 +1,4 @@
-import { CANVAS_W, ACTION_DURATIONS, BAR_CABINET_TOP, BAR_CABINET_BOTTOM, COUNTER_SURFACE_Y, COUNTER_Y } from '../constants.js';
+import { CANVAS_W, ACTION_DURATIONS } from '../constants.js';
 import { DRINKS, GLASSES, GARNISHES, MIXER_DRINKS } from '../data/menu.js';
 import { GlassState } from '../entities/GlassState.js';
 
@@ -180,11 +180,11 @@ export class StationActions {
 
   openGlassModal(station) {
     const st = this.ctx.glassModal;
+    const bl = this.ctx.barLayout;
     st.visible = true;
-    // Station origin for zoom animation
-    const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
-    st.originX = station ? station.x : CANVAS_W / 2;
-    st.originY = station ? cabinetMidY : 270;
+    const pos = bl.stationScreenPos(station);
+    st.originX = pos.x;
+    st.originY = pos.y;
     // Glass rack sprite: 84×24 at 0.72 scale
     st.originW = 60;
     st.originH = 17;
@@ -200,7 +200,7 @@ export class StationActions {
     // Animation origin for beer taps (station_taps: 40×32 at 0.72 scale)
     if (type === 'beer') {
       drinkModal.originX = stationX;
-      drinkModal.originY = COUNTER_SURFACE_Y;
+      drinkModal.originY = this.ctx.barLayout.counterSurfaceY;
       drinkModal.originW = 29;
       drinkModal.originH = 23;
     }

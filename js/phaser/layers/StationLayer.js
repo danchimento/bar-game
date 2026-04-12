@@ -1,93 +1,62 @@
-import {
-  CANVAS_W,
-  BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
-  COUNTER_SURFACE_Y, COUNTER_Y, COUNTER_H,
-} from '../../constants.js';
-
-// Where each station lives physically
-const STATION_PLACEMENT = {
-  TAPS:        'on_counter',
-  WINE:        'on_counter',
-  PREP:        'on_counter',
-  POS:         'on_counter',
-  MENU:        'on_counter',
-  SINK:        'in_counter',
-  GLASS_RACK:  'under_bar',
-  DISHWASHER:  'under_bar',
-  TRASH:       'under_bar',
-};
-
-// Source pixels of sprite base hidden by counter surface (per station)
-const COUNTER_BASE_ROWS = {
-  TAPS: 4, WINE: 4, PREP: 3, POS: 6, MENU: 4,
-};
-
-const STATION_SCALE = 0.72;
+import { DEPTH } from '../../constants/depths.js';
+import { STATION_SCALE, STATION_ZONE_H } from '../../constants/layout.js';
 
 /**
- * Back counter (single tiled strip at screen bottom) and station sprites.
- * Under-bar stations render in the bar cabinet zone instead.
+ * Back counter (tiled strip at screen bottom) and station sprites.
+ * Station positions and placement types come from BarLayout.
  */
 export class StationLayer {
-  constructor(scene, stations) {
+  constructor(scene, barLayout) {
     this.scene = scene;
+    this._bl = barLayout;
     this.stationObjects = [];
     this.counterObjects = [];
-    this.build(stations);
+    this.build();
   }
 
-  build(stations) {
+  build() {
     this.destroy();
     const scene = this.scene;
+    const bl = this._bl;
 
-    // ── Back counter — tiled wood strip flush with screen bottom ──
-    const counterH = COUNTER_H;
-    const counterTile = scene.add.tileSprite(0, COUNTER_SURFACE_Y, CANVAS_W, counterH, 'tile_counter')
-      .setOrigin(0, 0).setDepth(15);
+    // ── Back counter — tiled wood strip ──
+    const counterTile = scene.add.tileSprite(
+      0, bl.counterSurfaceY, bl.canvasW, bl.counterH, 'tile_counter',
+    ).setOrigin(0, 0).setDepth(DEPTH.STATION_COUNTER);
     this.counterObjects.push(counterTile);
 
     // ── Station sprites ──
-    const cabinetMidY = (BAR_CABINET_TOP + BAR_CABINET_BOTTOM) / 2;
-
-    for (const st of stations) {
+    for (const st of bl.stations) {
       const spriteKey = this._spriteKey(st.id);
       if (!spriteKey) continue;
 
-      const placement = STATION_PLACEMENT[st.id] || 'on_counter';
+      const { x, y, placement } = bl.stationScreenPos(st);
+
       let sprite;
       let zoneY;
-
       switch (placement) {
-        case 'on_counter': {
-          // Place sprite so its base sinks into the counter by baseRows,
-          // visually sitting ON the counter surface
-          const baseRows = COUNTER_BASE_ROWS[st.id] || 3;
-          const sinkPx = baseRows * STATION_SCALE;
-          sprite = scene.add.image(st.x, COUNTER_SURFACE_Y + COUNTER_H * 0.5 + sinkPx, spriteKey)
-            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(14);
-          zoneY = COUNTER_SURFACE_Y;
+        case 'on_counter':
+          sprite = scene.add.image(x, y, spriteKey)
+            .setOrigin(0.5, 1).setScale(STATION_SCALE).setDepth(DEPTH.STATION_SPRITE);
+          zoneY = bl.counterSurfaceY;
           break;
-        }
-        case 'in_counter': {
-          sprite = scene.add.image(st.x, COUNTER_Y, spriteKey)
-            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(16);
-          zoneY = COUNTER_Y;
+        case 'in_counter':
+          sprite = scene.add.image(x, y, spriteKey)
+            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(DEPTH.STATION_EMBEDDED);
+          zoneY = bl.counterY;
           break;
-        }
-        case 'under_bar': {
-          sprite = scene.add.image(st.x, cabinetMidY, spriteKey)
-            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(7);
-          zoneY = cabinetMidY;
+        case 'under_bar':
+          sprite = scene.add.image(x, y, spriteKey)
+            .setOrigin(0.5, 0.5).setScale(STATION_SCALE).setDepth(DEPTH.BAR_ITEMS);
+          zoneY = bl.cabinetMidY;
           break;
-        }
       }
 
       // Interactive zone — 10% oversize
       const zoneW = ((st.width || 50) + 10) * 1.1;
-      const zoneH = 77;
-      const zone = scene.add.zone(st.x, zoneY, zoneW, zoneH)
+      const zone = scene.add.zone(st.x, zoneY, zoneW, STATION_ZONE_H)
         .setInteractive({ useHandCursor: true })
-        .setDepth(17);
+        .setDepth(DEPTH.STATION_ZONE);
 
       let longPressTimer = null;
       zone.on('pointerdown', () => {

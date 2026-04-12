@@ -1,64 +1,62 @@
-import {
-  CANVAS_W, ZONES, BAR_SURFACE_Y, BAR_FRONT_Y, BAR_MAX_W,
-  BAR_LEFT, BAR_RIGHT, BAR_CABINET_TOP, BAR_CABINET_BOTTOM,
-  COUNTER_SURFACE_Y,
-} from '../../constants.js';
+import { DEPTH } from '../../constants/depths.js';
+import { STOOL_SPRITE_W, STOOL_LEG_W, BAR_TOP_EXTRA_H, CLOCK_OFFSET_Y } from '../../constants/layout.js';
 
 /**
- * Static background layers derived from ZONES:
+ * Static background layers derived from BarLayout zones:
  *   wall → guest_area → bar_top → bar_cabinet → floor → counter
  */
 export class BarLayer {
-  constructor(scene, seats) {
+  constructor(scene, barLayout) {
     this.scene = scene;
-    const barCenterX = (BAR_LEFT + BAR_RIGHT) / 2;
+    this._bl = barLayout;
+    const bl = barLayout;
 
-    // ── Wall — tiled brick texture ──
-    const wall = ZONES.wall;
-    scene.add.tileSprite(0, wall.top, CANVAS_W, wall.height, 'tile_wall')
-      .setOrigin(0, 0).setDepth(0);
+    const barCenterX = (bl.barLeft + bl.barRight) / 2;
 
-    // ── Floor — tiled hardwood, spans floor + counter zones ──
-    const floorTop = ZONES.floor.top;
-    const floorH = ZONES.counter.bottom - floorTop;
-    scene.add.tileSprite(0, floorTop, CANVAS_W, floorH, 'tile_floor')
-      .setOrigin(0, 0).setDepth(0);
+    // ── Wall ──
+    const wall = bl.zones.wall;
+    scene.add.tileSprite(0, wall.top, bl.canvasW, wall.height, 'tile_wall')
+      .setOrigin(0, 0).setDepth(DEPTH.BACKGROUND);
 
-    // ── Bar top surface — tiled polished wood ──
-    const barTopH = BAR_FRONT_Y - BAR_SURFACE_Y + 5;
-    scene.add.tileSprite(barCenterX - BAR_MAX_W / 2, BAR_SURFACE_Y, BAR_MAX_W, barTopH, 'tile_bar_top')
-      .setOrigin(0, 0).setDepth(6);
+    // ── Floor (spans floor + counter zones) ──
+    const floorTop = bl.zones.floor.top;
+    const floorH = bl.zones.counter.bottom - floorTop;
+    scene.add.tileSprite(0, floorTop, bl.canvasW, floorH, 'tile_floor')
+      .setOrigin(0, 0).setDepth(DEPTH.BACKGROUND);
 
-    // ── Bar cabinets — tiled dark wood panel ──
-    const cabinetH = BAR_CABINET_BOTTOM - BAR_CABINET_TOP;
-    scene.add.tileSprite(barCenterX - BAR_MAX_W / 2, BAR_CABINET_TOP, BAR_MAX_W, cabinetH, 'tile_cabinet')
-      .setOrigin(0, 0).setDepth(6);
+    // ── Bar top surface ──
+    const barTopH = bl.barFrontY - bl.barSurfaceY + BAR_TOP_EXTRA_H;
+    scene.add.tileSprite(bl.barLeft, bl.barSurfaceY, bl.barWidth, barTopH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
 
-    // ── U-shaped bar legs — counter tile extends down from bar edges ──
-    const legWidth = 24;
-    const legTop = BAR_SURFACE_Y;
-    const legH = COUNTER_SURFACE_Y - legTop;
-    // Left leg
-    scene.add.tileSprite(BAR_LEFT, legTop, legWidth, legH, 'tile_bar_top')
-      .setOrigin(0, 0).setDepth(6);
-    // Right leg
-    scene.add.tileSprite(BAR_RIGHT - legWidth, legTop, legWidth, legH, 'tile_bar_top')
-      .setOrigin(0, 0).setDepth(6);
+    // ── Bar cabinets ──
+    const cabinetH = bl.cabinetBottom - bl.cabinetTop;
+    scene.add.tileSprite(bl.barLeft, bl.cabinetTop, bl.barWidth, cabinetH, 'tile_cabinet')
+      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
+
+    // ── U-shaped bar legs ──
+    const legTop = bl.barSurfaceY;
+    const legH = bl.counterSurfaceY - legTop;
+    scene.add.tileSprite(bl.barLeft, legTop, STOOL_LEG_W, legH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
+    scene.add.tileSprite(bl.barRight - STOOL_LEG_W, legTop, STOOL_LEG_W, legH, 'tile_bar_top')
+      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
 
     // ── Stools ──
     this.stools = [];
-    for (const seat of seats) {
-      const stool = scene.add.image(seat.x, BAR_SURFACE_Y - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
-      const maxH = (BAR_FRONT_Y + 5) - (BAR_SURFACE_Y - 2);
-      stool.setCrop(0, 0, 48, maxH);
+    for (const seat of bl.seats) {
+      const stool = scene.add.image(seat.x, bl.barSurfaceY - 2, 'stool')
+        .setOrigin(0.5, 0).setDepth(DEPTH.STOOLS);
+      const maxH = (bl.barFrontY + BAR_TOP_EXTRA_H) - (bl.barSurfaceY - 2);
+      stool.setCrop(0, 0, STOOL_SPRITE_W, maxH);
       this.stools.push(stool);
     }
 
     // ── Wall clock ──
-    const clockX = CANVAS_W - 80;
-    const clockY = ZONES.guest_area.top + 80;
+    const clockX = bl.canvasW - 80;
+    const clockY = bl.zones.guest_area.top + CLOCK_OFFSET_Y;
     const clockR = 28;
-    this.clockGfx = scene.add.graphics().setDepth(0);
+    this.clockGfx = scene.add.graphics().setDepth(DEPTH.BACKGROUND);
     this.clockGfx.fillStyle(0xf5f0e0, 1);
     this.clockGfx.fillCircle(clockX, clockY, clockR);
     this.clockGfx.lineStyle(3, 0x5a3a1a, 1);
@@ -71,7 +69,7 @@ export class BarLayer {
         clockX + Math.cos(angle) * (clockR - 2), clockY + Math.sin(angle) * (clockR - 2),
       );
     }
-    this.clockHandsGfx = scene.add.graphics().setDepth(0);
+    this.clockHandsGfx = scene.add.graphics().setDepth(DEPTH.BACKGROUND);
     this._clockX = clockX;
     this._clockY = clockY;
     this._clockR = clockR;
@@ -98,12 +96,14 @@ export class BarLayer {
   }
 
   rebuildStools(seats) {
+    const bl = this._bl;
     this.stools.forEach(s => s.destroy());
     this.stools = [];
     for (const seat of seats) {
-      const stool = this.scene.add.image(seat.x, BAR_SURFACE_Y - 2, 'stool').setOrigin(0.5, 0).setDepth(4);
-      const maxH = (BAR_FRONT_Y + 5) - (BAR_SURFACE_Y - 2);
-      stool.setCrop(0, 0, 48, maxH);
+      const stool = this.scene.add.image(seat.x, bl.barSurfaceY - 2, 'stool')
+        .setOrigin(0.5, 0).setDepth(DEPTH.STOOLS);
+      const maxH = (bl.barFrontY + BAR_TOP_EXTRA_H) - (bl.barSurfaceY - 2);
+      stool.setCrop(0, 0, STOOL_SPRITE_W, maxH);
       this.stools.push(stool);
     }
   }

@@ -1,4 +1,4 @@
-import { GUEST_STATE, BAR_SURFACE_Y } from '../../constants.js';
+import { GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { BaseModal } from './BaseModal.js';
 
@@ -190,7 +190,7 @@ export class GuestModal extends BaseModal {
 
     // Zoom animation origin: the guest's on-screen position
     const originX = guest.seat?.x ?? guest.x;
-    const originY = BAR_SURFACE_Y + 5;  // approximate seated guest center
+    const originY = this.scene.barLayout.barSurfaceY + 5;  // approximate seated guest center
     super.show({
       origin: { x: originX, y: originY, w: 24, h: 30 },
     });

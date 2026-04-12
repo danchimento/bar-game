@@ -1,4 +1,4 @@
-import { GUEST_Y, GUEST_STATE, BAR_SURFACE_Y, barY, ORDER_REVEAL_TIME, CANVAS_W } from '../../constants.js';
+import { GUEST_STATE, ORDER_REVEAL_TIME, CANVAS_W } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
@@ -21,8 +21,9 @@ const BAR_OVERLAP_OFFSET = (SIT_SPRITE_H - BAR_OVERLAP_ROW) * SIT_SCALE;
  * Icons pop up and fade (like memory flashes) instead of persistent bubbles.
  */
 export class GuestLayer {
-  constructor(scene) {
+  constructor(scene, barLayout) {
     this.scene = scene;
+    this._bl = barLayout;
     this.guestVisuals = new Map(); // guestId → visual object
     this.waitingText = null;
   }
@@ -111,7 +112,7 @@ export class GuestLayer {
 
   _syncVisual(vis, guest) {
     const x = guest.x || 0;
-    const y = guest.y || GUEST_Y;
+    const y = guest.y || this._bl.guestY;
 
     // Swap between sitting and standing sprites based on state
     const seated = guest.state === GUEST_STATE.SEATED ||
@@ -154,7 +155,7 @@ export class GuestLayer {
     // Bar surface (depth 6) covers the lower torso, making guest flush against bar.
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
-      vis.sprite.setPosition(x, BAR_SURFACE_Y + BAR_OVERLAP_OFFSET);
+      vis.sprite.setPosition(x, this._bl.barSurfaceY + BAR_OVERLAP_OFFSET);
     } else if (walking) {
       // Subtle side-to-side bob to indicate walking
       const bob = Math.sin(vis.walkBobTimer * 8) * 1.5;
@@ -166,7 +167,7 @@ export class GuestLayer {
     }
 
     // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? BAR_SURFACE_Y + BAR_OVERLAP_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
+    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_H * SIT_SCALE : y - 35;
     const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──
@@ -290,11 +291,11 @@ export class GuestLayer {
     liftProgress = Math.max(0, Math.min(1, liftProgress));
 
     const guestX = guest.x || 0;
-    const guestY = guest.y || GUEST_Y;
+    const guestY = guest.y || this._bl.guestY;
 
     // Counter position → mouth position
     const counterX = guestX + 8;
-    const counterY = barY(10);
+    const counterY = this._bl.barY(10);
     const mouthX = guestX + 6;
     const mouthY = guestY - 5;
 
