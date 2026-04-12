@@ -17,6 +17,21 @@ payments.
 
 ## Architecture Rules
 
+### Sprite System — CRITICAL
+- **All sprites are pixel art at 2x scale.** Each art pixel = 2×2 screen pixels.
+- **There are 6 sprite generation scripts** — they ALL must use the same scale:
+  - `scripts/generate-sprites.js` (stations, guests, items, tiles, door)
+  - `scripts/generate-bartender-sprite.js` (bartender standing)
+  - `scripts/generate-bartender-carry-sprite.js` (bartender carrying)
+  - `scripts/generate-animations.js` (walk cycles, drink animation spritesheets)
+  - `scripts/generate-indicators.js` (icons, status indicators)
+  - `scripts/generate-radial-icons.js` (radial menu icons, tap handles)
+- **After regenerating sprites, run ALL 6 scripts** — not just one.
+- **Sprites render at 1:1** — no `setScale()` on sprites. What the PNG contains is what shows on screen.
+- **Never add `setScale()` to compensate for sprite size.** If a sprite is the wrong size, fix its art dimensions in the generation script and regenerate.
+- **Spritesheet frame sizes in BootScene.js must match generated output.** Frame dimensions = art pixels × 2. If you change art dimensions, update the `frameWidth`/`frameHeight` in BootScene.js.
+- To resize a sprite: change its art-pixel dimensions in the `createSprite()` call, regenerate, and update any frame sizes in BootScene.js.
+
 ### Tile Grid & Screen Layout
 - **Tile size: 16px** (`TILE` exported from `js/layout/BarLayout.js`)
 - **Canvas: 576px tall** (36 tiles), width is dynamic (device aspect ratio)
@@ -89,6 +104,11 @@ payments.
 # Start dev server
 npx http-server . -p 8080
 
-# Generate sprites
+# Generate ALL sprites (run all 6 — they share the same 2x art-pixel scale)
 node scripts/generate-sprites.js
+node scripts/generate-bartender-sprite.js
+node scripts/generate-bartender-carry-sprite.js
+node scripts/generate-animations.js
+node scripts/generate-indicators.js
+node scripts/generate-radial-icons.js
 ```
