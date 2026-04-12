@@ -18,6 +18,10 @@ payments.
 ## Architecture Rules
 
 ### Sprite System — CRITICAL
+- All sprites are **procedural placeholders** — drawn pixel-by-pixel in Node.js
+  scripts, not hand-drawn image files. To change a sprite's appearance or size,
+  edit the JavaScript draw code and regenerate. When replacing with final art,
+  drop PNGs directly into `assets/sprites/` and remove the generation scripts.
 - Sprites are authored as **pixel art** using art-pixel coordinates in the
   generation scripts. The scripts output PNGs at **2× art pixels** (each art
   pixel becomes a 2×2 block). The 2× is baked into the PNG file itself.
