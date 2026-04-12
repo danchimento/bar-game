@@ -18,19 +18,27 @@ payments.
 ## Architecture Rules
 
 ### Sprite System — CRITICAL
-- **All sprites are pixel art at 2x scale.** Each art pixel = 2×2 screen pixels.
-- **There are 6 sprite generation scripts** — they ALL must use the same scale:
+- Sprites are authored as **pixel art** using art-pixel coordinates in the
+  generation scripts. The scripts output PNGs at **2× art pixels** (each art
+  pixel becomes a 2×2 block). The 2× is baked into the PNG file itself.
+- **Phaser renders PNGs at native size — no `setScale()`.** What the PNG
+  contains is exactly what appears on screen. The scaling happens once,
+  at generation time, not at render time.
+- **Never add `setScale()` to fix sprite sizing.** If a sprite is the wrong
+  size on screen, change its art-pixel dimensions in the generation script
+  and regenerate. Screen size = art pixels × 2.
+- **There are 6 sprite generation scripts** — they ALL share `SCALE = 2` / `PIXEL = 2`:
   - `scripts/generate-sprites.js` (stations, guests, items, tiles, door)
   - `scripts/generate-bartender-sprite.js` (bartender standing)
   - `scripts/generate-bartender-carry-sprite.js` (bartender carrying)
   - `scripts/generate-animations.js` (walk cycles, drink animation spritesheets)
   - `scripts/generate-indicators.js` (icons, status indicators)
   - `scripts/generate-radial-icons.js` (radial menu icons, tap handles)
-- **After regenerating sprites, run ALL 6 scripts** — not just one.
-- **Sprites render at 1:1** — no `setScale()` on sprites. What the PNG contains is what shows on screen.
-- **Never add `setScale()` to compensate for sprite size.** If a sprite is the wrong size, fix its art dimensions in the generation script and regenerate.
-- **Spritesheet frame sizes in BootScene.js must match generated output.** Frame dimensions = art pixels × 2. If you change art dimensions, update the `frameWidth`/`frameHeight` in BootScene.js.
-- To resize a sprite: change its art-pixel dimensions in the `createSprite()` call, regenerate, and update any frame sizes in BootScene.js.
+- **After changing ANY sprite, run ALL 6 scripts.** Mismatched scales between
+  scripts cause characters to appear different sizes.
+- **Spritesheet frame sizes in BootScene.js must match generated output.**
+  Frame dimensions = art pixels × 2. If you change art dimensions, update
+  `frameWidth`/`frameHeight` in BootScene.js to match.
 
 ### Tile Grid & Screen Layout
 - **Tile size: 16px** (`TILE` exported from `js/layout/BarLayout.js`)
