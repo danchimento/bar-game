@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 
-const PIXEL = 3;
+const PIXEL = 2;
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 
 function createSheet(frameW, frameH, numFrames, drawFrame, filename) {

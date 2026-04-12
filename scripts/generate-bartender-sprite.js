@@ -6,7 +6,7 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const PIXEL = 3;       // scale factor
+const PIXEL = 2;       // scale factor
 const W = 32;           // sprite width in art pixels
 const H = 48;           // sprite height in art pixels
 
