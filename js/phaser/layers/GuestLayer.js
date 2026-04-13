@@ -2,6 +2,7 @@ import { GUEST_STATE, ORDER_REVEAL_TIME, CANVAS_W } from '../../constants.js';
 import { DRINKS } from '../../data/menu.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
+import { DEPTH } from '../../constants/depths.js';
 
 // Sitting sprite geometry — screen pixel values (sprites render at 1:1)
 // Sprite is 144×120px on screen (24×20 art at 6×). Push sprite down so the
@@ -74,7 +75,7 @@ export class GuestLayer {
     const scene = this.scene;
     const appearanceId = GUEST_APPEARANCE_IDS[guest.id % GUEST_APPEARANCE_IDS.length];
 
-    const sprite = scene.add.sprite(0, 0, `guest_${appearanceId}`).setDepth(5);
+    const sprite = scene.add.sprite(0, 0, `guest_${appearanceId}`).setDepth(DEPTH.GUESTS);
 
     // State popup icon — pops up and fades on state change
     const statePopup = scene.add.image(0, 0, 'icon_hourglass')

@@ -12,8 +12,8 @@ export const DEPTH = {
   // Bar area
   SERVICE_MAT:       3,   // Drink staging area on floor
   STOOLS:            4,   // Bar stool sprites
-  GUESTS:            5,   // Guest sprites (standing + sitting)
-  BAR_SURFACE:       6,   // Bar top surface (occludes guest lower torso)
+  BAR_SURFACE:       5,   // Bar top surface (renders BELOW guests so hands show on bar)
+  GUESTS:            6,   // Guest sprites (sitting guests' arms/hands overlap bar surface)
   BAR_ITEMS:         7,   // Dirty seats, cash, under-bar stations (glass rack, dishwasher, trash)
   GUEST_SIP_GLASS:   8,   // Glass during sip animation
   SEAT_DRINKS:       9,   // Drinks sitting at seats on bar

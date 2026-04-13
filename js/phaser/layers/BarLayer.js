@@ -21,9 +21,9 @@ export class BarLayer {
     scene.add.image(bl.doorX, bl.wall.bottom, 'door')
       .setOrigin(0.5, 1).setDepth(DEPTH.BACKGROUND + 1);
 
-    // ── Floor (spans bartender area + back counter) ──
+    // ── Floor (bartender area only; back counter occupies screen bottom) ──
     const floorTop = bl.bartenderArea.top;
-    const floorH = bl.backCounter.bottom - floorTop;
+    const floorH = bl.backCounter.top - floorTop;
     scene.add.tileSprite(0, floorTop, bl.canvasW, floorH, 'tile_floor')
       .setOrigin(0, 0).setDepth(DEPTH.BACKGROUND);
 

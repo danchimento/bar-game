@@ -44,7 +44,11 @@ export const LEVELS = [
     day: 1,
     seats: 3,
     duration: 240,
-    stationIds: ['DISHWASHER', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
+    // Ordering: within each placement group, left-to-right on screen.
+    // on_counter: TAPS, POS
+    // under_bar:  DISHWASHER, GLASS_RACK
+    // floor_left: TRASH
+    stationIds: ['TAPS', 'POS', 'DISHWASHER', 'GLASS_RACK', 'TRASH'],
     drinks: ['GOLD_LAGER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -67,7 +71,7 @@ export const LEVELS = [
     day: 2,
     seats: 3,
     duration: 270,
-    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
+    stationIds: ['TAPS', 'POS', 'SINK', 'DISHWASHER', 'GLASS_RACK', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -92,7 +96,7 @@ export const LEVELS = [
     day: 3,
     seats: 4,
     duration: 300,
-    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'POS', 'TRASH'],
+    stationIds: ['TAPS', 'POS', 'SINK', 'DISHWASHER', 'GLASS_RACK', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },
@@ -119,7 +123,7 @@ export const LEVELS = [
     day: 4,
     seats: 4,
     duration: 300,
-    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH'],
+    stationIds: ['TAPS', 'PREP', 'POS', 'SINK', 'DISHWASHER', 'GLASS_RACK', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 5,   type: 'regular', drinkPrefs: ['HARVEST_MOON'] },
@@ -147,7 +151,7 @@ export const LEVELS = [
     day: 5,
     seats: 5,
     duration: 300,
-    stationIds: ['DISHWASHER', 'SINK', 'GLASS_RACK', 'TAPS', 'PREP', 'POS', 'TRASH'],
+    stationIds: ['TAPS', 'PREP', 'POS', 'SINK', 'DISHWASHER', 'GLASS_RACK', 'TRASH'],
     drinks: ['GOLD_LAGER', 'HAZY_IPA', 'DARK_PORTER', 'HARVEST_MOON'],
     spawnSchedule: [
       { time: 3,   type: 'regular', drinkPrefs: ['GOLD_LAGER'] },

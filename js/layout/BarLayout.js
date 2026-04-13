@@ -53,6 +53,11 @@ const LAYOUT_PRESETS = {
 };
 
 // ─── Station placement rules ────────────────────────
+// Placement types determine a station's Y position and X-distribution group:
+//   on_counter   — stations sit on the back counter (TAPS, POS, MENU…)
+//   in_counter   — stations embedded in the back counter (SINK)
+//   under_bar    — stations in the bar cabinet (GLASS_RACK, DISHWASHER)
+//   floor_left   — pinned to the bottom-left floor of the bartender area (TRASH)
 const STATION_PLACEMENT = {
   TAPS:        'on_counter',
   WINE:        'on_counter',
@@ -62,7 +67,7 @@ const STATION_PLACEMENT = {
   SINK:        'in_counter',
   GLASS_RACK:  'under_bar',
   DISHWASHER:  'under_bar',
-  TRASH:       'under_bar',
+  TRASH:       'floor_left',
 };
 
 export class BarLayout {
@@ -203,6 +208,10 @@ export class BarLayout {
       case 'under_bar':
         y = this.cabinetMidY;
         break;
+      case 'floor_left':
+        // Bottom of the bartender area (just above back counter)
+        y = this.backCounter.top;
+        break;
     }
     return { x: station.x, y, placement };
   }
@@ -238,32 +247,62 @@ export class BarLayout {
     const ids = stations.map(st => typeof st === 'string' ? st : st.id);
     if (!ids.includes('MENU')) stations = [...stations, 'MENU'];
 
-    // Distribute from IDs using STATION_TEMPLATES
+    // Expand to full templates
     const templates = stations.map(st => {
       const tmpl = STATION_TEMPLATES[st.id || st] || {};
       return { ...tmpl, ...(typeof st === 'string' ? { id: st } : st) };
     });
 
+    // Group stations by placement type — each group is distributed across
+    // the full bar width independently, so stations on the back counter
+    // don't share horizontal space with stations under the bar.
+    // Corner placements (floor_left) get a pinned X near the edge.
+    const groups = {};
+    for (const st of templates) {
+      const placement = STATION_PLACEMENT[st.id] || 'on_counter';
+      if (placement === 'floor_left') {
+        // Pin near the left edge, offset by a small margin + half-width
+        st.pinnedX = this.barLeft + TILE + Math.round((st.width || 3 * TILE) / 2);
+      }
+      (groups[placement] = groups[placement] || []).push(st);
+    }
+
     const totalWidth = this.barWidth - 2 * TILE; // 1-tile margin each side
     const marginLeft = this.barLeft + TILE;
-    let totalStationWidth = templates.reduce((s, t) => s + (t.width || 3 * TILE), 0);
+    const result = [];
 
-    // If stations are too wide for the bar, scale them down proportionally
-    if (totalStationWidth > totalWidth * 0.9) {
-      const scale = (totalWidth * 0.85) / totalStationWidth;
-      for (const t of templates) t.width = Math.round((t.width || 3 * TILE) * scale);
-      totalStationWidth = templates.reduce((s, t) => s + t.width, 0);
+    for (const group of Object.values(groups)) {
+      // Pinned stations (explicit x or pinned placement) don't participate in
+      // even distribution — they get handled separately below.
+      const pinned = group.filter(st => st.pinnedX != null);
+      const flex = group.filter(st => st.pinnedX == null);
+
+      // Scale down group widths if they exceed the bar
+      let groupTotal = flex.reduce((s, t) => s + (t.width || 3 * TILE), 0);
+      if (groupTotal > totalWidth * 0.95) {
+        const scale = (totalWidth * 0.9) / groupTotal;
+        for (const t of flex) t.width = Math.round((t.width || 3 * TILE) * scale);
+        groupTotal = flex.reduce((s, t) => s + t.width, 0);
+      }
+      const gap = flex.length
+        ? (totalWidth - groupTotal) / (flex.length + 1)
+        : 0;
+      let x = marginLeft + gap;
+
+      for (const st of flex) {
+        const w = st.width || 3 * TILE;
+        const cx = Math.round(x + w / 2);
+        const t = (cx - this.barLeft) / this.barWidth;
+        x += w + gap;
+        result.push({ ...st, x: cx, t });
+      }
+      for (const st of pinned) {
+        const t = (st.pinnedX - this.barLeft) / this.barWidth;
+        result.push({ ...st, x: st.pinnedX, t });
+      }
     }
-    const gap = (totalWidth - totalStationWidth) / (templates.length + 1);
-    let x = marginLeft + gap;
 
-    return templates.map(st => {
-      const w = st.width || 3 * TILE;
-      const cx = Math.round(x + w / 2);
-      const t = (cx - this.barLeft) / this.barWidth;
-      x += w + gap;
-      return { ...st, x: cx, t };
-    });
+    return result;
   }
 
   _layoutSeats(count) {

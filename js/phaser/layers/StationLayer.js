@@ -50,6 +50,12 @@ export class StationLayer {
             .setOrigin(0.5, 0.5).setDepth(DEPTH.BAR_ITEMS);
           zoneY = bl.cabinetMidY;
           break;
+        case 'floor_left':
+          // Sits on the floor of the bartender area, anchored at bottom
+          sprite = scene.add.image(x, y, spriteKey)
+            .setOrigin(0.5, 1).setDepth(DEPTH.STATION_SPRITE);
+          zoneY = y - 40;
+          break;
       }
 
       // Interactive zone — 10% oversize
