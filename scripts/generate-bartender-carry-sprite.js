@@ -7,7 +7,7 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const PIXEL = 2;
+const PIXEL = 3;
 const W = 32;
 const H = 48;
 

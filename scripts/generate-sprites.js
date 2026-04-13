@@ -10,7 +10,7 @@ const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCALE = 2;  // art pixels — each pixel-art pixel = 2×2 screen pixels
+const SCALE = 3;  // art pixels — each pixel-art pixel = 2×2 screen pixels
 
 function createSprite(w, h, drawFn, filename) {
   const canvas = createCanvas(w * SCALE, h * SCALE);

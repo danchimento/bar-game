@@ -24,14 +24,14 @@ payments.
   drop PNGs directly into `assets/sprites/` and remove the generation scripts.
 - Sprites are authored as **pixel art** using art-pixel coordinates in the
   generation scripts. The scripts output PNGs at **2× art pixels** (each art
-  pixel becomes a 2×2 block). The 2× is baked into the PNG file itself.
+  pixel becomes a 3×3 block). The 3× is baked into the PNG file itself.
 - **Phaser renders PNGs at native size — no `setScale()`.** What the PNG
   contains is exactly what appears on screen. The scaling happens once,
   at generation time, not at render time.
 - **Never add `setScale()` to fix sprite sizing.** If a sprite is the wrong
   size on screen, change its art-pixel dimensions in the generation script
-  and regenerate. Screen size = art pixels × 2.
-- **There are 6 sprite generation scripts** — they ALL share `SCALE = 2` / `PIXEL = 2`:
+  and regenerate. Screen size = art pixels × 3.
+- **There are 6 sprite generation scripts** — they ALL share `SCALE = 3` / `PIXEL = 3`:
   - `scripts/generate-sprites.js` (stations, guests, items, tiles, door)
   - `scripts/generate-bartender-sprite.js` (bartender standing)
   - `scripts/generate-bartender-carry-sprite.js` (bartender carrying)
@@ -41,7 +41,7 @@ payments.
 - **After changing ANY sprite, run ALL 6 scripts.** Mismatched scales between
   scripts cause characters to appear different sizes.
 - **Spritesheet frame sizes in BootScene.js must match generated output.**
-  Frame dimensions = art pixels × 2. If you change art dimensions, update
+  Frame dimensions = art pixels × 3. If you change art dimensions, update
   `frameWidth`/`frameHeight` in BootScene.js to match.
 
 ### Tile Grid & Screen Layout

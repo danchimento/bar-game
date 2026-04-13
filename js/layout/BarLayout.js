@@ -32,25 +32,25 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  * For straight bars, t maps linearly to X. Later, curves.
  */
 
-export const TILE = 16;
+export const TILE = 32;
 
 // ─── Structure presets per layout mode ──────────────
 const LAYOUT_PRESETS = {
   landscape: {
     structures: {
-      wall:         { topTile: 0,  tiles: 5 },
-      bar_counter:  { topTile: 17, surfaceTiles: 2, cabinetTiles: 3 },
-      back_counter: { topTile: 34, tiles: 2 },
+      wall:         { topTile: 0,  tiles: 1 },
+      bar_counter:  { topTile: 9, surfaceTiles: 2, cabinetTiles: 1 },
+      back_counter: { topTile: 16, tiles: 2 },
     },
-    barTiles: 54,  // 864px
+    barTiles: 28,  // 896px
   },
   portrait: {
     structures: {
-      wall:         { topTile: 0,  tiles: 6 },
-      bar_counter:  { topTile: 28, surfaceTiles: 2, cabinetTiles: 4 },
-      back_counter: { topTile: 60, tiles: 2 },
+      wall:         { topTile: 0,  tiles: 2 },
+      bar_counter:  { topTile: 14, surfaceTiles: 2, cabinetTiles: 2 },
+      back_counter: { topTile: 30, tiles: 2 },
     },
-    barTiles: 32,  // 512px
+    barTiles: 16,  // 512px
   },
 };
 
@@ -151,8 +151,8 @@ export class BarLayout {
     this.counterY = Math.round((this.backCounter.top + this.backCounter.bottom) / 2);
     this.stationY = this.counterY;
 
-    this.waitingY = this.wall.bottom + 2 * TILE;
-    this.guestY = this.customerArea.bottom - TILE;
+    this.waitingY = this.wall.bottom + TILE;
+    this.guestY = this.customerArea.bottom - Math.round(TILE * 0.75);
     this.seatY = this.customerArea.bottom - 4;
 
     // ── Door (top-center of wall) ──
@@ -272,7 +272,7 @@ export class BarLayout {
 
   _layoutSeats(count) {
     const seats = [];
-    const margin = 7 * TILE; // 112px margin on each side
+    const margin = 3 * TILE; // small margin — seats fill the bar width
     const usableWidth = this.canvasW - margin * 2;
     const gap = usableWidth / (count + 1);
     for (let i = 0; i < count; i++) {
