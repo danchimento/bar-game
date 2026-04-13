@@ -4,11 +4,11 @@ import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 // Sitting sprite geometry — screen pixel values (sprites render at 1:1)
-// Sprite is 72×60px on screen (24×20 art at 3×). Push sprite down so the
+// Sprite is 144×120px on screen (24×20 art at 6×). Push sprite down so the
 // lower torso is hidden behind the bar surface (depth 6 > depth 5).
-const SIT_SPRITE_SCREEN_H = 60;   // 20 art × 3 scale
-const BAR_OVERLAP_SCREEN_ROW = 45; // art row 15 × 3 scale
-const BAR_OVERLAP_OFFSET = SIT_SPRITE_SCREEN_H - BAR_OVERLAP_SCREEN_ROW; // 15px
+const SIT_SPRITE_SCREEN_H = 120;   // 20 art × 6 scale
+const BAR_OVERLAP_SCREEN_ROW = 90; // art row 15 × 6 scale
+const BAR_OVERLAP_OFFSET = SIT_SPRITE_SCREEN_H - BAR_OVERLAP_SCREEN_ROW; // 30px
 
 /**
  * Manages visual representations of guests.
@@ -163,7 +163,7 @@ export class GuestLayer {
     }
 
     // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_SCREEN_H : y - 48;
+    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_SCREEN_H : y - 96;
     const headY = vis.isSitting ? spriteTop - 8 : y - 35;
 
     // ── State change popup (pop up and fade like a memory flash) ──

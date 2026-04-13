@@ -7,7 +7,7 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const PIXEL = 3;
+const PIXEL = 6;  // 2× bigger humans
 const W = 32;
 const H = 48;
 

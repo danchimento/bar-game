@@ -1,5 +1,5 @@
 import { DEPTH } from '../../constants/depths.js';
-import { STOOL_SPRITE_W, STOOL_LEG_W, CLOCK_OFFSET_Y } from '../../constants/layout.js';
+import { STOOL_SPRITE_W, CLOCK_OFFSET_Y } from '../../constants/layout.js';
 
 /**
  * Static background layers derived from BarLayout zones:
@@ -27,20 +27,12 @@ export class BarLayer {
     scene.add.tileSprite(0, floorTop, bl.canvasW, floorH, 'tile_floor')
       .setOrigin(0, 0).setDepth(DEPTH.BACKGROUND);
 
-    // ── Bar top surface ──
-    scene.add.tileSprite(bl.barLeft, bl.barCounter.surfaceTop, bl.barWidth, bl.barCounter.surfaceHeight, 'tile_bar_top')
+    // ── Bar top surface (full width) ──
+    scene.add.tileSprite(0, bl.barCounter.surfaceTop, bl.canvasW, bl.barCounter.surfaceHeight, 'tile_bar_top')
       .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
 
-    // ── Bar cabinets (front face) ──
-    scene.add.tileSprite(bl.barLeft, bl.barCounter.cabinetTop, bl.barWidth, bl.barCounter.cabinetHeight, 'tile_cabinet')
-      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
-
-    // ── U-shaped bar legs ──
-    const legTop = bl.barSurfaceY;
-    const legH = bl.counterSurfaceY - legTop;
-    scene.add.tileSprite(bl.barLeft, legTop, STOOL_LEG_W, legH, 'tile_bar_top')
-      .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
-    scene.add.tileSprite(bl.barRight - STOOL_LEG_W, legTop, STOOL_LEG_W, legH, 'tile_bar_top')
+    // ── Bar cabinets (full width) ──
+    scene.add.tileSprite(0, bl.barCounter.cabinetTop, bl.canvasW, bl.barCounter.cabinetHeight, 'tile_cabinet')
       .setOrigin(0, 0).setDepth(DEPTH.BAR_SURFACE);
 
     // ── Stools ──

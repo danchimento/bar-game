@@ -6,25 +6,25 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *
  * ## Tile grid
  *
- * The layout is built on a 16px tile grid. Structure positions are defined
- * in tile counts. Two layout modes are supported:
+ * The layout is built on a 32px tile grid. Structure positions are defined
+ * in tile counts. Bar extends full canvas width (no side margins).
  *
- * ### Landscape (default) — 36 tiles tall, width adapts to device
+ * ### Landscape (default) — 18 tiles tall (576px), width adapts to device
  *
  *   ┌──────────────────────────────────────────┐  tile 0
- *   │  WALL (5 tiles)                          │
- *   ├──────────────────────────────────────────┤  tile 5
- *   │  customer area (12 tiles)                │  ← derived gap
- *   ├═════════════════════════════════════════─┤  tile 17
- *   │  BAR COUNTER surface (2) + cabinet (3)   │
- *   ├═════════════════════════════════════════─┤  tile 22
- *   │  bartender area (12 tiles)               │  ← derived gap
- *   ├──────────────────────────────────────────┤  tile 34
+ *   │  WALL (1 tile)                           │
+ *   ├──────────────────────────────────────────┤  tile 1
+ *   │  customer area (10 tiles, 320px)         │  ← derived gap
+ *   ├═════════════════════════════════════════─┤  tile 11
+ *   │  BAR COUNTER surface (2) + cabinet (1)   │
+ *   ├═════════════════════════════════════════─┤  tile 14
+ *   │  bartender area (2 tiles, 64px)          │  ← derived gap
+ *   ├──────────────────────────────────────────┤  tile 16
  *   │  BACK COUNTER (2 tiles)                  │
- *   └──────────────────────────────────────────┘  tile 36
+ *   └──────────────────────────────────────────┘  tile 18
  *
- * ### Portrait — 36 tiles wide, height adapts to device
- *   Same structures, more vertical space. Customer and bartender areas expand.
+ * ### Portrait — width fixed, height adapts to device
+ *   Same structures, more vertical space.
  *
  * ## Bar path (future)
  *
@@ -39,10 +39,9 @@ const LAYOUT_PRESETS = {
   landscape: {
     structures: {
       wall:         { topTile: 0,  tiles: 1 },
-      bar_counter:  { topTile: 9, surfaceTiles: 2, cabinetTiles: 1 },
+      bar_counter:  { topTile: 11, surfaceTiles: 2, cabinetTiles: 1 },
       back_counter: { topTile: 16, tiles: 2 },
     },
-    barTiles: 28,  // 896px
   },
   portrait: {
     structures: {
@@ -50,7 +49,6 @@ const LAYOUT_PRESETS = {
       bar_counter:  { topTile: 14, surfaceTiles: 2, cabinetTiles: 2 },
       back_counter: { topTile: 30, tiles: 2 },
     },
-    barTiles: 16,  // 512px
   },
 };
 
@@ -80,8 +78,6 @@ export class BarLayout {
     const { canvasW, canvasH, seatCount, stations } = config;
     const mode = config.mode || 'landscape';
     const preset = LAYOUT_PRESETS[mode] || LAYOUT_PRESETS.landscape;
-    const barWidth = config.barWidth || preset.barTiles * TILE;
-
     this.canvasW = canvasW;
     this.canvasH = canvasH;
     this.tile = TILE;
@@ -125,10 +121,10 @@ export class BarLayout {
       height: this.backCounter.top - this.barCounter.cabinetBottom,
     };
 
-    // ── Bar bounds (horizontal) ──
-    this.barWidth = barWidth;
-    this.barLeft = Math.round((canvasW - barWidth) / 2);
-    this.barRight = this.barLeft + barWidth;
+    // ── Bar bounds (horizontal — full width, edge to edge) ──
+    this.barWidth = canvasW;
+    this.barLeft = 0;
+    this.barRight = canvasW;
 
     // ── Backward-compatible Y coordinates ──
     // (read by layers — derived from structures, not declared independently)
@@ -143,8 +139,8 @@ export class BarLayout {
     this.cabinetMidY = Math.round((this.cabinetTop + this.cabinetBottom) / 2);
 
     this.floorY = this.bartenderArea.top;
-    this.serviceMatY = this.bartenderArea.top + TILE;
-    this.walkTrackY = Math.round(this.bartenderArea.top + this.bartenderArea.height * 0.35);
+    this.serviceMatY = this.bartenderArea.top + Math.round(TILE * 0.5);
+    this.walkTrackY = Math.round(this.bartenderArea.top + this.bartenderArea.height * 0.5);
 
     this.counterSurfaceY = this.backCounter.top;
     this.counterH = this.backCounter.height;
@@ -272,8 +268,8 @@ export class BarLayout {
 
   _layoutSeats(count) {
     const seats = [];
-    const margin = 3 * TILE; // small margin — seats fill the bar width
-    const usableWidth = this.canvasW - margin * 2;
+    const margin = 2 * TILE; // small edge margin
+    const usableWidth = this.barWidth - margin * 2;
     const gap = usableWidth / (count + 1);
     for (let i = 0; i < count; i++) {
       const x = Math.round(margin + gap * (i + 1));

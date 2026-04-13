@@ -23,35 +23,38 @@ payments.
   edit the JavaScript draw code and regenerate. When replacing with final art,
   drop PNGs directly into `assets/sprites/` and remove the generation scripts.
 - Sprites are authored as **pixel art** using art-pixel coordinates in the
-  generation scripts. The scripts output PNGs at **2× art pixels** (each art
-  pixel becomes a 3×3 block). The 3× is baked into the PNG file itself.
+  generation scripts. Items/stations output at **3× art pixels** (each art
+  pixel becomes a 3×3 block). **Human sprites** (guests, bartender) output at
+  **6× art pixels** for 2× bigger characters.
 - **Phaser renders PNGs at native size — no `setScale()`.** What the PNG
   contains is exactly what appears on screen. The scaling happens once,
   at generation time, not at render time.
 - **Never add `setScale()` to fix sprite sizing.** If a sprite is the wrong
   size on screen, change its art-pixel dimensions in the generation script
-  and regenerate. Screen size = art pixels × 3.
-- **There are 6 sprite generation scripts** — they ALL share `SCALE = 3` / `PIXEL = 3`:
-  - `scripts/generate-sprites.js` (stations, guests, items, tiles, door)
-  - `scripts/generate-bartender-sprite.js` (bartender standing)
-  - `scripts/generate-bartender-carry-sprite.js` (bartender carrying)
-  - `scripts/generate-animations.js` (walk cycles, drink animation spritesheets)
-  - `scripts/generate-indicators.js` (icons, status indicators)
-  - `scripts/generate-radial-icons.js` (radial menu icons, tap handles)
+  and regenerate.
+- **Two scale tiers**: items/stations at `SCALE = 3`, humans at `HUMAN_SCALE = 6`.
+- **There are 6 sprite generation scripts**:
+  - `scripts/generate-sprites.js` (stations @3×, guests @6×, items @3×, tiles, door)
+  - `scripts/generate-bartender-sprite.js` (bartender standing @6×)
+  - `scripts/generate-bartender-carry-sprite.js` (bartender carrying @6×)
+  - `scripts/generate-animations.js` (walk cycles @6×, drink animation @6×)
+  - `scripts/generate-indicators.js` (icons, status indicators @3×)
+  - `scripts/generate-radial-icons.js` (radial menu icons, tap handles @3×)
 - **After changing ANY sprite, run ALL 6 scripts.** Mismatched scales between
   scripts cause characters to appear different sizes.
 - **Spritesheet frame sizes in BootScene.js must match generated output.**
-  Frame dimensions = art pixels × 3. If you change art dimensions, update
-  `frameWidth`/`frameHeight` in BootScene.js to match.
+  Frame dimensions = art pixels × scale (3× for items, 6× for humans).
+  If you change art dimensions, update `frameWidth`/`frameHeight` in
+  BootScene.js to match.
 
 ### Tile Grid & Screen Layout
-- **Tile size: 16px** (`TILE` exported from `js/layout/BarLayout.js`)
-- **Canvas: 576px tall** (36 tiles), width is dynamic (device aspect ratio)
+- **Tile size: 32px** (`TILE` exported from `js/layout/BarLayout.js`)
+- **Canvas: 576px tall** (18 tiles), width is dynamic (device aspect ratio)
+- **Bar extends full canvas width** — no side margins or U-legs
 - The scene is a **side-view diorama** of structures on a ground plane:
-  - **Wall** (tiles 0–4), **Bar counter** (tiles 17–21, surface + cabinet), **Back counter** (tiles 34–35)
-  - **Customer area** (tiles 5–16) and **Bartender area** (tiles 22–33) are derived gaps between structures
+  - **Wall** (tile 0), **Bar counter** (tiles 11–13, surface + cabinet), **Back counter** (tiles 16–17)
+  - **Customer area** (tiles 1–10) and **Bartender area** (tiles 14–15) are derived gaps
 - Station footprints and structure dimensions are always tile multiples
-- See `docs/ARCHITECTURE.md` → "Screen Layout" for the full tile map
 
 ### BarLayout (spatial positioning)
 - **`BarLayout`** (`js/layout/BarLayout.js`) is the **single source of truth** for all spatial positions

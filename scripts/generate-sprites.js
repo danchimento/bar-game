@@ -10,16 +10,18 @@ const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCALE = 3;  // art pixels — each pixel-art pixel = 2×2 screen pixels
+const SCALE = 3;  // art pixels — each pixel-art pixel = 3×3 screen pixels
+const HUMAN_SCALE = SCALE * 2;  // humans render at 6× for 2× bigger characters
 
-function createSprite(w, h, drawFn, filename) {
-  const canvas = createCanvas(w * SCALE, h * SCALE);
+function createSprite(w, h, drawFn, filename, scaleOverride) {
+  const S = scaleOverride || SCALE;
+  const canvas = createCanvas(w * S, h * S);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   function px(x, y, color) {
     ctx.fillStyle = color;
-    ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+    ctx.fillRect(x * S, y * S, S, S);
   }
   function row(y, x0, x1, color) {
     for (let x = x0; x <= x1; x++) px(x, y, color);
@@ -36,7 +38,7 @@ function createSprite(w, h, drawFn, filename) {
   const buf = canvas.toBuffer('image/png');
   const outPath = path.join(OUT, filename);
   fs.writeFileSync(outPath, buf);
-  console.log(`  ${filename} (${w}x${h} art → ${canvas.width}x${canvas.height}px)`);  return buf;
+  console.log(`  ${filename} (${w}x${h} art @${S}x → ${canvas.width}x${canvas.height}px)`);  return buf;
 }
 
 console.log('Generating sprites...\n');
@@ -72,7 +74,7 @@ for (const app of GUEST_APPEARANCES) {
   const names = [`guest_${app.id}.png`];
   if (app === GUEST_APPEARANCES[0]) names.push('guest.png');
   for (const name of names) {
-    createSprite(24, 32, (ctx) => drawGuestStanding(ctx, app.shirt, app.shadow), name);
+    createSprite(24, 32, (ctx) => drawGuestStanding(ctx, app.shirt, app.shadow), name, HUMAN_SCALE);
   }
 }
 
@@ -119,7 +121,7 @@ for (const app of GUEST_APPEARANCES) {
   const names = [`guest_sitting_${app.id}.png`];
   if (app === GUEST_APPEARANCES[0]) names.push('guest_sitting.png');
   for (const name of names) {
-    createSprite(24, 20, (ctx) => drawGuestSitting(ctx, app.shirt, app.shadow), name);
+    createSprite(24, 20, (ctx) => drawGuestSitting(ctx, app.shirt, app.shadow), name, HUMAN_SCALE);
   }
 }
 
