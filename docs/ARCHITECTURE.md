@@ -53,9 +53,9 @@ js/
 
 ### Tile Grid
 
-The layout is built on a **16px tile grid**. `TILE = 16` is exported from
-`BarLayout.js`. Canvas height is **576px = 36 tiles**. Width is dynamic
-(device aspect ratio) but structure widths snap to tile multiples.
+The layout is built on a **32px tile grid**. `TILE = 32` is exported from
+`BarLayout.js`. Canvas height is **576px = 18 tiles**. Width is dynamic
+(device aspect ratio); the bar extends **full canvas width** (no side margins).
 
 ### Scene Model — Structures on a Ground Plane
 
@@ -64,41 +64,46 @@ objects) placed on a ground plane, rendered top-to-bottom = far-to-near:
 
 ```
 tile  0 ┌─────────────────────────────────────────┐
-        │  WALL  (5 tiles = 80px)                  │
-tile  5 ├─────────────────────────────────────────┤
-        │  customer area  (12 tiles = 192px)       │  ← derived gap
+        │  WALL  (1 tile = 32px)                   │
+tile  1 ├─────────────────────────────────────────┤
+        │  customer area  (9 tiles = 288px)        │  ← derived gap
         │  waiting line at top, stools at bottom   │
-tile 17 ├═════════════════════════════════════════┤
-        │  BAR COUNTER surface (2 tiles = 32px)    │  ← structure
-tile 19 ├─────────────────────────────────────────┤
-        │  BAR COUNTER cabinet (3 tiles = 48px)    │  ← structure face
-tile 22 ├═════════════════════════════════════════┤
-        │  bartender area  (12 tiles = 192px)      │  ← derived gap
+tile 10 ├═════════════════════════════════════════┤
+        │  BAR COUNTER surface (3 tiles = 96px)    │  ← structure
+tile 13 ├─────────────────────────────────────────┤
+        │  BAR COUNTER cabinet (1 tile = 32px)     │  ← structure face
+tile 14 ├═════════════════════════════════════════┤
+        │  bartender area  (2 tiles = 64px)        │  ← derived gap
         │  walk track, service mat                 │
-tile 34 ├─────────────────────────────────────────┤
-        │  BACK COUNTER  (2 tiles = 32px)          │  ← structure
-tile 36 └─────────────────────────────────────────┘  576px
+tile 16 ├─────────────────────────────────────────┤
+        │  BACK COUNTER  (2 tiles = 64px)          │  ← structure
+tile 18 └─────────────────────────────────────────┘  576px
 ```
 
 **Structures** are the physical objects (wall, bar counter, back counter).
 **Derived spaces** (customer area, bartender area) are the gaps between
 structures — they are computed, not declared.
 
+The humans (at 6× sprite scale) are ~192px tall (guest) or ~288px (bartender),
+dominating their respective areas. Items/glasses stay small (ITEM_SCALE=3)
+so they read as "hand-held" relative to the characters. See
+`CLAUDE.md` → "Sprite System" for the two scale tiers.
+
 ### Station Footprints
 
-All station widths are tile multiples (defined in `STATION_TEMPLATES`):
+All station widths are tile multiples (TILE = 32, defined in `STATION_TEMPLATES`):
 
 | Station | Tiles | Pixels |
 |---------|-------|--------|
-| GLASS_RACK | 12 | 192 |
-| TAPS | 8 | 128 |
-| DISHWASHER | 6 | 96 |
-| WINE | 6 | 96 |
-| PREP | 6 | 96 |
-| POS | 5 | 80 |
-| SINK | 5 | 80 |
-| TRASH | 4 | 64 |
-| MENU | 3 | 48 |
+| GLASS_RACK | 8 | 256 |
+| TAPS | 6 | 192 |
+| DISHWASHER | 4 | 128 |
+| SINK | 4 | 128 |
+| WINE | 4 | 128 |
+| PREP | 4 | 128 |
+| POS | 4 | 128 |
+| TRASH | 3 | 96 |
+| MENU | 2 | 64 |
 
 ## Key Architecture Patterns
 

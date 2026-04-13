@@ -10,8 +10,9 @@ const { GUEST_APPEARANCES, GUEST_BASE } = require('./guest-appearances');
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCALE = 3;  // art pixels — each pixel-art pixel = 3×3 screen pixels
-const HUMAN_SCALE = SCALE * 2;  // humans render at 6× for 2× bigger characters
+const SCALE = 6;       // default scale — each art pixel = 6×6 screen pixels
+const ITEM_SCALE = 3;  // small handheld items (glasses, cash, tap handles, spills)
+                        //   — these stay small relative to the 6× humans
 
 function createSprite(w, h, drawFn, filename, scaleOverride) {
   const S = scaleOverride || SCALE;
@@ -74,7 +75,7 @@ for (const app of GUEST_APPEARANCES) {
   const names = [`guest_${app.id}.png`];
   if (app === GUEST_APPEARANCES[0]) names.push('guest.png');
   for (const name of names) {
-    createSprite(24, 32, (ctx) => drawGuestStanding(ctx, app.shirt, app.shadow), name, HUMAN_SCALE);
+    createSprite(24, 32, (ctx) => drawGuestStanding(ctx, app.shirt, app.shadow), name);
   }
 }
 
@@ -121,7 +122,7 @@ for (const app of GUEST_APPEARANCES) {
   const names = [`guest_sitting_${app.id}.png`];
   if (app === GUEST_APPEARANCES[0]) names.push('guest_sitting.png');
   for (const name of names) {
-    createSprite(24, 20, (ctx) => drawGuestSitting(ctx, app.shirt, app.shadow), name, HUMAN_SCALE);
+    createSprite(24, 20, (ctx) => drawGuestSitting(ctx, app.shirt, app.shadow), name);
   }
 }
 
@@ -169,7 +170,7 @@ createSprite(12, 20, ({ px, row, rect, col }) => {
 
   // Highlight on left side
   col(3, 3, 17, GLH);
-}, 'glass_pint.png');
+}, 'glass_pint.png', ITEM_SCALE);
 
 // ============================================================
 // WINE GLASS (10x22)
@@ -193,7 +194,7 @@ createSprite(10, 22, ({ px, row, col }) => {
   row(18, 2, 7, GL);
   row(19, 1, 8, GL);
   row(19, 2, 3, GLH);
-}, 'glass_wine.png');
+}, 'glass_wine.png', ITEM_SCALE);
 
 // ============================================================
 // PLASTIC CUP (10x16)
@@ -211,7 +212,7 @@ createSprite(10, 16, ({ px, row, col }) => {
   col(2, 1, 14, CUPH);
   // Shadow side
   col(7, 2, 13, CUPD);
-}, 'glass_cup.png');
+}, 'glass_cup.png', ITEM_SCALE);
 
 // ============================================================
 // BEER TAP HANDLE (8x24)
@@ -238,7 +239,7 @@ createSprite(8, 24, ({ px, row, rect, col }) => {
   col(3, 17, 22, CHD);
   // Spout tip
   row(23, 3, 4, CHD);
-}, 'tap_handle.png');
+}, 'tap_handle.png', ITEM_SCALE);
 
 // ============================================================
 // DISHWASHER (28x24)
@@ -311,39 +312,38 @@ createSprite(24, 24, ({ px, row, rect, col }) => {
 }, 'station_sink.png');
 
 // ============================================================
-// GLASS RACK (84x24) — wide 3-section shelf unit
+// GLASS RACK (42x24) — compact 2-section shelf unit
 // ============================================================
-createSprite(84, 24, ({ px, row, rect, col }) => {
+createSprite(42, 24, ({ px, row, rect, col }) => {
   const WOOD = '#5a4a38'; const WD = '#4a3a28'; const WH = '#6a5a48';
   const GL = 'rgba(200,220,240,0.4)';
 
   // Frame
-  rect(0, 0, 84, 24, WOOD);
-  row(0, 0, 83, WH); col(0, 0, 23, WD); col(83, 0, 23, WH);
-  row(23, 0, 83, WD);
+  rect(0, 0, 42, 24, WOOD);
+  row(0, 0, 41, WH); col(0, 0, 23, WD); col(41, 0, 23, WH);
+  row(23, 0, 41, WD);
 
   // Shelf divider
-  row(11, 1, 82, WH); row(12, 1, 82, WD);
+  row(11, 1, 40, WH); row(12, 1, 40, WD);
 
   // Back panel (darker)
-  rect(1, 1, 82, 10, '#3a2a18');
-  rect(1, 13, 82, 10, '#3a2a18');
+  rect(1, 1, 40, 10, '#3a2a18');
+  rect(1, 13, 40, 10, '#3a2a18');
 
-  // Section dividers
-  col(28, 1, 22, WD); col(29, 1, 22, WH);
-  col(55, 1, 22, WD); col(56, 1, 22, WH);
+  // Section divider
+  col(20, 1, 22, WD); col(21, 1, 22, WH);
 
-  // Glasses on top shelf (3 per section = 9 total)
-  for (const sx of [0, 28, 55]) {
-    for (const gx of [sx + 5, sx + 12, sx + 19]) {
+  // Glasses on top shelf (3 per section = 6 total)
+  for (const sx of [0, 21]) {
+    for (const gx of [sx + 2, sx + 8, sx + 14]) {
       col(gx, 3, 10, GL); col(gx + 4, 3, 10, GL);
       row(10, gx, gx + 4, GL);
       row(3, gx + 1, gx + 3, GL);
     }
   }
   // Glasses on bottom shelf
-  for (const sx of [0, 28, 55]) {
-    for (const gx of [sx + 5, sx + 12, sx + 19]) {
+  for (const sx of [0, 21]) {
+    for (const gx of [sx + 2, sx + 8, sx + 14]) {
       col(gx, 15, 22, GL); col(gx + 4, 15, 22, GL);
       row(22, gx, gx + 4, GL);
       row(15, gx + 1, gx + 3, GL);
@@ -707,7 +707,7 @@ createSprite(12, 8, ({ px, row, rect }) => {
   px(5, 2, '#4caf50'); px(6, 2, '#4caf50');
   px(5, 3, '#4caf50'); px(5, 4, '#4caf50'); px(6, 4, '#4caf50');
   px(6, 5, '#4caf50');
-}, 'cash.png');
+}, 'cash.png', ITEM_SCALE);
 
 // ============================================================
 // DIRTY MARK / SPILL (16x8)
@@ -719,7 +719,7 @@ createSprite(16, 8, ({ px, row }) => {
   row(6, 4, 11, SP);
   // Darker center
   px(7, 3, SPD); px(8, 3, SPD); px(7, 4, SPD); px(8, 4, SPD);
-}, 'spill.png');
+}, 'spill.png', ITEM_SCALE);
 
 // ============================================================
 // SERVICE MAT (20x6)

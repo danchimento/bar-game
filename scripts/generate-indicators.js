@@ -10,7 +10,7 @@ const path = require('path');
 const OUT = path.join(__dirname, '..', 'assets', 'sprites');
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCALE = 3;
+const SCALE = 6;
 
 function createSprite(w, h, drawFn, filename) {
   const canvas = createCanvas(w * SCALE, h * SCALE);

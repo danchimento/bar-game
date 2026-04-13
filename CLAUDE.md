@@ -23,37 +23,53 @@ payments.
   edit the JavaScript draw code and regenerate. When replacing with final art,
   drop PNGs directly into `assets/sprites/` and remove the generation scripts.
 - Sprites are authored as **pixel art** using art-pixel coordinates in the
-  generation scripts. Items/stations output at **3× art pixels** (each art
-  pixel becomes a 3×3 block). **Human sprites** (guests, bartender) output at
-  **6× art pixels** for 2× bigger characters.
+  generation scripts. Each art pixel becomes a block of screen pixels, where
+  the block size is the sprite's **scale** (baked into the PNG at generation time).
 - **Phaser renders PNGs at native size — no `setScale()`.** What the PNG
   contains is exactly what appears on screen. The scaling happens once,
   at generation time, not at render time.
 - **Never add `setScale()` to fix sprite sizing.** If a sprite is the wrong
-  size on screen, change its art-pixel dimensions in the generation script
-  and regenerate.
-- **Two scale tiers**: items/stations at `SCALE = 3`, humans at `HUMAN_SCALE = 6`.
-- **There are 6 sprite generation scripts**:
-  - `scripts/generate-sprites.js` (stations @3×, guests @6×, items @3×, tiles, door)
-  - `scripts/generate-bartender-sprite.js` (bartender standing @6×)
-  - `scripts/generate-bartender-carry-sprite.js` (bartender carrying @6×)
-  - `scripts/generate-animations.js` (walk cycles @6×, drink animation @6×)
-  - `scripts/generate-indicators.js` (icons, status indicators @3×)
-  - `scripts/generate-radial-icons.js` (radial menu icons, tap handles @3×)
-- **After changing ANY sprite, run ALL 6 scripts.** Mismatched scales between
-  scripts cause characters to appear different sizes.
-- **Spritesheet frame sizes in BootScene.js must match generated output.**
-  Frame dimensions = art pixels × scale (3× for items, 6× for humans).
-  If you change art dimensions, update `frameWidth`/`frameHeight` in
-  BootScene.js to match.
+  size on screen, change its art-pixel dimensions (or pick a different scale
+  tier) in the generation script and regenerate.
+
+#### Scale tiers
+Two scale tiers keep sprites proportional:
+- **`SCALE = 6`** — the default. Humans (guests, bartender), stations, stool,
+  door, tile textures, indicators, radial icons, service mat. Everything that's
+  "human-proportional" or structural.
+- **`ITEM_SCALE = 3`** — small hand-held items that should stay small relative
+  to humans: glasses (pint, wine, cup), cash bills, tap handles, spills.
+  Passed as the 5th argument to `createSprite(w, h, draw, filename, ITEM_SCALE)`.
+
+If a sprite feels wrong-sized, the fix is either:
+1. Change its **art-pixel dimensions** (e.g., glass_rack was shrunk from 84×24
+   to 42×24 so it doesn't dominate the counter).
+2. Move it to a different **scale tier** (the wrong scale would put it in the
+   other tier — reconsider).
+
+#### Sprite generation scripts (6 total)
+After changing **ANY** sprite, run **ALL 6** scripts — mismatched scales
+cause characters/items to render at inconsistent sizes.
+  - `scripts/generate-sprites.js` — stations, humans, items, tiles, door, etc.
+    (supports `ITEM_SCALE` override via `createSprite` 5th arg)
+  - `scripts/generate-bartender-sprite.js` — bartender standing (6×)
+  - `scripts/generate-bartender-carry-sprite.js` — bartender carrying (6×)
+  - `scripts/generate-animations.js` — walk cycles, drink animation (6×)
+  - `scripts/generate-indicators.js` — status indicators above guests (6×)
+  - `scripts/generate-radial-icons.js` — radial menu icons + tap handles (6×)
+
+#### BootScene frame sizes
+Spritesheet frame dimensions in `BootScene.js` **must** match generated output.
+Frame dimensions = `art pixels × scale`. Humans at 6× produce 24→144, 32→192,
+48→288. Update `frameWidth`/`frameHeight` whenever art dimensions change.
 
 ### Tile Grid & Screen Layout
 - **Tile size: 32px** (`TILE` exported from `js/layout/BarLayout.js`)
 - **Canvas: 576px tall** (18 tiles), width is dynamic (device aspect ratio)
 - **Bar extends full canvas width** — no side margins or U-legs
 - The scene is a **side-view diorama** of structures on a ground plane:
-  - **Wall** (tile 0), **Bar counter** (tiles 11–13, surface + cabinet), **Back counter** (tiles 16–17)
-  - **Customer area** (tiles 1–10) and **Bartender area** (tiles 14–15) are derived gaps
+  - **Wall** (tile 0), **Bar counter** (tiles 10–13: 3-tile surface + 1-tile cabinet), **Back counter** (tiles 16–17)
+  - **Customer area** (tiles 1–9) and **Bartender area** (tiles 14–15) are derived gaps
 - Station footprints and structure dimensions are always tile multiples
 
 ### BarLayout (spatial positioning)
@@ -119,7 +135,8 @@ payments.
 # Start dev server
 npx http-server . -p 8080
 
-# Generate ALL sprites (run all 6 — they share the same 2x art-pixel scale)
+# Generate ALL sprites (run all 6 — they share `SCALE = 6` by default;
+# `generate-sprites.js` also has `ITEM_SCALE = 3` for small handheld items)
 node scripts/generate-sprites.js
 node scripts/generate-bartender-sprite.js
 node scripts/generate-bartender-carry-sprite.js

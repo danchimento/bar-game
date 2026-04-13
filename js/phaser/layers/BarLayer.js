@@ -46,20 +46,20 @@ export class BarLayer {
     }
 
     // ── Wall clock ──
-    const clockX = bl.canvasW - 80;
+    const clockX = bl.canvasW - 140;
     const clockY = bl.customerArea.top + CLOCK_OFFSET_Y;
-    const clockR = 28;
+    const clockR = 56;
     this.clockGfx = scene.add.graphics().setDepth(DEPTH.BACKGROUND);
     this.clockGfx.fillStyle(0xf5f0e0, 1);
     this.clockGfx.fillCircle(clockX, clockY, clockR);
-    this.clockGfx.lineStyle(3, 0x5a3a1a, 1);
+    this.clockGfx.lineStyle(6, 0x5a3a1a, 1);
     this.clockGfx.strokeCircle(clockX, clockY, clockR);
     for (let h = 0; h < 12; h++) {
       const angle = (h / 12) * Math.PI * 2 - Math.PI / 2;
-      this.clockGfx.lineStyle(1.5, 0x3a2a1a, 1);
+      this.clockGfx.lineStyle(3, 0x3a2a1a, 1);
       this.clockGfx.lineBetween(
-        clockX + Math.cos(angle) * (clockR - 5), clockY + Math.sin(angle) * (clockR - 5),
-        clockX + Math.cos(angle) * (clockR - 2), clockY + Math.sin(angle) * (clockR - 2),
+        clockX + Math.cos(angle) * (clockR - 10), clockY + Math.sin(angle) * (clockR - 10),
+        clockX + Math.cos(angle) * (clockR - 4), clockY + Math.sin(angle) * (clockR - 4),
       );
     }
     this.clockHandsGfx = scene.add.graphics().setDepth(DEPTH.BACKGROUND);
@@ -79,13 +79,13 @@ export class BarLayer {
     const minute = totalMinutes % 60;
     const hour12 = hour24 % 12;
     const hourAngle = ((hour12 + minute / 60) / 12) * Math.PI * 2 - Math.PI / 2;
-    gfx.lineStyle(2.5, 0x1a1a1a, 1);
-    gfx.lineBetween(cx, cy, cx + Math.cos(hourAngle) * 14, cy + Math.sin(hourAngle) * 14);
+    gfx.lineStyle(5, 0x1a1a1a, 1);
+    gfx.lineBetween(cx, cy, cx + Math.cos(hourAngle) * 28, cy + Math.sin(hourAngle) * 28);
     const minAngle = (minute / 60) * Math.PI * 2 - Math.PI / 2;
-    gfx.lineStyle(1.5, 0x1a1a1a, 1);
-    gfx.lineBetween(cx, cy, cx + Math.cos(minAngle) * 20, cy + Math.sin(minAngle) * 20);
+    gfx.lineStyle(3, 0x1a1a1a, 1);
+    gfx.lineBetween(cx, cy, cx + Math.cos(minAngle) * 40, cy + Math.sin(minAngle) * 40);
     gfx.fillStyle(0x1a1a1a, 1);
-    gfx.fillCircle(cx, cy, 2);
+    gfx.fillCircle(cx, cy, 4);
   }
 
   rebuildStools(seats) {

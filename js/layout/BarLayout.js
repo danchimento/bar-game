@@ -14,9 +14,9 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *   ┌──────────────────────────────────────────┐  tile 0
  *   │  WALL (1 tile)                           │
  *   ├──────────────────────────────────────────┤  tile 1
- *   │  customer area (10 tiles, 320px)         │  ← derived gap
- *   ├═════════════════════════════════════════─┤  tile 11
- *   │  BAR COUNTER surface (2) + cabinet (1)   │
+ *   │  customer area (9 tiles, 288px)          │  ← derived gap
+ *   ├═════════════════════════════════════════─┤  tile 10
+ *   │  BAR COUNTER surface (3) + cabinet (1)   │
  *   ├═════════════════════════════════════════─┤  tile 14
  *   │  bartender area (2 tiles, 64px)          │  ← derived gap
  *   ├──────────────────────────────────────────┤  tile 16
@@ -39,7 +39,7 @@ const LAYOUT_PRESETS = {
   landscape: {
     structures: {
       wall:         { topTile: 0,  tiles: 1 },
-      bar_counter:  { topTile: 11, surfaceTiles: 2, cabinetTiles: 1 },
+      bar_counter:  { topTile: 10, surfaceTiles: 3, cabinetTiles: 1 },
       back_counter: { topTile: 16, tiles: 2 },
     },
   },

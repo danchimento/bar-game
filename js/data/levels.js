@@ -12,7 +12,7 @@
 export const STATION_TEMPLATES = {
   DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 128 },  // 4 tiles
   SINK:        { id: 'SINK',       label: 'Sink',  width: 128 },  // 4 tiles
-  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 256 },  // 8 tiles
+  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 256 },  // 8 tiles (42×6=252, rounded)
   TAPS:        { id: 'TAPS',       label: 'Taps',  width: 192 },  // 6 tiles
   WINE:        { id: 'WINE',       label: 'Wine',  width: 128 },  // 4 tiles
   PREP:        { id: 'PREP',       label: 'Prep',  width: 128 },  // 4 tiles

@@ -91,7 +91,7 @@ All game logic modules (Bartender, Guest, BarState, GuestManager, etc.) are **un
 |---------|--------|---------------|-------------|
 | DISHWASHER | station_dishwasher | 28×24 | Gray metal box with door panel, handle, green status light |
 | SINK | station_sink | 24×24 | Metal basin with faucet and blue knob |
-| GLASS_RACK | station_glass_rack | 28×24 | Dark wood shelves with glass outlines |
+| GLASS_RACK | station_glass_rack | 42×24 | Dark wood shelves with glass outlines (compact 2-section) |
 | TAPS | station_taps | 40×32 | Chrome tower with 3 colored tap handles + drip tray |
 | WINE | station_wine | 24×24 | Dark rack with red and white bottles |
 | PREP | station_prep | 28×24 | Cutting board with 4 garnish containers + ice bucket |
@@ -307,7 +307,15 @@ See [STATIONS_AND_ITEMS.md](STATIONS_AND_ITEMS.md#drink-modal-visual-beer-mode) 
 
 ## Sprites Summary
 
-All sprites are pixel art generated at 3x scale using the `canvas` Node.js package.
+All sprites are pixel art generated using the `canvas` Node.js package.
+Two scale tiers:
+- **6× (default)** — humans (guests, bartender), stations, stool, door, tiles,
+  indicators, radial icons. Everything "human-proportional" or structural.
+- **3× (ITEM_SCALE)** — small hand-held items that stay small relative to humans:
+  glasses (pint, wine, cup), cash, tap handles, spills.
+
+See `CLAUDE.md` → "Sprite System" for details. Art dimensions below are the
+source (canvas) dimensions; screen size = art × scale tier.
 
 ### Characters
 | Sprite | Size (px art) | File |
