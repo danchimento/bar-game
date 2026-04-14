@@ -217,7 +217,11 @@ export class BarLayout {
         y = this.counterY;
         break;
       case 'under_bar':
-        y = this.cabinetMidY;
+        // Anchor sprite top at cabinet top (origin 0.5, 0 in StationLayer).
+        // Sprites extend down from there into the bartender area — like
+        // real behind-the-bar equipment sitting on the floor — so they
+        // never cross above the bar surface.
+        y = this.cabinetTop;
         break;
       case 'floor_left':
         // Bottom of the bartender area (just above back counter)

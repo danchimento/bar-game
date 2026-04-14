@@ -209,12 +209,14 @@ export class DebugLayer {
       g.lineStyle(2, C_DECL, 0.9);
       this._dashedRect(g, st.x - declaredW / 2, zoneTop, declaredW, zoneH);
 
-      // Actual sprite bounds (red solid) — where the sprite really renders
+      // Actual sprite bounds (red solid) — where the sprite really renders.
+      // Must match origins set in StationLayer.
       let sprTop;
       switch (pos.placement) {
-        case 'on_counter':   sprTop = pos.y - spriteH; break;
-        case 'floor_left':   sprTop = pos.y - spriteH; break;
-        default:             sprTop = pos.y - spriteH / 2;
+        case 'on_counter':   sprTop = pos.y - spriteH; break;  // origin (0.5, 1)
+        case 'floor_left':   sprTop = pos.y - spriteH; break;  // origin (0.5, 1)
+        case 'under_bar':    sprTop = pos.y;           break;  // origin (0.5, 0)
+        default:             sprTop = pos.y - spriteH / 2;     // origin (0.5, 0.5)
       }
       g.lineStyle(2, C_SPRITE, 0.9);
       g.strokeRect(st.x - spriteW / 2, sprTop, spriteW, spriteH);

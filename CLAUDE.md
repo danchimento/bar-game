@@ -131,12 +131,20 @@ tighter vertical zones.
 `STATION_PLACEMENT` in `BarLayout.js` controls a station's Y position and
 X-distribution group. Stations within the same placement are distributed
 evenly across the bar; different placements don't share horizontal space.
-- `on_counter` — sits on the back counter (TAPS, POS, MENU, WINE, PREP)
-- `in_counter` — embedded in back counter (SINK)
-- `under_bar` — in the bar cabinet (GLASS_RACK, DISHWASHER)
+- `on_counter` — sits on the back counter (TAPS, POS, MENU, WINE, PREP).
+  Origin `(0.5, 1)` — sprite bottom anchors at the counter surface.
+- `in_counter` — embedded in back counter (SINK). Origin `(0.5, 0.5)`.
+- `under_bar` — behind the bar at floor level (GLASS_RACK, DISHWASHER).
+  Origin `(0.5, 0)` — sprite TOP anchors at `cabinetTop` and extends down
+  into the bartender area. This keeps tall under-bar sprites from crossing
+  the bar surface into customer view.
 - `floor_left` — pinned to bottom-left of bartender area (TRASH). Uses
   `pinnedX` to skip even distribution — keeps its corner position regardless
-  of other stations.
+  of other stations. Origin `(0.5, 1)`.
+
+**Origins must match between `StationLayer` and `DebugLayer`** — the debug
+overlay computes sprite bounds from the placement's origin, so a change
+in one must be mirrored in the other.
 
 ### Debug Overlay — use this instead of guessing
 A `DebugLayer` (`js/phaser/layers/DebugLayer.js`) draws on top of everything

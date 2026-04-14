@@ -46,8 +46,11 @@ export class StationLayer {
           zoneY = bl.counterY;
           break;
         case 'under_bar':
+          // Origin (0.5, 0) so sprite top aligns with y = cabinetTop.
+          // Sprite extends DOWN into the bartender area — stations sit on
+          // the floor behind the bar, never crossing the bar surface.
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 0.5).setDepth(DEPTH.BAR_ITEMS);
+            .setOrigin(0.5, 0).setDepth(DEPTH.BAR_ITEMS);
           zoneY = bl.cabinetMidY;
           break;
         case 'floor_left':
