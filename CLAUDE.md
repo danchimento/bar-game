@@ -6,6 +6,10 @@ Bar Rush is a Phaser 3 bar management game (vanilla JS, ES modules). The player
 controls a bartender serving guests: taking orders, making drinks, and processing
 payments.
 
+**Mobile-first.** Primary target is phones in portrait orientation. Always
+verify layout changes against the `portrait` preset (not just `landscape`).
+UI controls must be ≥44px tap targets.
+
 ## Key References
 
 - `docs/ARCHITECTURE.md` — System architecture, directory structure, patterns
@@ -65,12 +69,26 @@ Frame dimensions = `art pixels × scale`. Humans at 6× produce 24→144, 32→1
 
 ### Tile Grid & Screen Layout
 - **Tile size: 32px** (`TILE` exported from `js/layout/BarLayout.js`)
-- **Canvas: 576px tall** (18 tiles), width is dynamic (device aspect ratio)
 - **Bar extends full canvas width** — no side margins or U-legs
-- The scene is a **side-view diorama** of structures on a ground plane:
-  - **Wall** (tile 0), **Bar counter** (tiles 10–13: 3-tile surface + 1-tile cabinet), **Back counter** (tiles 16–17)
-  - **Customer area** (tiles 1–9) and **Bartender area** (tiles 14–15) are derived gaps
+- The scene is a **side-view diorama** of structures on a ground plane
 - Station footprints and structure dimensions are always tile multiples
+
+#### Two layout presets (BOTH must be kept in sync)
+`LAYOUT_PRESETS` in `BarLayout.js` defines `landscape` and `portrait`. When
+tuning proportions, **update BOTH presets** — users on mobile hit `portrait`,
+users on desktop hit `landscape`. A change to one without the other creates
+platform-specific regressions.
+
+- **Landscape — 18 tiles tall (576px)**, width adapts to device:
+  - Wall (1T), Customer (9T), Bar surface (3T) + cabinet (1T),
+    Bartender (2T), Back counter (2T)
+- **Portrait — 32 tiles tall (1024px)**, width fixed to 576px:
+  - Wall (1T), Customer (18T), Bar surface (3T) + cabinet (2T),
+    Bartender (4T), Back counter (4T)
+
+Portrait exists for mobile; the canvas is tall and narrow, so the customer
+area expands to give guests queue room. Landscape is wider and shorter with
+tighter vertical zones.
 
 ### BarLayout (spatial positioning)
 - **`BarLayout`** (`js/layout/BarLayout.js`) is the **single source of truth** for all spatial positions
@@ -97,10 +115,47 @@ Frame dimensions = `art pixels × scale`. Humans at 6× produce 24→144, 32→1
 - Sprite metrics: import from `js/constants/layout.js` (carry offsets, zone sizes, etc.)
 - Canvas dimensions + game logic: import from `js/constants.js`
 - **Position/layout values: read from `barLayout`** — not from constants.js
+- **Depth ordering**: `BAR_SURFACE (5) < GUESTS (6) < BAR_ITEMS (7) < ... <
+  MODAL (70) < DebugLayer (~102)`. Guests sit above bar surface so their
+  hands on the bar are visible. DebugLayer sits above everything, even modals.
 
 ### Station Actions
 - Station tap handlers live in the `STATION_TAP_HANDLERS` dispatch table at the bottom of `StationActions.js`
 - To add a new station: add template to `STATION_TEMPLATES` in `levels.js`, add placement rule in `BarLayout.js`, add handler to dispatch table, add sprite in `generate-sprites.js`
+
+### Station placements
+`STATION_PLACEMENT` in `BarLayout.js` controls a station's Y position and
+X-distribution group. Stations within the same placement are distributed
+evenly across the bar; different placements don't share horizontal space.
+- `on_counter` — sits on the back counter (TAPS, POS, MENU, WINE, PREP)
+- `in_counter` — embedded in back counter (SINK)
+- `under_bar` — in the bar cabinet (GLASS_RACK, DISHWASHER)
+- `floor_left` — pinned to bottom-left of bartender area (TRASH). Uses
+  `pinnedX` to skip even distribution — keeps its corner position regardless
+  of other stations.
+
+### Debug Overlay — use this instead of guessing
+A `DebugLayer` (`js/phaser/layers/DebugLayer.js`) draws on top of everything
+when toggled. Tap the **green "D" button** in the top-right corner (56×56
+tap target, persists via `localStorage['bar-game-debug']`).
+
+When on, it shows:
+- Tile grid (32px)
+- Zone bands with Y-range + tile count labels
+- For each station: **declared width footprint (yellow dashed) vs actual
+  rendered sprite bounds (red solid)** — overlaps show up instantly
+- Seat positions, door, walk track, service mat Y
+- Info strip: canvas size, tile size, bar width, counts
+
+**Visual-iteration workflow** (use this for positioning/sizing issues):
+1. Ask the user to enable debug, screenshot, and share the image
+2. Read coordinates directly off the overlay — don't calculate
+3. Make the fix
+4. Ask for a second screenshot to verify, or take one yourself if a
+   screenshot pipeline is available
+
+Do **not** guess coordinates or iterate blind. A single screenshot with
+debug on usually beats 5 rounds of math.
 
 ### Events
 - Modals emit close events (e.g., `glass-modal-close`, `pos-close`)
