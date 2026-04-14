@@ -23,8 +23,19 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *   │  BACK COUNTER (2 tiles)                  │
  *   └──────────────────────────────────────────┘  tile 18
  *
- * ### Portrait — width fixed, height adapts to device
- *   Same structures, more vertical space.
+ * ### Portrait — 32 tiles tall (1024px), width fixed to 576px
+ *
+ *   ┌──────────────────────────────────────────┐  tile  0
+ *   │  WALL (1 tile)                           │
+ *   ├──────────────────────────────────────────┤  tile  1
+ *   │  customer area (18 tiles, 576px)         │  ← big queue space
+ *   ├═════════════════════════════════════════─┤  tile 19
+ *   │  BAR COUNTER surface (3) + cabinet (2)   │
+ *   ├═════════════════════════════════════════─┤  tile 24
+ *   │  bartender area (4 tiles, 128px)         │  ← compact floor
+ *   ├──────────────────────────────────────────┤  tile 28
+ *   │  BACK COUNTER (4 tiles, 128px)           │  ← roomy counter
+ *   └──────────────────────────────────────────┘  tile 32 (1024px)
  *
  * ## Bar path (future)
  *
@@ -45,9 +56,9 @@ const LAYOUT_PRESETS = {
   },
   portrait: {
     structures: {
-      wall:         { topTile: 0,  tiles: 2 },
-      bar_counter:  { topTile: 14, surfaceTiles: 2, cabinetTiles: 2 },
-      back_counter: { topTile: 30, tiles: 2 },
+      wall:         { topTile: 0,  tiles: 1 },
+      bar_counter:  { topTile: 19, surfaceTiles: 3, cabinetTiles: 2 },
+      back_counter: { topTile: 28, tiles: 4 },
     },
   },
 };

@@ -181,15 +181,32 @@ export class DebugLayer {
       const spriteW = src ? src.width : declaredW;
       const spriteH = src ? src.height : 48;
 
-      // Declared footprint (yellow dashed, centered on station X, at zone Y)
-      const zoneTop = pos.placement === 'on_counter'
-        ? bl.counterSurfaceY
-        : pos.placement === 'floor_left' ? pos.y - spriteH
-        : pos.y - spriteH / 2;
+      // Declared footprint (yellow dashed) — rect within the station's zone,
+      // showing the horizontal space reserved for distribution. Height is
+      // the zone height, not the sprite height, so it stays on-canvas.
+      let zoneTop, zoneH;
+      switch (pos.placement) {
+        case 'on_counter':
+        case 'in_counter':
+          zoneTop = bl.counterSurfaceY;
+          zoneH   = bl.counterH;
+          break;
+        case 'under_bar':
+          zoneTop = bl.cabinetTop;
+          zoneH   = bl.cabinetBottom - bl.cabinetTop;
+          break;
+        case 'floor_left':
+          zoneTop = bl.bartenderArea.top;
+          zoneH   = bl.bartenderArea.bottom - bl.bartenderArea.top;
+          break;
+        default:
+          zoneTop = pos.y - 32;
+          zoneH   = 64;
+      }
       g.lineStyle(2, C_DECL, 0.9);
-      this._dashedRect(g, st.x - declaredW / 2, zoneTop, declaredW, spriteH);
+      this._dashedRect(g, st.x - declaredW / 2, zoneTop, declaredW, zoneH);
 
-      // Actual sprite bounds (red solid)
+      // Actual sprite bounds (red solid) — where the sprite really renders
       let sprTop;
       switch (pos.placement) {
         case 'on_counter':   sprTop = pos.y - spriteH; break;
@@ -203,8 +220,9 @@ export class DebugLayer {
       g.fillStyle(C_SPRITE, 1);
       g.fillCircle(st.x, pos.y, 4);
 
-      // Label above sprite
-      this._label(st.x, sprTop - 4,
+      // Label above sprite (clamped on-canvas)
+      const labelY = Math.max(8, sprTop - 4);
+      this._label(st.x, labelY,
         `${st.id}\nx=${st.x} (${pos.placement})\ndecl ${declaredW}  sprite ${spriteW}×${spriteH}`,
         '#ffff00', { size: '10px', align: 'center', ox: 0.5, oy: 1 });
     }
