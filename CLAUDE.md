@@ -118,6 +118,10 @@ tighter vertical zones.
 - **Depth ordering**: `BAR_SURFACE (5) < GUESTS (6) < BAR_ITEMS (7) < ... <
   MODAL (70) < DebugLayer (~102)`. Guests sit above bar surface so their
   hands on the bar are visible. DebugLayer sits above everything, even modals.
+- **Guest-bar overlap rule**: only the guest's **hands** (sitting sprite art
+  rows 18–19) should cross the bar surface. `GUEST_BAR_OVERLAP_PX = 108`
+  (= row 18 × 6). Torso, arms, head all sit above the bar. If you see the
+  forearms crossing the bar, the overlap value drifted toward row 15 (90).
 
 ### Station Actions
 - Station tap handlers live in the `STATION_TAP_HANDLERS` dispatch table at the bottom of `StationActions.js`

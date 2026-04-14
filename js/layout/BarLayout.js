@@ -14,11 +14,11 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *   ┌──────────────────────────────────────────┐  tile 0
  *   │  WALL (1 tile)                           │
  *   ├──────────────────────────────────────────┤  tile 1
- *   │  customer area (9 tiles, 288px)          │  ← derived gap
- *   ├═════════════════════════════════════════─┤  tile 10
+ *   │  customer area (8 tiles, 256px)          │  ← derived gap
+ *   ├═════════════════════════════════════════─┤  tile 9
  *   │  BAR COUNTER surface (3) + cabinet (1)   │
- *   ├═════════════════════════════════════════─┤  tile 14
- *   │  bartender area (2 tiles, 64px)          │  ← derived gap
+ *   ├═════════════════════════════════════════─┤  tile 13
+ *   │  bartender area (3 tiles, 96px)          │  ← derived gap
  *   ├──────────────────────────────────────────┤  tile 16
  *   │  BACK COUNTER (2 tiles)                  │
  *   └──────────────────────────────────────────┘  tile 18
@@ -28,11 +28,11 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  *   ┌──────────────────────────────────────────┐  tile  0
  *   │  WALL (1 tile)                           │
  *   ├──────────────────────────────────────────┤  tile  1
- *   │  customer area (18 tiles, 576px)         │  ← big queue space
- *   ├═════════════════════════════════════════─┤  tile 19
+ *   │  customer area (17 tiles, 544px)         │  ← big queue space
+ *   ├═════════════════════════════════════════─┤  tile 18
  *   │  BAR COUNTER surface (3) + cabinet (2)   │
- *   ├═════════════════════════════════════════─┤  tile 24
- *   │  bartender area (4 tiles, 128px)         │  ← compact floor
+ *   ├═════════════════════════════════════════─┤  tile 23
+ *   │  bartender area (5 tiles, 160px)         │  ← more working room
  *   ├──────────────────────────────────────────┤  tile 28
  *   │  BACK COUNTER (4 tiles, 128px)           │  ← roomy counter
  *   └──────────────────────────────────────────┘  tile 32 (1024px)
@@ -50,14 +50,14 @@ const LAYOUT_PRESETS = {
   landscape: {
     structures: {
       wall:         { topTile: 0,  tiles: 1 },
-      bar_counter:  { topTile: 10, surfaceTiles: 3, cabinetTiles: 1 },
+      bar_counter:  { topTile: 9,  surfaceTiles: 3, cabinetTiles: 1 },
       back_counter: { topTile: 16, tiles: 2 },
     },
   },
   portrait: {
     structures: {
       wall:         { topTile: 0,  tiles: 1 },
-      bar_counter:  { topTile: 19, surfaceTiles: 3, cabinetTiles: 2 },
+      bar_counter:  { topTile: 18, surfaceTiles: 3, cabinetTiles: 2 },
       back_counter: { topTile: 28, tiles: 4 },
     },
   },

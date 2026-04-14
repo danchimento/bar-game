@@ -87,7 +87,9 @@ export class BartenderLayer {
         if (glass) {
           const fillPct = glass.totalFill;
           const liquidColor = getLiquidColor(glass.layers);
-          drawGlass(this.carryGfx, itemX, itemY, glass.glassType, fillPct, liquidColor, 0.84);
+          // Carry glass is rendered ~2.4× bigger than glasses on the bar —
+          // it's in the player's hand and needs to be readable at a glance.
+          drawGlass(this.carryGfx, itemX, itemY, glass.glassType, fillPct, liquidColor, 2.0);
         }
       }
     }

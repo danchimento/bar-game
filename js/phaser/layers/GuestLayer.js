@@ -5,11 +5,13 @@ import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 import { DEPTH } from '../../constants/depths.js';
 
 // Sitting sprite geometry — screen pixel values (sprites render at 1:1)
-// Sprite is 144×120px on screen (24×20 art at 6×). Push sprite down so the
-// lower torso is hidden behind the bar surface (depth 6 > depth 5).
+// Sprite is 144×120px on screen (24×20 art at 6×). Hands are drawn at art
+// rows 18–19. We position the sprite so only rows 18–19 (hands) cross the
+// bar surface — everything from row 17 up (torso, arms, head) sits above
+// the bar. BAR_OVERLAP_SCREEN_ROW = art row 18 × 6 = 108.
 const SIT_SPRITE_SCREEN_H = 120;   // 20 art × 6 scale
-const BAR_OVERLAP_SCREEN_ROW = 90; // art row 15 × 6 scale
-const BAR_OVERLAP_OFFSET = SIT_SPRITE_SCREEN_H - BAR_OVERLAP_SCREEN_ROW; // 30px
+const BAR_OVERLAP_SCREEN_ROW = 108; // art row 18 × 6 scale (top of hands)
+const BAR_OVERLAP_OFFSET = SIT_SPRITE_SCREEN_H - BAR_OVERLAP_SCREEN_ROW; // 12px
 
 /**
  * Manages visual representations of guests.

@@ -84,6 +84,7 @@ export class DebugLayer {
 
   _applyVisibility() {
     this.overlayGfx.setVisible(this.enabled);
+    this.dynamicGfx.setVisible(this.enabled);
     this.labels.forEach(t => t.setVisible(this.enabled));
     // Button changes color when active
     this.btnBg.setFillStyle(this.enabled ? 0x00aa44 : 0x000000, 0.85);
@@ -95,6 +96,8 @@ export class DebugLayer {
   // ─── Overlay graphics + labels ────────────────────────────
   _createOverlay() {
     this.overlayGfx = this.scene.add.graphics().setDepth(DBG_DEPTH_OVERLAY);
+    // Separate graphics for per-frame dynamic overlays (guest rects, carry glass)
+    this.dynamicGfx = this.scene.add.graphics().setDepth(DBG_DEPTH_OVERLAY);
     this.labels = [];
     this._drawOverlay();
   }
@@ -278,13 +281,52 @@ export class DebugLayer {
     return map[stationId] || null;
   }
 
-  update() {
-    // Zones are static; only redraw if layout changed. Skipping per-frame
-    // redraw to keep the overlay cheap. Toggle-on forces a redraw.
+  // Called each frame with the dynamic scene state. Static zones/stations
+  // don't redraw (they're on overlayGfx and only change on toggle). Guest
+  // sprite bounds and the bartender's carried-glass rect are redrawn here.
+  update(guests = [], bartender = null) {
+    if (!this.enabled) return;
+    const bl = this._bl;
+    const g = this.dynamicGfx;
+    g.clear();
+
+    // ── Sitting guest sprite rects (magenta) ──
+    // 144×120 at 6× scale, origin (0.5, 1), positioned so hands (rows 18–19)
+    // cross the bar surface. Rect shows exact sprite bounds.
+    const SIT_W = 144, SIT_H = 120;
+    const SIT_OVERLAP_OFFSET = 12;   // matches GuestLayer BAR_OVERLAP_OFFSET
+    for (const guest of guests) {
+      if (guest.seatId == null) continue;
+      const seat = bl.seats[guest.seatId];
+      if (!seat) continue;
+      const bottomY = bl.barSurfaceY + SIT_OVERLAP_OFFSET;
+      const topY = bottomY - SIT_H;
+      g.lineStyle(2, 0xff33cc, 0.9);
+      g.strokeRect(seat.x - SIT_W / 2, topY, SIT_W, SIT_H);
+      // Dashed line showing bar overlap (only area below this should show)
+      g.lineStyle(1, 0xff33cc, 0.6);
+      g.lineBetween(seat.x - SIT_W / 2, bl.barSurfaceY, seat.x + SIT_W / 2, bl.barSurfaceY);
+    }
+
+    // ── Bartender carry glass rect (lime) ──
+    if (bartender && bartender.carrying) {
+      const side = bartender.facingRight ? 1 : -1;
+      const itemX = bartender.x + side * 84;   // BARTENDER_CARRY_OFFSET_X
+      const itemY = bl.walkTrackY - 66;         // BARTENDER_CARRY_OFFSET_Y
+      // Carry glass rendered at ~2.0× via drawGlass — approximate bounds:
+      // pint base art 18×28 × 2.0 = 36×56; center slightly above itemY.
+      const cgW = 40, cgH = 60;
+      g.lineStyle(2, 0xaaff00, 0.95);
+      g.strokeRect(itemX - cgW / 2, itemY - cgH / 2, cgW, cgH);
+      // Anchor dot
+      g.fillStyle(0xaaff00, 1);
+      g.fillCircle(itemX, itemY, 3);
+    }
   }
 
   destroy() {
     this.overlayGfx?.destroy();
+    this.dynamicGfx?.destroy();
     this.labels.forEach(t => t.destroy());
     this.btnBg?.destroy();
     this.btnText?.destroy();

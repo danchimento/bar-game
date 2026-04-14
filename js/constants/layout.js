@@ -32,7 +32,7 @@ export const BARTENDER_BUSY_BAR_OFFSET_Y = 80; // pixels below walk track
 // GUEST RENDERING (human sprites at 6× scale)
 // ═══════════════════════════════════════════════════════════
 export const GUEST_SIT_SCREEN_H = 120;        // sitting sprite screen height (20 art × 6)
-export const GUEST_BAR_OVERLAP_PX = 90;       // screen pixels from top where bar overlaps
+export const GUEST_BAR_OVERLAP_PX = 108;      // screen pixels from top where bar overlaps (art row 18 × 6 — only hands cross)
 export const GUEST_STANDING_OFFSET_Y = 96;    // standing sprite center offset (16 art × 6)
 export const GUEST_MOUTH_OFFSET_X = 18;       // mouth X relative to guest center (3 art × 6)
 export const GUEST_MOUTH_OFFSET_Y = 16;       // mouth Y above guest center
