@@ -21,6 +21,7 @@ import { StationLayer } from './layers/StationLayer.js';
 import { BartenderLayer } from './layers/BartenderLayer.js';
 import { GuestLayer } from './layers/GuestLayer.js';
 import { BarItemsLayer } from './layers/BarItemsLayer.js';
+import { DebugLayer } from './layers/DebugLayer.js';
 import { HudUI } from './ui/HudUI.js';
 import { RadialMenuUI } from './ui/RadialMenuUI.js';
 import { PauseUI } from './ui/PauseUI.js';
@@ -134,6 +135,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.bartenderLayer = new BartenderLayer(this, bl);
     this.guestLayer = new GuestLayer(this, bl);
     this.barItemsLayer = new BarItemsLayer(this, bl);
+    this.debugLayer = new DebugLayer(this, bl);
 
     // ── Phaser UI ──
     this.hudUI = new HudUI(this);
