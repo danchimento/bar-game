@@ -19,9 +19,14 @@ export class StationLayer {
     const scene = this.scene;
     const bl = this._bl;
 
-    // ── Back counter — tiled wood strip (full width) ──
+    // ── Back counter — tiled wood strip (full width). Rendered from the
+    // back counter's logical top down to the canvas bottom, so the wood
+    // strip always fills the screen bottom regardless of device aspect.
+    // (Logical counter bounds stay as declared — stations position on the
+    // original counter height; only the visual tile stretches.)
+    const renderH = bl.canvasH - bl.counterSurfaceY;
     const counterTile = scene.add.tileSprite(
-      0, bl.counterSurfaceY, bl.canvasW, bl.counterH, 'tile_counter',
+      0, bl.counterSurfaceY, bl.canvasW, renderH, 'tile_counter',
     ).setOrigin(0, 0).setDepth(DEPTH.STATION_COUNTER);
     this.counterObjects.push(counterTile);
 
@@ -54,9 +59,11 @@ export class StationLayer {
           zoneY = bl.cabinetMidY;
           break;
         case 'floor_left':
-          // Sits on the floor of the bartender area, anchored at bottom
+          // Sits on the floor of the bartender area, anchored at bottom.
+          // Rendered BELOW on_counter stations (DEPTH.BAR_ITEMS < STATION_SPRITE)
+          // so back counter equipment (TAPS, POS, MENU) visually dominates.
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 1).setDepth(DEPTH.STATION_SPRITE);
+            .setOrigin(0.5, 1).setDepth(DEPTH.BAR_ITEMS);
           zoneY = y - 40;
           break;
       }

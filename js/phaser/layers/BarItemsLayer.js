@@ -87,12 +87,15 @@ export class BarItemsLayer {
       for (let i = 0; i < glasses.length; i++) {
         if (this._sippingMap.get(seatId) === i) continue;
         const glass = glasses[i];
-        const offsetX = (i - (glasses.length - 1) / 2) * 14;
+        // Glasses in front of guests are scaled 1.8× — they were tiny before
+        // at 0.96. Spacing also widened from 14 → 26 so multiple drinks per
+        // seat don't overlap at the new size.
+        const offsetX = (i - (glasses.length - 1) / 2) * 26;
         const gx = seat.x + offsetX;
         const gy = this._bl.barY(10);  // ~10 inches from customer edge (about a foot in)
         const fillPct = glass.totalFill;
         const liquidColor = getLiquidColor(glass.layers);
-        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 0.96);
+        drawGlass(this.drinkGfx, gx, gy, glass.glassType, fillPct, liquidColor, 1.8);
       }
     }
   }
@@ -111,7 +114,7 @@ export class BarItemsLayer {
       if (drink.glass) {
         const fillPct = drink.glass.totalFill;
         const liquidColor = getLiquidColor(drink.glass.layers);
-        drawGlass(this.matGfx, gx, gy, drink.glass.glassType, fillPct, liquidColor, 0.72);
+        drawGlass(this.matGfx, gx, gy, drink.glass.glassType, fillPct, liquidColor, 1.6);
       } else {
         // Fallback: simple rectangle
         this.matGfx.fillStyle(0xc8d8e8, 0.5);

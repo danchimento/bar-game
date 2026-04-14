@@ -10,9 +10,9 @@
 
 // Station footprints — widths in pixels, snapped to tile multiples (TILE = 32)
 export const STATION_TEMPLATES = {
-  DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 128 },  // 4 tiles
+  DISHWASHER:  { id: 'DISHWASHER', label: 'Dish',  width: 96 },   // 3 tiles (28×3=84, rounded) — under_bar at ITEM_SCALE
   SINK:        { id: 'SINK',       label: 'Sink',  width: 128 },  // 4 tiles
-  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 256 },  // 8 tiles (42×6=252, rounded)
+  GLASS_RACK:  { id: 'GLASS_RACK', label: 'Glass', width: 128 },  // 4 tiles (42×3=126, rounded) — under_bar at ITEM_SCALE
   TAPS:        { id: 'TAPS',       label: 'Taps',  width: 192 },  // 6 tiles
   WINE:        { id: 'WINE',       label: 'Wine',  width: 128 },  // 4 tiles
   PREP:        { id: 'PREP',       label: 'Prep',  width: 128 },  // 4 tiles

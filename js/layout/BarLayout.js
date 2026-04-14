@@ -322,11 +322,22 @@ export class BarLayout {
 
   _layoutSeats(count) {
     const seats = [];
-    const margin = 2 * TILE; // small edge margin
-    const usableWidth = this.barWidth - margin * 2;
-    const gap = usableWidth / (count + 1);
+    if (count === 0) return seats;
+    if (count === 1) {
+      const x = Math.round(this.barWidth / 2);
+      return [{ id: 0, x, t: (x - this.barLeft) / this.barWidth }];
+    }
+    // Guests are 144px wide at 6× scale; 184px center-to-center keeps
+    // a ~40px gap between seated guests (no more "holding hands").
+    const MIN_SPACING = 184;
+    const edgeMargin = 3 * TILE;
+    const available = this.barWidth - edgeMargin * 2;
+    const natural = available / (count - 1);
+    const spacing = Math.max(natural, MIN_SPACING);
+    const totalSpan = spacing * (count - 1);
+    const start = (this.barWidth - totalSpan) / 2;
     for (let i = 0; i < count; i++) {
-      const x = Math.round(margin + gap * (i + 1));
+      const x = Math.round(start + spacing * i);
       const t = (x - this.barLeft) / this.barWidth;
       seats.push({ id: i, x, t });
     }

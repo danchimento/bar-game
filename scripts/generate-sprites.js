@@ -276,7 +276,7 @@ createSprite(28, 24, ({ px, row, rect, col }) => {
   for (let x = 6; x <= 22; x += 4) {
     col(x, 5, 9, '#585e68');
   }
-}, 'station_dishwasher.png');
+}, 'station_dishwasher.png', ITEM_SCALE);
 
 // ============================================================
 // SINK (24x24)
@@ -349,7 +349,7 @@ createSprite(42, 24, ({ px, row, rect, col }) => {
       row(15, gx + 1, gx + 3, GL);
     }
   }
-}, 'station_glass_rack.png');
+}, 'station_glass_rack.png', ITEM_SCALE);
 
 // ============================================================
 // TAPS STATION (40x32) — clear beer tap tower
