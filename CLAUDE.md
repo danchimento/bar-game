@@ -90,6 +90,34 @@ Portrait exists for mobile; the canvas is tall and narrow, so the customer
 area expands to give guests queue room. Landscape is wider and shorter with
 tighter vertical zones.
 
+#### Structure anchoring (CRITICAL — device aspect ratios vary)
+Canvas height is **not always `tiles × TILE`**. On mobile the canvas height
+is `CANVAS_W × device aspect`, which usually exceeds the preset's tile sum
+(e.g. portrait preset totals 32T = 1024px but an iPhone canvas is ~1244px).
+To keep the game looking right on every device:
+
+- **Wall anchors to canvas TOP** (y=0)
+- **Back counter anchors to canvas BOTTOM** (`bottom = canvasH`)
+- **Bar counter** uses its declared tile position (floats in the middle)
+- **Derived gaps** (customer area above bar, bartender area below bar)
+  **stretch** to absorb any extra canvas height
+
+This means on a tall device the bartender area grows beyond its declared
+4T (portrait) — which is fine, bartender just gets more walk room.
+
+#### Don't fix layout bugs in the rendering layer
+If you see a visual gap (e.g. "I can see the floor below the back counter")
+and you're tempted to stretch/clip/offset a sprite in a layer file to cover
+it — **stop**. That's a symptom of BarLayout's logical bounds not matching
+the actual canvas. Fix the bounds in BarLayout so rendering reads the right
+geometry. Rendering layers should reflect the model, not patch around it.
+
+Red flags that you're patching instead of fixing:
+- Using `canvasH - someY` as a render height in a layer file
+- Hardcoded offsets that drift the sprite away from where `barLayout` says
+  it should be
+- Visual size differs from the logical zone size reported by `DebugLayer`
+
 ### BarLayout (spatial positioning)
 - **`BarLayout`** (`js/layout/BarLayout.js`) is the **single source of truth** for all spatial positions
 - Station positions, seat positions, bar bounds, zone coordinates, walk track Y — all come from BarLayout
