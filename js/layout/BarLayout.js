@@ -9,6 +9,13 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  * The layout is built on a 32px tile grid. Structure positions are defined
  * in tile counts. Bar extends full canvas width (no side margins).
  *
+ * **Anchoring**: the wall anchors to the canvas TOP, the back counter
+ * anchors to the canvas BOTTOM. The bartender area (derived gap between
+ * bar_counter.cabinetBottom and backCounter.top) stretches to absorb any
+ * extra canvas height on mobile devices where aspect ratio doesn't land
+ * on exact tile multiples. This keeps the back counter flush with the
+ * screen bottom regardless of device.
+ *
  * ### Landscape (default) — 18 tiles tall (576px), width adapts to device
  *
  *   ┌──────────────────────────────────────────┐  tile 0
@@ -118,10 +125,17 @@ export class BarLayout {
       cabinetHeight: bc.cabinetTiles * TILE,
     };
 
+    // Back counter is anchored to the BOTTOM of the actual canvas, not
+    // to (rc.topTile + rc.tiles) * TILE. This matters on mobile where
+    // canvasH depends on device aspect and often exceeds the preset's
+    // tile sum. Anchoring at canvasH keeps the counter flush with the
+    // screen bottom; the bartender area (derived gap above) stretches
+    // to fill any extra space, giving the bartender more walk room.
+    const rcHeight = rc.tiles * TILE;
     this.backCounter = {
-      top: rc.topTile * TILE,
-      bottom: (rc.topTile + rc.tiles) * TILE,
-      height: rc.tiles * TILE,
+      top: canvasH - rcHeight,
+      bottom: canvasH,
+      height: rcHeight,
     };
 
     // ── Derived spaces (gaps between structures) ──

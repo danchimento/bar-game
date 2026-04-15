@@ -19,14 +19,9 @@ export class StationLayer {
     const scene = this.scene;
     const bl = this._bl;
 
-    // ── Back counter — tiled wood strip (full width). Rendered from the
-    // back counter's logical top down to the canvas bottom, so the wood
-    // strip always fills the screen bottom regardless of device aspect.
-    // (Logical counter bounds stay as declared — stations position on the
-    // original counter height; only the visual tile stretches.)
-    const renderH = bl.canvasH - bl.counterSurfaceY;
+    // ── Back counter — tiled wood strip (full width) ──
     const counterTile = scene.add.tileSprite(
-      0, bl.counterSurfaceY, bl.canvasW, renderH, 'tile_counter',
+      0, bl.counterSurfaceY, bl.canvasW, bl.counterH, 'tile_counter',
     ).setOrigin(0, 0).setDepth(DEPTH.STATION_COUNTER);
     this.counterObjects.push(counterTile);
 
