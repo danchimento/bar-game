@@ -33,9 +33,9 @@ import { STATION_TEMPLATES } from '../data/levels.js';
  * ### Portrait — 32 tiles tall (1024px), width fixed to 576px
  *
  *   ┌──────────────────────────────────────────┐  tile  0
- *   │  WALL (1 tile)                           │
- *   ├──────────────────────────────────────────┤  tile  1
- *   │  customer area (17 tiles, 544px)         │  ← big queue space
+ *   │  WALL (7 tiles, 224px)                   │  ← shows full door
+ *   ├──────────────────────────────────────────┤  tile  7
+ *   │  customer area (11 tiles, 352px)         │  ← queue space
  *   ├═════════════════════════════════════════─┤  tile 18
  *   │  BAR COUNTER surface (3) + cabinet (2)   │
  *   ├═════════════════════════════════════════─┤  tile 23
@@ -63,7 +63,7 @@ const LAYOUT_PRESETS = {
   },
   portrait: {
     structures: {
-      wall:         { topTile: 0,  tiles: 1 },
+      wall:         { topTile: 0,  tiles: 7 },
       bar_counter:  { topTile: 18, surfaceTiles: 3, cabinetTiles: 2 },
       back_counter: { topTile: 28, tiles: 4 },
     },
@@ -272,10 +272,6 @@ export class BarLayout {
       }));
     }
 
-    // Ensure MENU is always present
-    const ids = stations.map(st => typeof st === 'string' ? st : st.id);
-    if (!ids.includes('MENU')) stations = [...stations, 'MENU'];
-
     // Expand to full templates
     const templates = stations.map(st => {
       const tmpl = STATION_TEMPLATES[st.id || st] || {};
@@ -285,13 +281,15 @@ export class BarLayout {
     // Group stations by placement type — each group is distributed across
     // the full bar width independently, so stations on the back counter
     // don't share horizontal space with stations under the bar.
-    // Corner placements (floor_left) get a pinned X near the edge.
+    // Corner placements (floor_left) and pinnedRight stations get fixed X.
     const groups = {};
     for (const st of templates) {
       const placement = STATION_PLACEMENT[st.id] || 'on_counter';
       if (placement === 'floor_left') {
-        // Pin near the left edge, offset by a small margin + half-width
         st.pinnedX = this.barLeft + TILE + Math.round((st.width || 3 * TILE) / 2);
+      }
+      if (st.pinnedRight) {
+        st.pinnedX = this.barRight - TILE - Math.round((st.width || 3 * TILE) / 2);
       }
       (groups[placement] = groups[placement] || []).push(st);
     }

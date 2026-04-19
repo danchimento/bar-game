@@ -1,4 +1,5 @@
 /* global Phaser */
+import { DEPTH } from '../constants/depths.js';
 import {
   CANVAS_W, CANVAS_H, GUEST_STATE,
   ACTION_DURATIONS,
@@ -138,6 +139,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.debugLayer = new DebugLayer(this, bl);
 
     // ── Phaser UI ──
+    this._createHamburgerMenu();
     this.hudUI = new HudUI(this);
     this.radialMenuUI = new RadialMenuUI(this);
     this.pauseUI = new PauseUI(this);
@@ -413,6 +415,31 @@ export class GamePlayScene extends Phaser.Scene {
     if (stateObj.visible && !modal.visible) showFn();
     if (!stateObj.visible && modal.visible) modal.hide();
     if (modal.visible) modal.update(dt);
+  }
+
+  // ─── HAMBURGER MENU (replaces MENU station clipboard) ────
+
+  _createHamburgerMenu() {
+    const size = 56;
+    const pad = 8;
+    const x = pad;
+    const y = pad;
+    // Background
+    this.hamburgerBg = this.add.rectangle(x, y, size, size, 0x000000, 0.6)
+      .setOrigin(0, 0).setDepth(DEPTH.HUD).setStrokeStyle(2, 0xffffff);
+    // Three horizontal lines (hamburger icon)
+    const gfx = this.add.graphics().setDepth(DEPTH.HUD);
+    const cx = x + size / 2, cy = y + size / 2;
+    const lineW = 24, gap = 8;
+    gfx.fillStyle(0xffffff, 1);
+    for (let i = -1; i <= 1; i++) {
+      gfx.fillRect(cx - lineW / 2, cy + i * gap - 2, lineW, 4);
+    }
+    this.hamburgerGfx = gfx;
+    // Tap zone
+    this.add.zone(x, y, size, size).setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true }).setDepth(DEPTH.HUD + 1)
+      .on('pointerup', () => this.events.emit('hamburger-tap'));
   }
 
   // ─── GAME LOGIC HELPERS ──────────────────────────

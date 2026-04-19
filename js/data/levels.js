@@ -16,7 +16,7 @@ export const STATION_TEMPLATES = {
   TAPS:        { id: 'TAPS',       label: 'Taps',  width: 192 },  // 6 tiles
   WINE:        { id: 'WINE',       label: 'Wine',  width: 128 },  // 4 tiles
   PREP:        { id: 'PREP',       label: 'Prep',  width: 128 },  // 4 tiles
-  POS:         { id: 'POS',        label: 'POS',   width: 128 },  // 4 tiles
+  POS:         { id: 'POS',        label: 'POS',   width: 128, pinnedRight: true },  // 4 tiles, pinned right
   TRASH:       { id: 'TRASH',      label: 'Trash', width: 96 },   // 3 tiles
   MENU:        { id: 'MENU',       label: 'Menu',  width: 64 },   // 2 tiles
 };
