@@ -45,14 +45,17 @@ export class StationLayer {
             .setOrigin(0.5, 0.5).setDepth(DEPTH.STATION_EMBEDDED);
           zoneY = bl.counterY;
           break;
-        case 'under_bar':
+        case 'under_bar': {
           // Origin (0.5, 0) so sprite top aligns with y = cabinetTop.
-          // Sprite extends DOWN into the bartender area — stations sit on
-          // the floor behind the bar, never crossing the bar surface.
+          // displayHeight stretches to fill the cabinet zone — under-bar
+          // stations always match the cabinet height regardless of sprite
+          // native size.
           sprite = scene.add.image(x, y, spriteKey)
             .setOrigin(0.5, 0).setDepth(DEPTH.BAR_ITEMS);
+          sprite.displayHeight = bl.cabinetBottom - bl.cabinetTop;
           zoneY = bl.cabinetMidY;
           break;
+        }
         case 'floor_left':
           // Sits on the floor of the bartender area, anchored at bottom.
           // Rendered above the bartender so it's always visible (BARTENDER=10,
