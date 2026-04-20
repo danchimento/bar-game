@@ -395,6 +395,11 @@ export class GamePlayScene extends Phaser.Scene {
       this.paused = true;
       this.pauseUI.show();
     });
+    this.events.on('hamburger-tap', () => {
+      if (this._anyModalOpen()) return;
+      this.paused = true;
+      this.pauseUI.show();
+    });
     this.events.on('resume', () => {
       this.paused = false;
       this.pauseUI.hide();
