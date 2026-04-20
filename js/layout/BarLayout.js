@@ -63,8 +63,8 @@ const LAYOUT_PRESETS = {
   },
   portrait: {
     structures: {
-      wall:         { topTile: 0,  tiles: 7 },
-      bar_counter:  { topTile: 18, surfaceTiles: 3, cabinetTiles: 2 },
+      wall:         { topTile: 0,  tiles: 9 },
+      bar_counter:  { topTile: 18, surfaceTiles: 3, cabinetTiles: 4 },
       back_counter: { topTile: 28, tiles: 4 },
     },
   },

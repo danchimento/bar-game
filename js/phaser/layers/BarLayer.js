@@ -45,9 +45,9 @@ export class BarLayer {
       this.stools.push(stool);
     }
 
-    // ── Wall clock ──
+    // ── Wall clock (centered vertically in wall zone) ──
     const clockX = bl.canvasW - 140;
-    const clockY = bl.customerArea.top + CLOCK_OFFSET_Y;
+    const clockY = Math.round((bl.wall.top + bl.wall.bottom) / 2);
     const clockR = 56;
     this.clockGfx = scene.add.graphics().setDepth(DEPTH.BACKGROUND);
     this.clockGfx.fillStyle(0xf5f0e0, 1);

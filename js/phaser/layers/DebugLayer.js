@@ -55,10 +55,11 @@ export class DebugLayer {
   // ─── Toggle button (always visible, mobile-sized) ─────────
   _createToggleButton() {
     const bl = this._bl;
-    const size = 56;                 // >= 44px tap target (mobile guideline)
+    const size = 56;
     const pad = 8;
+    const safeTop = 50;              // clear iPhone notch / status bar
     const x = bl.canvasW - size - pad;
-    const y = pad;
+    const y = safeTop;
 
     this.btnBg = this.scene.add.rectangle(x, y, size, size, 0x000000, 0.75)
       .setOrigin(0, 0).setDepth(DBG_DEPTH_BUTTON)
@@ -68,9 +69,12 @@ export class DebugLayer {
       color: '#00ff88',
     }).setOrigin(0.5).setDepth(DBG_DEPTH_BUTTON + 1);
 
-    // Interactive zone (slightly oversized for easier tapping)
-    this.btnZone = this.scene.add.zone(x - 4, y - 4, size + 8, size + 8)
-      .setOrigin(0, 0)
+    // Oversized interactive zone for reliable mobile tapping
+    const zoneMargin = 12;
+    this.btnZone = this.scene.add.zone(
+      x - zoneMargin, y - zoneMargin,
+      size + zoneMargin * 2, size + zoneMargin * 2,
+    ).setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .setDepth(DBG_DEPTH_BUTTON + 2);
     this.btnZone.on('pointerup', () => this.toggle());

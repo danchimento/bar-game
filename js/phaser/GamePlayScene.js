@@ -422,8 +422,9 @@ export class GamePlayScene extends Phaser.Scene {
   _createHamburgerMenu() {
     const size = 56;
     const pad = 8;
+    const safeTop = 50;              // clear iPhone notch / status bar
     const x = pad;
-    const y = pad;
+    const y = safeTop;
     // Background
     this.hamburgerBg = this.add.rectangle(x, y, size, size, 0x000000, 0.6)
       .setOrigin(0, 0).setDepth(DEPTH.HUD).setStrokeStyle(2, 0xffffff);
@@ -436,8 +437,11 @@ export class GamePlayScene extends Phaser.Scene {
       gfx.fillRect(cx - lineW / 2, cy + i * gap - 2, lineW, 4);
     }
     this.hamburgerGfx = gfx;
-    // Tap zone
-    this.add.zone(x, y, size, size).setOrigin(0, 0)
+    // Oversized tap zone for reliable mobile tapping
+    const zoneMargin = 12;
+    this.add.zone(x - zoneMargin, y - zoneMargin,
+      size + zoneMargin * 2, size + zoneMargin * 2)
+      .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true }).setDepth(DEPTH.HUD + 1)
       .on('pointerup', () => this.events.emit('hamburger-tap'));
   }

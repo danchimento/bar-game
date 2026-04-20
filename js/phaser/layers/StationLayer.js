@@ -55,10 +55,10 @@ export class StationLayer {
           break;
         case 'floor_left':
           // Sits on the floor of the bartender area, anchored at bottom.
-          // Rendered BELOW on_counter stations (DEPTH.BAR_ITEMS < STATION_SPRITE)
-          // so back counter equipment (TAPS, POS, MENU) visually dominates.
+          // Rendered above the bartender so it's always visible (BARTENDER=10,
+          // BARTENDER_CARRY=12). Below on_counter stations (STATION_SPRITE=15).
           sprite = scene.add.image(x, y, spriteKey)
-            .setOrigin(0.5, 1).setDepth(DEPTH.BAR_ITEMS);
+            .setOrigin(0.5, 1).setDepth(DEPTH.BARTENDER_CARRY + 1);
           zoneY = y - 40;
           break;
       }
