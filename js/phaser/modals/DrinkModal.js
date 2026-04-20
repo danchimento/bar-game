@@ -54,9 +54,9 @@ export class DrinkModal extends BaseModal {
     this._isBeerSplit = drinkModalState.type === 'beer';
 
     if (this._isBeerSplit) {
-      // Split-panel layout with zoom animation
-      this._contentW = 572; // 280 + 12 + 280
-      this._contentH = 310;
+      // Single wide panel for portrait
+      this._contentW = 490;
+      this._contentH = 420;
       super.show({
         origin: {
           x: drinkModalState.originX ?? CANVAS_W / 2,
@@ -91,33 +91,33 @@ export class DrinkModal extends BaseModal {
     }
   }
 
-  /** Beer taps — split-panel layout (local coords, animated) */
+  /** Beer taps — single wide panel for portrait (local coords, animated) */
   _buildBeerSplitPanel(items, modal) {
     const scene = this.scene;
-    const panelW = 280, panelH = 310, gap = 12;
-    const totalW = panelW * 2 + gap;
-    const leftCX = -totalW / 2 + panelW / 2;   // -146
-    const rightCX = totalW / 2 - panelW / 2;    // 146
+    const panelW = this._contentW;   // 490
+    const panelH = this._contentH;   // 420
+    const tapsH = 310;               // top portion for tap frame + glass
+    const btnRowY = panelH / 2 - 50; // button row center
 
-    // ── LEFT: Taps panel ──
+    // ── Full-width panel background ──
     this._content.add(
-      scene.add.rectangle(leftCX, 0, panelW, panelH, 0x2a1a0a)
+      scene.add.rectangle(0, 0, panelW, panelH, 0x2a1a0a)
         .setStrokeStyle(2, 0xd4a020)
         .setInteractive(),
     );
 
-    // Tap frame — scaled to fit panel width
-    const frameScale = 1.2;
-    const handleScale = 1.0;
+    // ── Tap frame (centered, scaled to fill panel width) ──
+    const frameScale = 1.6;
+    const handleScale = 1.2;
     const frameImgW = 180;
-    const frameTopY = -panelH / 2 + 45;
+    const frameTopY = -panelH / 2 + 40;
 
-    const frame = scene.add.image(leftCX, frameTopY, 'tap_frame')
+    const frame = scene.add.image(0, frameTopY, 'tap_frame')
       .setOrigin(0.5, 0).setScale(frameScale);
     this._content.add(frame);
 
     const scaledW = frameImgW * frameScale;
-    const frameLeft = leftCX - scaledW / 2;
+    const frameLeft = -scaledW / 2;
     const tapXPositions = [45, 90, 135].map(p => frameLeft + p * frameScale);
 
     const pxToScreen = 3 * frameScale;
@@ -126,8 +126,8 @@ export class DrinkModal extends BaseModal {
     this._tapSpoutY = frameTopY + 12 * pxToScreen;
     this._glassY = visualFrameBottomY;
 
-    // Glass rest position (left within panel)
-    this._glassRestX = leftCX - panelW / 2 + 35;
+    // Glass rest position (left side of panel)
+    this._glassRestX = -panelW / 2 + 40;
     this._glassCurrentX = this._glassRestX;
     this._glassTargetX = this._glassRestX;
 
@@ -152,7 +152,7 @@ export class DrinkModal extends BaseModal {
         this._content.add(handle);
         this._handles.push({ handle, handleKey, handlePulledKey, x: tx });
 
-        const zone = scene.add.zone(tx, crossbarY - 10, 55, 100)
+        const zone = scene.add.zone(tx, crossbarY - 10, 65, 110)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => {
           if (this._closing || this._animating) return;
@@ -175,28 +175,33 @@ export class DrinkModal extends BaseModal {
       }
     }
 
-    // ── RIGHT: Interaction panel ──
-    this._content.add(
-      scene.add.rectangle(rightCX, 0, panelW, panelH, 0x1e1e2e)
-        .setStrokeStyle(2, 0x4a4a6a)
-        .setInteractive(),
-    );
+    // ── Button row (bottom) ──
+    const btnW = (panelW - 30) / 2;  // ~230
+    const btnH = 50;
+    const btnGap = 10;
 
-    // "Done" button
-    const btnW = 160, btnH = 40;
-    const doneBtn = scene.add.rectangle(rightCX, 0, btnW, btnH, 0x3a5a3a)
-      .setStrokeStyle(1, 0x5a8a5a)
+    // Left: "Step Away" (red, always active)
+    const stepBtn = scene.add.rectangle(-btnW / 2 - btnGap / 2, btnRowY, btnW, btnH, 0x6a2a2a)
+      .setStrokeStyle(1, 0x8a4a4a)
       .setInteractive({ useHandCursor: true });
-    doneBtn.on('pointerover', () => doneBtn.setFillStyle(0x4a7a4a));
-    doneBtn.on('pointerout', () => doneBtn.setFillStyle(0x3a5a3a));
-    doneBtn.on('pointerdown', () => {
+    stepBtn.on('pointerdown', () => {
       if (this._closing) return;
       this._requestClose();
     });
-    this._content.add(doneBtn);
-    this._content.add(scene.add.text(rightCX, 0, 'Done', {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+    this._content.add(stepBtn);
+    this._content.add(scene.add.text(-btnW / 2 - btnGap / 2, btnRowY, 'Step Away', {
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ff9999',
     }).setOrigin(0.5));
+
+    // Right: "Take Beer" (green, disabled until poured)
+    this._takeBtn = scene.add.rectangle(btnW / 2 + btnGap / 2, btnRowY, btnW, btnH, 0x2a2a2a)
+      .setStrokeStyle(1, 0x444444);
+    this._content.add(this._takeBtn);
+    this._takeBtnLabel = scene.add.text(btnW / 2 + btnGap / 2, btnRowY, 'Take Beer', {
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
+    }).setOrigin(0.5);
+    this._content.add(this._takeBtnLabel);
+    this._takeBtnEnabled = false;
 
     // ── Local graphics (inside content for proper transform) ──
     this._localPourGfx = scene.add.graphics();
@@ -266,6 +271,22 @@ export class DrinkModal extends BaseModal {
     } finally {
       if (restoreGfx) {
         [this.glassGfx, this.pourStreamGfx, this._overflowGfx] = restoreGfx;
+      }
+    }
+
+    // Update "Take Beer" button state (beer mode only)
+    if (this._isBeerSplit && this._takeBtn) {
+      const glass = this.scene.barState?.carriedGlass;
+      const hasFill = glass && glass.totalFill > 0;
+      if (hasFill && !this._takeBtnEnabled) {
+        this._takeBtnEnabled = true;
+        this._takeBtn.setFillStyle(0x3a6a3a).setStrokeStyle(1, 0x5a8a5a);
+        this._takeBtn.setInteractive({ useHandCursor: true });
+        this._takeBtn.on('pointerdown', () => {
+          if (this._closing) return;
+          this._requestClose();
+        });
+        this._takeBtnLabel.setColor('#ffffff');
       }
     }
   }
@@ -350,10 +371,13 @@ export class DrinkModal extends BaseModal {
     this.pourStreamGfx.clear();
     this._overflowGfx.clear();
     this._overflowDrops = [];
-    // Local graphics are destroyed by container.removeAll(true)
+    // Local graphics + button refs are destroyed by container.removeAll(true)
     this._localGlassGfx = null;
     this._localPourGfx = null;
     this._localOverflowGfx = null;
+    this._takeBtn = null;
+    this._takeBtnLabel = null;
+    this._takeBtnEnabled = false;
   }
 
   // ─── GREEN ZONE + OVERFLOW ──────────────────────────
