@@ -91,13 +91,24 @@ export class DrinkModal extends BaseModal {
     }
   }
 
-  /** Beer taps — single wide panel for portrait (local coords, animated) */
+  /** Beer taps — single wide panel for portrait (local coords, animated).
+   * All positions derived from art-pixel coords × ART_SCALE. No setScale(). */
   _buildBeerSplitPanel(items, modal) {
     const scene = this.scene;
     const panelW = this._contentW;   // 490
     const panelH = this._contentH;   // 420
-    const tapsH = 310;               // top portion for tap frame + glass
     const btnRowY = panelH / 2 - 50; // button row center
+
+    // Art-pixel scale — must match scripts/generate-radial-icons.js SCALE.
+    // All positions below are artPixel × ART_SCALE. No runtime setScale().
+    const ART_SCALE = 6;
+    const FRAME_ART_W = 60;
+    const TAP_ART_XS = [15, 30, 45]; // tap mount X in art pixels
+    const CROSSBAR_ART_Y = 3;        // chrome crossbar row
+    const SPOUT_ART_Y = 12;          // bottom of tap cylinder
+    const FRAME_BOTTOM_ART_Y = 32;   // visual bottom (post feet)
+
+    this._glassDrawScale = 3.0;
 
     // ── Full-width panel background ──
     this._content.add(
@@ -106,28 +117,24 @@ export class DrinkModal extends BaseModal {
         .setInteractive(),
     );
 
-    // ── Tap frame (centered, scaled to fill panel width) ──
-    const frameScale = 1.6;
-    const handleScale = 1.2;
-    const frameImgW = 180;
+    // ── Tap frame (centered, native size 360×240, no setScale) ──
     const frameTopY = -panelH / 2 + 40;
-
     const frame = scene.add.image(0, frameTopY, 'tap_frame')
-      .setOrigin(0.5, 0).setScale(frameScale);
+      .setOrigin(0.5, 0);
     this._content.add(frame);
 
-    const scaledW = frameImgW * frameScale;
-    const frameLeft = -scaledW / 2;
-    const tapXPositions = [45, 90, 135].map(p => frameLeft + p * frameScale);
+    // Tap X positions: art coords centered on frame, × ART_SCALE
+    const tapXPositions = TAP_ART_XS.map(ax => (ax - FRAME_ART_W / 2) * ART_SCALE);
+    // [-90, 0, 90]
 
-    const pxToScreen = 3 * frameScale;
-    const crossbarY = frameTopY + 3 * pxToScreen;
-    const visualFrameBottomY = frameTopY + 32 * pxToScreen;
-    this._tapSpoutY = frameTopY + 12 * pxToScreen;
-    this._glassY = visualFrameBottomY;
+    // Y positions: art rows × ART_SCALE from frame top
+    const crossbarY = frameTopY + CROSSBAR_ART_Y * ART_SCALE;       // +18
+    this._tapSpoutY = frameTopY + SPOUT_ART_Y * ART_SCALE;          // +72
+    this._glassY = frameTopY + FRAME_BOTTOM_ART_Y * ART_SCALE;      // +192
+    this._crossbarY = crossbarY;
 
     // Glass rest position (left side of panel)
-    this._glassRestX = -panelW / 2 + 40;
+    this._glassRestX = -panelW / 2 + 50;
     this._glassCurrentX = this._glassRestX;
     this._glassTargetX = this._glassRestX;
 
@@ -136,7 +143,7 @@ export class DrinkModal extends BaseModal {
       this._spoutPositions.push(tapXPositions[i]);
     }
 
-    // Handles + interactive zones
+    // Handles + interactive zones (native sprite size, no setScale)
     for (let i = 0; i < TAP_COUNT; i++) {
       const tx = tapXPositions[i];
       const hasItem = i < items.length;
@@ -147,12 +154,14 @@ export class DrinkModal extends BaseModal {
         const handleKey = `handle_${drinkKey.toLowerCase()}`;
         const handlePulledKey = `handle_${drinkKey.toLowerCase()}_pulled`;
 
-        const handle = scene.add.image(tx, crossbarY - 4, handleKey)
-          .setOrigin(0.5, 1).setScale(handleScale);
+        // Handle origin (0.5, 1): bottom edge at crossbar, extends upward
+        const handle = scene.add.image(tx, crossbarY, handleKey)
+          .setOrigin(0.5, 1);
         this._content.add(handle);
         this._handles.push({ handle, handleKey, handlePulledKey, x: tx });
 
-        const zone = scene.add.zone(tx, crossbarY - 10, 65, 110)
+        // Zone sized to handle sprite (48×120) + 8px pad each side
+        const zone = scene.add.zone(tx, crossbarY - 60, 56, 128)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => {
           if (this._closing || this._animating) return;
@@ -218,6 +227,7 @@ export class DrinkModal extends BaseModal {
 
   /** Wine / mixer — legacy single-panel layout (screen-absolute coords) */
   _buildLegacyPanel(items, modal) {
+    this._glassDrawScale = 2.0;
     const scene = this.scene;
     const spacing = this._isWine ? 100 : 100;
     const totalW = items.length * spacing;
@@ -359,7 +369,7 @@ export class DrinkModal extends BaseModal {
 
     const fillPct = glass.totalFill;
     const liquidColor = getLiquidColor(glass.layers);
-    drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, 2.0);
+    drawGlass(this.glassGfx, gx, gy, glass.glassType, fillPct, liquidColor, this._glassDrawScale || 2.0);
 
     this._drawGreenZone(gx, gy, glass, fillPct);
 
@@ -385,6 +395,8 @@ export class DrinkModal extends BaseModal {
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._takeBtnEnabled = false;
+    this._crossbarY = 0;
+    this._glassDrawScale = 2.0;
     this._debugGfx = null;
   }
 
@@ -403,28 +415,33 @@ export class DrinkModal extends BaseModal {
     g.lineStyle(2, 0x00ffff, 0.8);
     g.strokeRect(-panelW / 2, -panelH / 2, panelW, panelH);
 
-    // Tap handle zones (yellow)
+    // Tap handle zones (yellow) — zones are 56×128, centered on
+    // (tapX, crossbarY-60) matching the handle sprite bounds
     g.lineStyle(1, 0xffff00, 0.7);
+    const cbY = this._crossbarY || 0;
     for (const sp of this._spoutPositions) {
-      g.strokeRect(sp - 32, this._tapSpoutY - 80, 65, 110);
+      g.strokeRect(sp - 28, cbY - 120, 56, 128);
     }
 
-    // Glass current position (lime)
+    // Glass current position (lime) — scale-aware
+    const gs = this._glassDrawScale || 2.0;
+    const gw = 18 * gs, gh = 28 * gs;
     g.lineStyle(2, 0xaaff00, 0.9);
-    g.strokeRect(this._glassCurrentX - 20, this._glassY - 60, 40, 60);
+    g.strokeRect(this._glassCurrentX - gw / 2, this._glassY - gh, gw, gh);
 
-    // Glass rest position (dim lime dashed)
+    // Glass rest position (dim lime)
     g.lineStyle(1, 0xaaff00, 0.4);
-    g.strokeRect(this._glassRestX - 20, this._glassY - 60, 40, 60);
+    g.strokeRect(this._glassRestX - gw / 2, this._glassY - gh, gw, gh);
 
     // Button bounds (red/green)
     const btnW = (panelW - 30) / 2;
     const btnH = 50;
+    const btnGap = 10;
     const btnRowY = panelH / 2 - 50;
     g.lineStyle(1, 0xff4444, 0.8);
-    g.strokeRect(-btnW / 2 - 5 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.strokeRect(-btnW / 2 - btnGap / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
     g.lineStyle(1, 0x44ff44, 0.8);
-    g.strokeRect(btnW / 2 + 5 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.strokeRect(btnW / 2 + btnGap / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
 
     // Spout Y line (orange)
     g.lineStyle(1, 0xff8800, 0.6);
@@ -447,7 +464,7 @@ export class DrinkModal extends BaseModal {
     }
     if (!fillRange) return;
 
-    const s = 2.0;
+    const s = this._glassDrawScale || 2.0;
     const [minFill, maxFill] = fillRange;
 
     let zoneColor, zoneAlpha;
@@ -538,7 +555,7 @@ export class DrinkModal extends BaseModal {
   }
 
   _drawOverflow(gx, gy, glass, liquidColor, dt) {
-    const s = 2.0;
+    const s = this._glassDrawScale || 2.0;
     const glassH = glass.glassType === 'WINE_GLASS' ? (14 + 8 + 3) * s
       : glass.glassType === 'PLASTIC_CUP' ? 22 * s : 28 * s;
     const glassW = glass.glassType === 'WINE_GLASS' ? 14 * s
