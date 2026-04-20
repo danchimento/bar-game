@@ -3,12 +3,12 @@ import { drawGlass } from '../utils/GlassRenderer.js';
 import { BaseModal } from './BaseModal.js';
 
 /**
- * Glass cabinet interaction — split-panel design.
- * Left:  wooden cabinet with three shelves of glasses.
- *        Tapping a glass lifts it with a smooth animation.
- * Right: interaction panel with selected type, "Take Glass", and "Step Away".
+ * Glass cabinet interaction — portrait-optimized single-panel layout.
  *
- * Both panels are equal width/height, side by side with small padding.
+ * Full-width wooden cabinet with three shelves of glasses on top,
+ * and a button row (Step Away / Take Glass) along the bottom.
+ * Tapping a glass lifts it with a smooth animation to indicate selection.
+ *
  * Opens with a zoom animation from the station position; closes in reverse.
  */
 export class GlassModal extends BaseModal {
@@ -18,17 +18,13 @@ export class GlassModal extends BaseModal {
     this._availableDrinks = [];
     this._shelves = [];
     this._selectedGlass = null;
-    this._selectedText = null;
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._glassGfx = null;
 
     // Panel layout (used for zoom animation sizing)
-    this._panelW = 280;
-    this._panelH = 310;
-    this._gap = 12;
-    this._contentW = this._panelW * 2 + this._gap; // 572
-    this._contentH = this._panelH;                  // 310
+    this._contentW = 480;
+    this._contentH = 380;
   }
 
   show(availableDrinks, originX, originY, originW, originH) {
@@ -43,26 +39,28 @@ export class GlassModal extends BaseModal {
     this._shelves = [];
     const scene = this.scene;
 
-    const panelW = this._panelW;
-    const panelH = this._panelH;
-    const totalW = this._contentW;
+    const panelW = this._contentW;  // 480
+    const panelH = this._contentH;  // 380
 
     // Local coordinates: (0,0) = center of content
-    const leftCX = -totalW / 2 + panelW / 2;
-    const rightCX = totalW / 2 - panelW / 2;
+    const panelLeft = -panelW / 2;
+    const panelTop = -panelH / 2;
 
-    // ── LEFT: Glass Cabinet ──
-    const cabinetLeft = leftCX - panelW / 2;
-    const cabinetTop = -panelH / 2;
-
-    const cabinetBg = scene.add.rectangle(leftCX, 0, panelW, panelH, 0x2a1a0e)
+    // ── Full-width panel background (wood) ──
+    const panelBg = scene.add.rectangle(0, 0, panelW, panelH, 0x2a1a0e)
       .setStrokeStyle(4, 0x5a3a20)
       .setInteractive(); // blocks clicks reaching dim
-    this._content.add(cabinetBg);
+    this._content.add(panelBg);
 
+    // ── Cabinet area (top ~280px) ──
+    const cabinetH = 280;
+    const cabinetTop = panelTop + 10;
+    const cabinetCenterY = cabinetTop + cabinetH / 2;
     const pad = 14;
+
+    // Inner dark rect for the cabinet
     this._content.add(
-      scene.add.rectangle(leftCX, 0, panelW - pad * 2, panelH - pad * 2, 0x1e140a)
+      scene.add.rectangle(0, cabinetCenterY, panelW - pad * 2, cabinetH - 10, 0x1e140a)
         .setStrokeStyle(1, 0x3a2a18),
     );
 
@@ -79,20 +77,20 @@ export class GlassModal extends BaseModal {
       { glassKey: 'PLASTIC_CUP', drinkType: 'water', count: 4 },
     ];
 
-    const shelfAreaTop = cabinetTop + 20;
-    const shelfH = (panelH - 30) / shelfDefs.length;
-    const innerLeft = cabinetLeft + pad + 10;
-    const innerRight = cabinetLeft + panelW - pad - 10;
-    const shelfW = innerRight - innerLeft;
+    const shelfAreaTop = cabinetTop + 15;
+    const shelfH = (cabinetH - 20) / shelfDefs.length;
+    const innerLeft = panelLeft + pad + 10;
+    const innerRight = -panelLeft - pad - 10;
+    const shelfW = innerRight - innerLeft; // ~440px
 
     for (let si = 0; si < shelfDefs.length; si++) {
       const def = shelfDefs[si];
       const shelfBaseY = shelfAreaTop + (si + 1) * shelfH - 8;
       const hasType = drinkTypes.has(def.drinkType);
 
-      // Shelf plank
+      // Shelf plank spanning the width
       this._content.add(
-        scene.add.rectangle(leftCX, shelfBaseY, shelfW, 5, 0x5a4a30)
+        scene.add.rectangle(0, shelfBaseY, shelfW, 5, 0x5a4a30)
           .setStrokeStyle(1, 0x6a5a40),
       );
 
@@ -102,9 +100,9 @@ export class GlassModal extends BaseModal {
       };
 
       if (hasType) {
-        const glassSpacing = Math.min(55, (shelfW - 20) / def.count);
+        const glassSpacing = Math.min(90, (shelfW - 20) / def.count);
         const totalGlassW = (def.count - 1) * glassSpacing;
-        const glassStartX = leftCX - totalGlassW / 2;
+        const glassStartX = -totalGlassW / 2;
 
         for (let gi = 0; gi < def.count; gi++) {
           const gx = glassStartX + gi * glassSpacing;
@@ -124,54 +122,40 @@ export class GlassModal extends BaseModal {
       this._shelves.push(shelfData);
     }
 
-    // ── RIGHT: Interaction Panel ──
-    const panelTop = -panelH / 2;
+    // ── Button row (bottom ~80px) ──
+    const btnW = 225;
+    const btnH = 50;
+    const btnGap = 10;
+    const btnRowY = panelTop + panelH - 50; // center of buttons
 
-    const panelBg = scene.add.rectangle(rightCX, 0, panelW, panelH, 0x1e1e2e)
-      .setStrokeStyle(2, 0x4a4a6a)
-      .setInteractive();
-    this._content.add(panelBg);
+    const stepBtnX = -(btnW + btnGap) / 2;
+    const takeBtnX = (btnW + btnGap) / 2;
 
-    // "Selected:" header
-    let curY = panelTop + 50;
-    this._content.add(
-      scene.add.text(rightCX, curY, 'Selected:', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#888888',
-      }).setOrigin(0.5),
-    );
-    curY += 24;
-
-    this._selectedText = scene.add.text(rightCX, curY, 'None', {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
-    }).setOrigin(0.5);
-    this._content.add(this._selectedText);
-    curY += 60;
-
-    const btnW = 160, btnH = 40;
-    this._takeBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x2a2a2a)
-      .setStrokeStyle(1, 0x444444);
-    this._content.add(this._takeBtn);
-    this._takeBtnLabel = scene.add.text(rightCX, curY, 'Take Glass', {
-      fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#666666',
-    }).setOrigin(0.5);
-    this._content.add(this._takeBtnLabel);
-    curY += btnH + 20;
-
-    const stepBtn = scene.add.rectangle(rightCX, curY, btnW, btnH, 0x3a2a2a)
-      .setStrokeStyle(1, 0x6a4a4a)
+    // "Step Away" — red, always active
+    const stepBtn = scene.add.rectangle(stepBtnX, btnRowY, btnW, btnH, 0x6a2a2a)
+      .setStrokeStyle(1, 0x8a4a4a)
       .setInteractive({ useHandCursor: true });
-    stepBtn.on('pointerover', () => stepBtn.setFillStyle(0x4a3a3a));
-    stepBtn.on('pointerout', () => stepBtn.setFillStyle(0x3a2a2a));
+    stepBtn.on('pointerover', () => stepBtn.setFillStyle(0x7a3a3a));
+    stepBtn.on('pointerout', () => stepBtn.setFillStyle(0x6a2a2a));
     stepBtn.on('pointerdown', () => {
       if (this._closing) return;
       this._requestClose();
     });
     this._content.add(stepBtn);
     this._content.add(
-      scene.add.text(rightCX, curY, 'Step Away', {
-        fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#cc8888',
+      scene.add.text(stepBtnX, btnRowY, 'Step Away', {
+        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#cc8888',
       }).setOrigin(0.5),
     );
+
+    // "Take Glass" — green when enabled, grey when disabled
+    this._takeBtn = scene.add.rectangle(takeBtnX, btnRowY, btnW, btnH, 0x2a2a2a)
+      .setStrokeStyle(1, 0x444444);
+    this._content.add(this._takeBtn);
+    this._takeBtnLabel = scene.add.text(takeBtnX, btnRowY, 'Take Glass', {
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
+    }).setOrigin(0.5);
+    this._content.add(this._takeBtnLabel);
 
     // Glass graphics — added last inside content so it renders on top
     this._glassGfx = scene.add.graphics();
@@ -186,7 +170,6 @@ export class GlassModal extends BaseModal {
   _onTeardown() {
     this._shelves = [];
     this._selectedGlass = null;
-    this._selectedText = null;
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._glassGfx = null;
@@ -202,32 +185,29 @@ export class GlassModal extends BaseModal {
     } else {
       this._selectedGlass = { glassKey, shelfIdx, glassIdx };
     }
-    this._updatePanel();
+    this._updateButtons();
   }
 
-  _updatePanel() {
-    if (!this._selectedText || !this._takeBtn) return;
+  _updateButtons() {
+    if (!this._takeBtn) return;
+
+    const btnW = 225;
+    const btnGap = 10;
+    const takeBtnX = (btnW + btnGap) / 2;
 
     if (this._selectedGlass) {
-      const info = GLASSES[this._selectedGlass.glassKey];
-      this._selectedText.setText(info ? info.name : this._selectedGlass.glassKey);
-      this._selectedText.setColor('#ffd54f');
-
-      this._takeBtn.setFillStyle(0x3a5a3a);
+      this._takeBtn.setFillStyle(0x3a6a3a);
       this._takeBtn.setStrokeStyle(1, 0x5a8a5a);
       this._takeBtn.setInteractive({ useHandCursor: true });
       this._takeBtn.removeAllListeners();
       this._takeBtn.on('pointerover', () => this._takeBtn.setFillStyle(0x4a7a4a));
-      this._takeBtn.on('pointerout', () => this._takeBtn.setFillStyle(0x3a5a3a));
+      this._takeBtn.on('pointerout', () => this._takeBtn.setFillStyle(0x3a6a3a));
       this._takeBtn.on('pointerdown', () => {
         if (this._closing) return;
         this._requestClose('glass-selected', this._selectedGlass.glassKey);
       });
       this._takeBtnLabel.setColor('#ffffff');
     } else {
-      this._selectedText.setText('None');
-      this._selectedText.setColor('#666666');
-
       this._takeBtn.setFillStyle(0x2a2a2a);
       this._takeBtn.setStrokeStyle(1, 0x444444);
       this._takeBtn.disableInteractive();

@@ -83,8 +83,8 @@ platform-specific regressions.
   - Wall (1T), Customer (9T), Bar surface (3T) + cabinet (1T),
     Bartender (2T), Back counter (2T)
 - **Portrait — 32 tiles tall (1024px)**, width fixed to 576px:
-  - Wall (1T), Customer (18T), Bar surface (3T) + cabinet (2T),
-    Bartender (4T), Back counter (4T)
+  - Wall (9T), Customer (9T), Bar surface (3T) + cabinet (4T),
+    Bartender (3T declared, stretches on tall devices), Back counter (4T)
 
 Portrait exists for mobile; the canvas is tall and narrow, so the customer
 area expands to give guests queue room. Landscape is wider and shorter with
@@ -131,6 +131,32 @@ Red flags that you're patching instead of fixing:
 - Override `_build()` to populate content, `_onUpdate(dt)` for per-frame logic
 - Use `_requestClose(eventName)` to close — never call `hide()` from within the modal
 - Animated modals (zoom) use LOCAL coords (0,0 = center); non-animated use SCREEN-ABSOLUTE coords
+
+#### Portrait modal layout (CRITICAL for mobile)
+Station modals (GlassModal, DrinkModal) use a **single centered panel** with a
+**standard button pair** at the bottom — NOT a side-by-side split-panel:
+
+```
+┌─────────────────────────────────────┐
+│          GRAPHICS AREA              │  ~85% canvas width, centered
+│     (glass shelf / tap handles /    │
+│      pour animation / etc.)         │
+├──────────────────┬──────────────────┤
+│   ✕ Step Away    │   ✓ Action       │  always exactly 2 buttons
+│   (red, left)    │   (green, right) │  red = cancel, green = confirm
+└──────────────────┴──────────────────┘
+```
+
+**Button rules:**
+- **Left (negative, red)**: always active, always closes the modal
+- **Right (positive, green)**: starts **disabled** (gray). Enables when the
+  player has made a selection (GlassModal: glass tapped) or performed an
+  action (DrinkModal: beer poured into glass)
+- Disabled state: `0x2a2a2a` fill, `#666666` text, `disableInteractive()`
+- Enabled state: `0x3a6a3a` fill, `#ffffff` text, green border, interactive
+
+**Do NOT use split-panel layouts** (left content + right buttons). Those were
+designed for landscape and break on portrait mobile.
 
 ### Animations
 - Always use **time-based** animation (`dt` or `scene.time.now`), never frame-based
