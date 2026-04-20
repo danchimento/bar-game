@@ -210,6 +210,10 @@ export class DrinkModal extends BaseModal {
     this._content.add(this._localGlassGfx);
     this._localOverflowGfx = scene.add.graphics();
     this._content.add(this._localOverflowGfx);
+
+    // Debug graphics (inside content)
+    this._debugGfx = scene.add.graphics();
+    this._content.add(this._debugGfx);
   }
 
   /** Wine / mixer — legacy single-panel layout (screen-absolute coords) */
@@ -273,6 +277,9 @@ export class DrinkModal extends BaseModal {
         [this.glassGfx, this.pourStreamGfx, this._overflowGfx] = restoreGfx;
       }
     }
+
+    // Draw debug overlay inside modal (when debug toggle is active)
+    if (this._isBeerSplit) this._drawDebug();
 
     // Update "Take Beer" button state (beer mode only)
     if (this._isBeerSplit && this._takeBtn) {
@@ -378,6 +385,54 @@ export class DrinkModal extends BaseModal {
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._takeBtnEnabled = false;
+    this._debugGfx = null;
+  }
+
+  _drawDebug() {
+    if (!this._debugGfx || !this._debugEnabled) {
+      if (this._debugGfx) this._debugGfx.clear();
+      return;
+    }
+    const g = this._debugGfx;
+    g.clear();
+
+    const panelW = this._contentW;
+    const panelH = this._contentH;
+
+    // Content bounds (cyan)
+    g.lineStyle(2, 0x00ffff, 0.8);
+    g.strokeRect(-panelW / 2, -panelH / 2, panelW, panelH);
+
+    // Tap handle zones (yellow)
+    g.lineStyle(1, 0xffff00, 0.7);
+    for (const sp of this._spoutPositions) {
+      g.strokeRect(sp - 32, this._tapSpoutY - 80, 65, 110);
+    }
+
+    // Glass current position (lime)
+    g.lineStyle(2, 0xaaff00, 0.9);
+    g.strokeRect(this._glassCurrentX - 20, this._glassY - 60, 40, 60);
+
+    // Glass rest position (dim lime dashed)
+    g.lineStyle(1, 0xaaff00, 0.4);
+    g.strokeRect(this._glassRestX - 20, this._glassY - 60, 40, 60);
+
+    // Button bounds (red/green)
+    const btnW = (panelW - 30) / 2;
+    const btnH = 50;
+    const btnRowY = panelH / 2 - 50;
+    g.lineStyle(1, 0xff4444, 0.8);
+    g.strokeRect(-btnW / 2 - 5 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.lineStyle(1, 0x44ff44, 0.8);
+    g.strokeRect(btnW / 2 + 5 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+
+    // Spout Y line (orange)
+    g.lineStyle(1, 0xff8800, 0.6);
+    g.lineBetween(-panelW / 2 + 10, this._tapSpoutY, panelW / 2 - 10, this._tapSpoutY);
+
+    // Glass Y line (lime)
+    g.lineStyle(1, 0xaaff00, 0.4);
+    g.lineBetween(-panelW / 2 + 10, this._glassY, panelW / 2 - 10, this._glassY);
   }
 
   // ─── GREEN ZONE + OVERFLOW ──────────────────────────

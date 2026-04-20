@@ -207,7 +207,7 @@ export class GamePlayScene extends Phaser.Scene {
     this.barItemsLayer.update(this.barState, this.guestLayer._sippingMap);
     this.hudUI.update(this.hud, this.levelTimer, this.activeDuration);
     this.barLayer.updateClock(this.levelTimer, this.activeDuration);
-    this.debugLayer.update(this.guestManager.guests, this.bartender);
+    this.debugLayer.update(this.guestManager.guests, this.bartender, this._anyModalOpen());
 
     // Guest modal — auto-close when guest leaves, otherwise update
     if (this.guestModal.visible) {

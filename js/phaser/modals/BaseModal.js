@@ -152,6 +152,12 @@ export class BaseModal {
   /** Cleanup external resources before container is cleared. */
   _onTeardown() {}
 
+  /** Whether debug overlay is active (reads DebugLayer's localStorage key). */
+  get _debugEnabled() {
+    try { return localStorage.getItem('bar-game-debug') === '1'; }
+    catch { return false; }
+  }
+
   // ─── INTERNAL ───────────────────────────────────
 
   _buildModal() {

@@ -160,11 +160,16 @@ export class GlassModal extends BaseModal {
     // Glass graphics — added last inside content so it renders on top
     this._glassGfx = scene.add.graphics();
     this._content.add(this._glassGfx);
+
+    // Debug graphics (inside content for correct transform)
+    this._debugGfx = scene.add.graphics();
+    this._content.add(this._debugGfx);
   }
 
   _onUpdate(dt) {
     this._updateGlassLifts(dt);
     this._drawGlasses();
+    this._drawDebug();
   }
 
   _onTeardown() {
@@ -173,6 +178,46 @@ export class GlassModal extends BaseModal {
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._glassGfx = null;
+    this._debugGfx = null;
+  }
+
+  _drawDebug() {
+    if (!this._debugGfx || !this._debugEnabled) {
+      if (this._debugGfx) this._debugGfx.clear();
+      return;
+    }
+    const g = this._debugGfx;
+    g.clear();
+
+    const panelW = this._contentW;
+    const panelH = this._contentH;
+
+    // Content bounds (cyan)
+    g.lineStyle(2, 0x00ffff, 0.8);
+    g.strokeRect(-panelW / 2, -panelH / 2, panelW, panelH);
+
+    // Shelf tap zones (yellow dashed)
+    g.lineStyle(1, 0xffff00, 0.7);
+    for (const shelf of this._shelves) {
+      if (!shelf.active) continue;
+      for (const gl of shelf.glasses) {
+        g.strokeRect(gl.x - 22, gl.y - 52, 45, 55);
+      }
+    }
+
+    // Button bounds (green/red outlines)
+    const btnW = 225, btnH = 50, btnGap = 10;
+    const btnRowY = -panelH / 2 + panelH - 50;
+    g.lineStyle(1, 0xff4444, 0.8);
+    g.strokeRect(-(btnW + btnGap) / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.lineStyle(1, 0x44ff44, 0.8);
+    g.strokeRect((btnW + btnGap) / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+
+    // Shelf Y lines
+    g.lineStyle(1, 0xffaa00, 0.5);
+    for (const shelf of this._shelves) {
+      g.lineBetween(-panelW / 2 + 20, shelf.shelfY, panelW / 2 - 20, shelf.shelfY);
+    }
   }
 
   // ─── GLASS SELECTION ──────────────────────────────

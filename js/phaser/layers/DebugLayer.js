@@ -290,11 +290,19 @@ export class DebugLayer {
   // Called each frame with the dynamic scene state. Static zones/stations
   // don't redraw (they're on overlayGfx and only change on toggle). Guest
   // sprite bounds and the bartender's carried-glass rect are redrawn here.
-  update(guests = [], bartender = null) {
+  update(guests = [], bartender = null, anyModalOpen = false) {
     if (!this.enabled) return;
+
+    // Hide the main game overlay when a modal is open — the modal draws
+    // its own debug inside its content container, and the game grid/zones
+    // just add noise behind the dim overlay.
+    this.overlayGfx.setVisible(!anyModalOpen);
+    this.labels.forEach(t => t.setVisible(!anyModalOpen));
+
     const bl = this._bl;
     const g = this.dynamicGfx;
     g.clear();
+    if (anyModalOpen) return;
 
     // ── Sitting guest sprite rects (magenta) ──
     // 144×120 at 6× scale, origin (0.5, 1), positioned so hands (rows 18–19)
