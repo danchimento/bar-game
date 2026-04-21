@@ -150,24 +150,26 @@ export class GuestLayer {
       vis.walkBobTimer += 1 / 60;
     }
 
-    // Sitting sprite: push down so BAR_OVERLAP_ROW aligns with bar surface.
-    // Bar surface (depth 6) covers the lower torso, making guest flush against bar.
+    // All sprite states use origin (0.5, 1.0) — feet/bottom at y position.
+    // Walking/standing guests have feet at guest.y (in customer area).
+    // Sitting guests have sprite bottom at bar surface + overlap offset.
     if (vis.isSitting) {
       vis.sprite.setOrigin(0.5, 1.0);
       vis.sprite.setPosition(x, this._bl.barSurfaceY + BAR_OVERLAP_OFFSET);
     } else if (walking) {
-      // Subtle side-to-side bob to indicate walking
       const bob = Math.sin(vis.walkBobTimer * 8) * 1.5;
-      vis.sprite.setOrigin(0.5, 0.5);
+      vis.sprite.setOrigin(0.5, 1.0);
       vis.sprite.setPosition(x + bob, y);
     } else {
-      vis.sprite.setOrigin(0.5, 0.5);
+      vis.sprite.setOrigin(0.5, 1.0);
       vis.sprite.setPosition(x, y);
     }
 
-    // The base Y for popups (above guest head)
-    const spriteTop = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET - SIT_SPRITE_SCREEN_H : y - 96;
-    const headY = vis.isSitting ? spriteTop - 8 : y - 35;
+    // Sprite top for icon positioning — bottom origin, so top = bottom - height
+    const spriteH = vis.isSitting ? SIT_SPRITE_SCREEN_H : 192;
+    const spriteBottomY = vis.isSitting ? this._bl.barSurfaceY + BAR_OVERLAP_OFFSET : y;
+    const spriteTop = spriteBottomY - spriteH;
+    const headY = spriteTop - 8;
 
     // ── State change popup (pop up and fade like a memory flash) ──
     const iconKey = this._indicatorIcon(guest);

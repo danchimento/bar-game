@@ -170,7 +170,7 @@ export class BarLayout {
 
     this.floorY = this.bartenderArea.top;
     this.serviceMatY = this.bartenderArea.top + Math.round(TILE * 0.5);
-    this.walkTrackY = Math.round(this.bartenderArea.top + this.bartenderArea.height * 0.5);
+    this.walkTrackY = Math.round(this.bartenderArea.top + this.bartenderArea.height * 0.3);
 
     this.counterSurfaceY = this.backCounter.top;
     this.counterH = this.backCounter.height;
