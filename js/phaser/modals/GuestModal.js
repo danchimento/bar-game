@@ -1,6 +1,7 @@
 import { GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { BaseModal } from './BaseModal.js';
+import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
 // ── Message pools — random pick per guest for variety ──
 const MESSAGES = {
@@ -161,6 +162,8 @@ const BTN_ROW_Y = 200;
 const BTN_W = 215;
 const BTN_H = 50;
 const BTN_GAP = 10;
+const DRINK_SCALE = 2.5;
+const DRINK_SPACING = 60;
 
 export class GuestModal extends BaseModal {
   constructor(scene) {
@@ -169,6 +172,8 @@ export class GuestModal extends BaseModal {
     this._msgText = null;
     this._greenBtn = null;
     this._greenLabel = null;
+    this._barGfx = null;
+    this._carryIcon = null;
     this._lastState = null;
     this._lastHasCheck = null;
     this._lastGreeted = null;
@@ -233,24 +238,19 @@ export class GuestModal extends BaseModal {
         .setStrokeStyle(1, 0x5a3a20),
     );
 
-    // ── Customer side placeholder ──
-    this._content.add(
-      scene.add.text(0, CUSTOMER_Y, 'Drinks on bar', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#555555',
-      }).setOrigin(0.5),
-    );
-
     // ── Bar front edge ──
     this._content.add(
       scene.add.rectangle(0, BAR_FRONT_Y, PANEL_W - 40, 2, 0x5a3a20),
     );
 
-    // ── Bartender side placeholder ──
-    this._content.add(
-      scene.add.text(0, BARTENDER_Y, 'Carried item', {
-        fontFamily: 'monospace', fontSize: '11px', color: '#555555',
-      }).setOrigin(0.5),
-    );
+    // ── Bar items graphics (redrawn each frame) ──
+    this._barGfx = scene.add.graphics();
+    this._content.add(this._barGfx);
+
+    this._carryIcon = scene.add.image(0, 0, '__DEFAULT').setVisible(false);
+    this._content.add(this._carryIcon);
+
+    this._drawBarItems();
 
     // ── Button row ──
     this._buildRedButton();
@@ -379,6 +379,8 @@ export class GuestModal extends BaseModal {
     if (!this._guest) return;
     const guest = this._guest;
 
+    this._drawBarItems();
+
     const stateChanged = guest.state !== this._lastState;
     const checkChanged = guest.hasCheck !== this._lastHasCheck;
     const greetChanged = guest.greeted !== this._lastGreeted;
@@ -396,11 +398,55 @@ export class GuestModal extends BaseModal {
     this._rebuildGreenButton();
   }
 
+  _drawBarItems() {
+    const gfx = this._barGfx;
+    if (!gfx) return;
+    gfx.clear();
+    this._carryIcon.setVisible(false);
+
+    const guest = this._guest;
+    if (!guest) return;
+    const { barState, bartender } = this.scene;
+
+    // ── Customer side: drinks at this seat ──
+    const glasses = barState.drinksAtSeats.get(guest.seatId);
+    if (glasses && glasses.length > 0) {
+      for (let i = 0; i < glasses.length; i++) {
+        const glass = glasses[i];
+        const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
+        const fillPct = glass.totalFill;
+        const color = getLiquidColor(glass.layers);
+        drawGlass(gfx, offsetX, CUSTOMER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+      }
+    }
+
+    // ── Bartender side: carried item ──
+    const carry = bartender.carrying;
+    if (!carry) return;
+
+    if (carry === 'DIRTY_GLASS') {
+      this._carryIcon.setTexture('icon_dirty_glass')
+        .setPosition(0, BARTENDER_Y).setVisible(true);
+    } else if (carry.startsWith('CHECK_')) {
+      this._carryIcon.setTexture('icon_receipt')
+        .setPosition(0, BARTENDER_Y).setVisible(true);
+    } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
+      const glass = barState.carriedGlass;
+      if (glass) {
+        const fillPct = glass.totalFill;
+        const color = getLiquidColor(glass.layers);
+        drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+      }
+    }
+  }
+
   _onTeardown() {
     this._guest = null;
     this._msgText = null;
     this._greenBtn = null;
     this._greenLabel = null;
+    this._barGfx = null;
+    this._carryIcon = null;
   }
 
   _getMessage(guest) {
