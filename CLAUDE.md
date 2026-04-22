@@ -132,6 +132,28 @@ Red flags that you're patching instead of fixing:
 - Use `_requestClose(eventName)` to close — never call `hide()` from within the modal
 - Animated modals (zoom) use LOCAL coords (0,0 = center); non-animated use SCREEN-ABSOLUTE coords
 
+#### Debug indicators (REQUIRED for all modals and UI components)
+Every modal and interactive UI **must** include a `_drawDebug()` method that
+renders diagnostic overlays when the debug toggle is active. This is not
+optional — new UI without debug indicators will need them added before shipping.
+
+**Pattern:**
+1. Create `this._debugGfx = scene.add.graphics()` in `_build()`, add to `_content`
+2. Call `this._drawDebug()` in `_onUpdate(dt)` (every frame)
+3. Check `this._debugEnabled` (inherited from BaseModal, reads `localStorage`)
+4. Clean up `this._debugGfx = null` in `_onTeardown()`
+
+**What to draw (color conventions):**
+- **Cyan** (0x00ffff, 0.8): panel/content bounds
+- **Yellow** (0xffff00, 0.7): interactive tap zones
+- **Red** (0xff4444, 0.8): cancel/negative button bounds
+- **Green** (0x44ff44, 0.8): confirm/positive button bounds
+- **Orange** (0xffaa00, 0.5): reference Y-lines (shelves, bar surface, spouts)
+- **Lime** (0xaaff00, 0.4): item position guides
+- **Magenta** (0xff33cc, 0.9): animation paths, sprite bounds
+
+See `DrinkModal._drawDebug()` and `GlassModal._drawDebug()` for examples.
+
 #### Portrait modal layout (CRITICAL for mobile)
 Station modals (GlassModal, DrinkModal) use a **single centered panel** with a
 **standard button pair** at the bottom — NOT a side-by-side split-panel:

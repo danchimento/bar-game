@@ -174,6 +174,7 @@ export class GuestModal extends BaseModal {
     this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
+    this._debugGfx = null;
     this._itemZones = [];
     this._activeSlide = null;
     this._lastState = null;
@@ -263,6 +264,9 @@ export class GuestModal extends BaseModal {
     // ── Button row ──
     this._buildRedButton();
     this._buildGreenButton();
+
+    this._debugGfx = scene.add.graphics();
+    this._content.add(this._debugGfx);
   }
 
   _buildRedButton() {
@@ -402,6 +406,7 @@ export class GuestModal extends BaseModal {
     }
 
     this._drawBarItems();
+    this._drawDebug();
 
     // Rebuild zones when carried item or drinks change
     const carrying = bartender.carrying;
@@ -615,6 +620,95 @@ export class GuestModal extends BaseModal {
     this._rebuildItemZones();
   }
 
+  _drawDebug() {
+    if (!this._debugGfx || !this._debugEnabled) {
+      if (this._debugGfx) this._debugGfx.clear();
+      return;
+    }
+    const g = this._debugGfx;
+    g.clear();
+
+    const hw = PANEL_W / 2;
+    const hh = PANEL_H / 2;
+
+    // Panel bounds (cyan)
+    g.lineStyle(2, 0x00ffff, 0.8);
+    g.strokeRect(-hw, -hh, PANEL_W, PANEL_H);
+
+    // Speech bubble bounds (yellow)
+    g.lineStyle(1, 0xffff00, 0.7);
+    g.strokeRect(-BUBBLE_W / 2, BUBBLE_Y - BUBBLE_H / 2, BUBBLE_W, BUBBLE_H);
+
+    // Guest sprite area (magenta)
+    g.lineStyle(1, 0xff33cc, 0.6);
+    g.strokeRect(-60, SPRITE_Y - 50, 120, 100);
+
+    // Bar surface band (orange)
+    g.lineStyle(1, 0xffaa00, 0.6);
+    g.strokeRect(-(PANEL_W - 40) / 2, BAR_LINE_Y - BAR_BAND_H / 2, PANEL_W - 40, BAR_BAND_H);
+
+    // Customer side area (lime label)
+    g.lineStyle(1, 0xaaff00, 0.4);
+    g.lineBetween(-hw + 20, CUSTOMER_Y, hw - 20, CUSTOMER_Y);
+
+    // Bar front edge (orange)
+    g.lineStyle(1, 0xffaa00, 0.4);
+    g.lineBetween(-hw + 20, BAR_FRONT_Y, hw - 20, BAR_FRONT_Y);
+
+    // Bartender side area (lime label)
+    g.lineStyle(1, 0xaaff00, 0.4);
+    g.lineBetween(-hw + 20, BARTENDER_Y, hw - 20, BARTENDER_Y);
+
+    // Interactive zones (yellow)
+    g.lineStyle(1, 0xffff00, 0.7);
+    for (const zone of this._itemZones) {
+      const zx = zone.x - zone.width / 2;
+      const zy = zone.y - zone.height / 2;
+      g.strokeRect(zx, zy, zone.width, zone.height);
+    }
+
+    // Red button bounds
+    const redX = -(BTN_W / 2 + BTN_GAP / 2);
+    g.lineStyle(1, 0xff4444, 0.8);
+    g.strokeRect(redX - BTN_W / 2, BTN_ROW_Y - BTN_H / 2, BTN_W, BTN_H);
+
+    // Green button bounds
+    const greenX = BTN_W / 2 + BTN_GAP / 2;
+    g.lineStyle(1, 0x44ff44, 0.8);
+    g.strokeRect(greenX - BTN_W / 2, BTN_ROW_Y - BTN_H / 2, BTN_W, BTN_H);
+
+    // Slide animation path (magenta dashed)
+    if (this._activeSlide) {
+      const s = this._activeSlide;
+      g.lineStyle(2, 0xff33cc, 0.9);
+      g.lineBetween(s.x, s.startY, s.x, s.endY);
+      g.fillStyle(0xff33cc, 0.9);
+      g.fillCircle(s.x, s.currentY, 4);
+    }
+
+    // Labels
+    const style = { fontFamily: 'monospace', fontSize: '9px', color: '#00ffff' };
+    const labels = this._debugLabels;
+    if (!labels) {
+      this._debugLabels = [];
+      const pairs = [
+        [hw - 4, BUBBLE_Y, 'bubble'],
+        [hw - 4, SPRITE_Y, 'sprite'],
+        [hw - 4, BAR_LINE_Y, 'bar'],
+        [hw - 4, CUSTOMER_Y, 'cust'],
+        [hw - 4, BAR_FRONT_Y, 'front'],
+        [hw - 4, BARTENDER_Y, 'carry'],
+        [hw - 4, BTN_ROW_Y, 'btns'],
+      ];
+      for (const [lx, ly, txt] of pairs) {
+        const label = this.scene.add.text(lx, ly, txt, style)
+          .setOrigin(1, 0.5).setAlpha(0.7);
+        this._content.add(label);
+        this._debugLabels.push(label);
+      }
+    }
+  }
+
   _onTeardown() {
     this._guest = null;
     this._msgText = null;
@@ -622,6 +716,8 @@ export class GuestModal extends BaseModal {
     this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
+    this._debugGfx = null;
+    this._debugLabels = null;
     this._activeSlide = null;
     this._clearItemZones();
   }
