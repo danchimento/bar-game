@@ -619,4 +619,62 @@ export class GuestManager {
       });
     });
   }
+
+  // ─── IMMEDIATE ACTIONS (used by GuestModal, skip walkThenAct) ──
+  // The bartender is already at the seat when the modal is open.
+
+  acknowledgeAtSeat(guest) {
+    const { bartender, hud, settings } = this.ctx;
+    bartender.startAction(0.3, 'Checking in...', () => {
+      guest.greeted = true;
+      guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
+
+      if (guest.state === GUEST_STATE.SEATED && guest.stateTimer > 0) {
+        guest.orderRevealTimer = 2.0;
+        hud.showMessage('Still deciding...', 1);
+        return;
+      }
+
+      const reason = guest.lookingReason || 'first_order';
+      switch (reason) {
+        case 'first_order':
+          guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
+          guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
+          if (this.ctx.notepad) {
+            this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
+          }
+          hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
+          break;
+        case 'another':
+          guest.currentOrder = [guest.currentDrink];
+          guest.fulfilledItems = [];
+          guest.orderRevealTimer = settings?.orderRevealTime ?? 4;
+          guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
+          if (this.ctx.notepad) {
+            this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
+          }
+          hud.showMessage('Another one!', 1);
+          break;
+        case 'check':
+          guest.transitionTo(GUEST_STATE.READY_TO_PAY);
+          hud.showMessage('Wants the check', 1);
+          break;
+      }
+    });
+  }
+
+  checkInAtSeat(guest) {
+    const { bartender, hud } = this.ctx;
+    bartender.startAction(0.3, 'Checking in...', () => {
+      guest.mood = Math.min(MOOD_MAX, guest.mood + 8);
+      guest.checkedIn = true;
+      hud.showMessage('Checked in!', 1);
+    });
+  }
+
+  reassureAtSeat(guest) {
+    const { hud } = this.ctx;
+    guest.mood = Math.min(MOOD_MAX, guest.mood + 5);
+    hud.showMessage('Coming right up!', 1);
+  }
 }

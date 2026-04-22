@@ -281,7 +281,7 @@ export class GamePlayScene extends Phaser.Scene {
         const seatX = guest.seat ? guest.seat.x : guest.x;
         this.walkThenAct(seatX, () => {
           if (this._anyModalOpen()) return;
-          this.guestModal.show(guest, (g) => this.guestManager.getGuestActions(g));
+          this.guestModal.show(guest);
         });
         return;
       }
