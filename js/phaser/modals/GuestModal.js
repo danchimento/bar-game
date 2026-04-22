@@ -174,9 +174,13 @@ export class GuestModal extends BaseModal {
     this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
+    this._itemZones = [];
+    this._activeSlide = null;
     this._lastState = null;
     this._lastHasCheck = null;
     this._lastGreeted = null;
+    this._lastCarrying = null;
+    this._lastDrinkCount = -1;
 
     this._contentW = PANEL_W;
     this._contentH = PANEL_H;
@@ -187,6 +191,9 @@ export class GuestModal extends BaseModal {
     this._lastState = guest.state;
     this._lastHasCheck = guest.hasCheck;
     this._lastGreeted = guest.greeted;
+    this._lastCarrying = null;
+    this._lastDrinkCount = -1;
+    this._activeSlide = null;
 
     const originX = guest.seat?.x ?? guest.x;
     const originY = this.scene.barLayout.barSurfaceY + 5;
@@ -251,6 +258,7 @@ export class GuestModal extends BaseModal {
     this._content.add(this._carryIcon);
 
     this._drawBarItems();
+    this._rebuildItemZones();
 
     // ── Button row ──
     this._buildRedButton();
@@ -378,8 +386,32 @@ export class GuestModal extends BaseModal {
   _onUpdate(dt) {
     if (!this._guest) return;
     const guest = this._guest;
+    const { bartender, barState } = this.scene;
+
+    // Slide animation
+    if (this._activeSlide) {
+      const elapsed = this.scene.time.now - this._activeSlide.startTime;
+      const t = Math.min(1, elapsed / this._activeSlide.duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      this._activeSlide.currentY = this._activeSlide.startY +
+        (this._activeSlide.endY - this._activeSlide.startY) * ease;
+
+      if (t >= 1) {
+        this._completeSlide();
+      }
+    }
 
     this._drawBarItems();
+
+    // Rebuild zones when carried item or drinks change
+    const carrying = bartender.carrying;
+    const glasses = barState.drinksAtSeats.get(guest.seatId);
+    const drinkCount = glasses ? glasses.length : 0;
+    if (carrying !== this._lastCarrying || drinkCount !== this._lastDrinkCount) {
+      this._lastCarrying = carrying;
+      this._lastDrinkCount = drinkCount;
+      if (!this._activeSlide) this._rebuildItemZones();
+    }
 
     const stateChanged = guest.state !== this._lastState;
     const checkChanged = guest.hasCheck !== this._lastHasCheck;
@@ -407,11 +439,13 @@ export class GuestModal extends BaseModal {
     const guest = this._guest;
     if (!guest) return;
     const { barState, bartender } = this.scene;
+    const slide = this._activeSlide;
 
     // ── Customer side: drinks at this seat ──
     const glasses = barState.drinksAtSeats.get(guest.seatId);
     if (glasses && glasses.length > 0) {
       for (let i = 0; i < glasses.length; i++) {
+        if (slide && slide.side === 'customer' && slide.index === i) continue;
         const glass = glasses[i];
         const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
         const fillPct = glass.totalFill;
@@ -422,22 +456,165 @@ export class GuestModal extends BaseModal {
 
     // ── Bartender side: carried item ──
     const carry = bartender.carrying;
-    if (!carry) return;
-
-    if (carry === 'DIRTY_GLASS') {
-      this._carryIcon.setTexture('icon_dirty_glass')
-        .setPosition(0, BARTENDER_Y).setVisible(true);
-    } else if (carry.startsWith('CHECK_')) {
-      this._carryIcon.setTexture('icon_receipt')
-        .setPosition(0, BARTENDER_Y).setVisible(true);
-    } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
-      const glass = barState.carriedGlass;
-      if (glass) {
-        const fillPct = glass.totalFill;
-        const color = getLiquidColor(glass.layers);
-        drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+    if (carry && !(slide && slide.side === 'bartender')) {
+      if (carry === 'DIRTY_GLASS') {
+        this._carryIcon.setTexture('icon_dirty_glass')
+          .setPosition(0, BARTENDER_Y).setVisible(true);
+      } else if (carry.startsWith('CHECK_')) {
+        this._carryIcon.setTexture('icon_receipt')
+          .setPosition(0, BARTENDER_Y).setVisible(true);
+      } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
+        const glass = barState.carriedGlass;
+        if (glass) {
+          const fillPct = glass.totalFill;
+          const color = getLiquidColor(glass.layers);
+          drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+        }
       }
     }
+
+    // ── Sliding item ──
+    if (slide) {
+      const y = slide.currentY;
+      if (slide.glassType) {
+        drawGlass(gfx, slide.x, y + 20, slide.glassType, slide.fillPct, slide.fillColor, DRINK_SCALE);
+      } else if (slide.iconKey) {
+        this._carryIcon.setTexture(slide.iconKey)
+          .setPosition(slide.x, y).setVisible(true);
+      }
+    }
+  }
+
+  // ── Interactive zones ──
+
+  _clearItemZones() {
+    for (const z of this._itemZones) {
+      z.destroy();
+      this._content.remove(z);
+    }
+    this._itemZones = [];
+  }
+
+  _rebuildItemZones() {
+    this._clearItemZones();
+    if (this._activeSlide) return;
+
+    const guest = this._guest;
+    if (!guest) return;
+    const { barState, bartender } = this.scene;
+    const scene = this.scene;
+
+    // Customer side: tappable empty glasses (slide down = pickup)
+    const glasses = barState.drinksAtSeats.get(guest.seatId);
+    if (glasses && glasses.length > 0) {
+      for (let i = 0; i < glasses.length; i++) {
+        const glass = glasses[i];
+        const isEmpty = glass.layers.reduce((s, l) => s + l.amount, 0) < 0.01;
+        if (!isEmpty) continue;
+        if (bartender.carrying && bartender.carrying !== 'DIRTY_GLASS') continue;
+
+        const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
+        const zone = scene.add.rectangle(offsetX, CUSTOMER_Y, 50, 50, 0x44ff44, 0.08)
+          .setStrokeStyle(1, 0x44ff44, 0.3)
+          .setInteractive({ useHandCursor: true });
+        zone.on('pointerdown', () => this._startSlide('customer', i));
+        this._content.add(zone);
+        this._itemZones.push(zone);
+      }
+    }
+
+    // Bartender side: tappable carried item (slide up = serve/give)
+    const carry = bartender.carrying;
+    if (carry && !bartender.busy) {
+      const zone = scene.add.rectangle(0, BARTENDER_Y, 60, 50, 0x4488ff, 0.08)
+        .setStrokeStyle(1, 0x4488ff, 0.3)
+        .setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', () => this._startSlide('bartender', 0));
+      this._content.add(zone);
+      this._itemZones.push(zone);
+    }
+  }
+
+  // ── Slide animation ──
+
+  _startSlide(side, index) {
+    if (this._activeSlide || this._closing) return;
+    const { barState, bartender } = this.scene;
+
+    let slideData = null;
+
+    if (side === 'bartender') {
+      const carry = bartender.carrying;
+      if (!carry) return;
+
+      const startY = BARTENDER_Y;
+      const endY = CUSTOMER_Y;
+      const x = 0;
+
+      if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
+        const glass = barState.carriedGlass;
+        if (!glass) return;
+        slideData = {
+          side, index, x, startY, endY, currentY: startY,
+          startTime: this.scene.time.now, duration: 300,
+          glassType: glass.glassType,
+          fillPct: glass.totalFill,
+          fillColor: getLiquidColor(glass.layers),
+          iconKey: null,
+        };
+      } else if (carry.startsWith('CHECK_')) {
+        slideData = {
+          side, index, x, startY, endY, currentY: startY,
+          startTime: this.scene.time.now, duration: 300,
+          glassType: null, fillPct: 0, fillColor: 0,
+          iconKey: 'icon_receipt',
+        };
+      }
+    } else if (side === 'customer') {
+      const glasses = barState.drinksAtSeats.get(this._guest.seatId);
+      if (!glasses || !glasses[index]) return;
+      const glass = glasses[index];
+
+      const offsetX = (index - (glasses.length - 1) / 2) * DRINK_SPACING;
+      const startY = CUSTOMER_Y;
+      const endY = BARTENDER_Y;
+
+      slideData = {
+        side, index, x: offsetX, startY, endY, currentY: startY,
+        startTime: this.scene.time.now, duration: 300,
+        glassType: glass.glassType,
+        fillPct: glass.totalFill,
+        fillColor: getLiquidColor(glass.layers),
+        iconKey: null,
+      };
+    }
+
+    if (!slideData) return;
+    this._activeSlide = slideData;
+    this._clearItemZones();
+  }
+
+  _completeSlide() {
+    const slide = this._activeSlide;
+    if (!slide) return;
+    this._activeSlide = null;
+
+    const guest = this._guest;
+    if (!guest) return;
+    const gm = this.scene.guestManager;
+
+    if (slide.side === 'bartender') {
+      const carry = this.scene.bartender.carrying;
+      if (carry && carry.startsWith('CHECK_')) {
+        gm.giveCheckAtSeat(guest);
+      } else {
+        gm.serveAtSeat(guest);
+      }
+    } else if (slide.side === 'customer') {
+      gm.pickupGlassAtSeat(guest);
+    }
+
+    this._rebuildItemZones();
   }
 
   _onTeardown() {
@@ -447,6 +624,8 @@ export class GuestModal extends BaseModal {
     this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
+    this._activeSlide = null;
+    this._clearItemZones();
   }
 
   _getMessage(guest) {

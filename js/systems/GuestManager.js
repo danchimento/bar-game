@@ -677,4 +677,198 @@ export class GuestManager {
     guest.mood = Math.min(MOOD_MAX, guest.mood + 5);
     hud.showMessage('Coming right up!', 1);
   }
+
+  serveAtSeat(guest) {
+    const { bartender, barState, hud, stats, notepad } = this.ctx;
+    if (!barState.carriedGlass) {
+      hud.showMessage('Not carrying a drink!', 1.5);
+      return;
+    }
+
+    const isAnticipated = guest.state === GUEST_STATE.SEATED ||
+                          guest.state === GUEST_STATE.LOOKING;
+
+    if (isAnticipated) {
+      this._serveAnticipatedAtSeat(guest);
+      return;
+    }
+
+    const wantedKey = guest.currentOrder ? guest.currentOrder[0] : guest.currentDrink;
+    const wantedDef = DRINKS[wantedKey];
+    const glass = barState.carriedGlass;
+    const result = glass.validate(wantedKey);
+
+    bartender.startAction(0.3, 'Serving...', () => {
+      if (result.valid) {
+        barState.addDrinkAtSeat(guest.seatId, glass);
+        guest._doneWithCurrentRound = false;
+        bartender.carrying = null;
+        barState.carriedGlass = null;
+
+        stats.drinksServedCorrect++;
+        guest.drinksServed.push(wantedKey);
+        guest.totalSpent += wantedDef.price;
+        hud.revenue += wantedDef.price;
+        if (notepad) notepad.markFulfilled(guest.id);
+
+        if (guest.currentOrder && guest.currentOrder.length > 1) {
+          guest.fulfilledItems.push(wantedKey);
+          if (guest.fulfilledItems.length >= guest.currentOrder.length) {
+            guest.transitionTo(GUEST_STATE.ENJOYING);
+            hud.showMessage('Order complete!', 1);
+          } else {
+            hud.showMessage('Served! More items left', 1.5);
+          }
+        } else {
+          guest.transitionTo(GUEST_STATE.ENJOYING);
+          hud.showMessage('Served!', 1);
+        }
+      } else {
+        const issues = result.issues;
+        if (issues.includes('wrong_glass') || issues.includes('wrong_drink') || issues.includes('contaminated')) {
+          const msg = issues.includes('wrong_glass') ? 'Wrong glass!' :
+            issues.includes('wrong_drink') ? 'Wrong drink!' : 'Contaminated!';
+          guest.mood -= issues.includes('wrong_drink') || issues.includes('contaminated') ? 25 : 15;
+          stats.drinksRejected++;
+          hud.showMessage(msg, 1.5);
+        } else {
+          barState.addDrinkAtSeat(guest.seatId, glass);
+          guest._doneWithCurrentRound = false;
+          bartender.carrying = null;
+          barState.carriedGlass = null;
+
+          let moodPenalty = 0;
+          let msg = '';
+          if (issues.includes('underfilled')) { moodPenalty = 8; msg = 'Underfilled...'; }
+          else if (issues.includes('overfilled')) { moodPenalty = 5; msg = 'Overfilled!'; }
+          else if (issues.includes('missing_garnish')) { moodPenalty = 10; msg = 'Missing garnish!'; }
+          else if (issues.includes('missing_ice')) { moodPenalty = 8; msg = 'No ice?!'; }
+          guest.mood -= moodPenalty;
+          stats.drinksServedWithIssues++;
+
+          guest.drinksServed.push(wantedKey);
+          guest.totalSpent += wantedDef.price;
+          hud.revenue += wantedDef.price;
+          if (guest.currentOrder) {
+            guest.fulfilledItems.push(wantedKey);
+            if (guest.fulfilledItems.length >= guest.currentOrder.length) {
+              guest.transitionTo(GUEST_STATE.ENJOYING);
+            }
+          } else {
+            guest.transitionTo(GUEST_STATE.ENJOYING);
+          }
+          hud.showMessage(msg, 1.5);
+        }
+      }
+    });
+  }
+
+  _serveAnticipatedAtSeat(guest) {
+    const { bartender, barState, hud, stats } = this.ctx;
+    const glass = barState.carriedGlass;
+    if (!glass || !glass.primaryDrink) {
+      hud.showMessage('Not carrying a drink!', 1.5);
+      return;
+    }
+
+    if (!guest.currentDrink) guest.chooseDrink();
+    const wantedKey = guest.currentDrink;
+    const wantedDef = DRINKS[wantedKey];
+    const result = glass.validate(wantedKey);
+
+    bartender.startAction(0.3, 'Serving...', () => {
+      if (result.valid || (!result.issues.includes('wrong_drink') &&
+          !result.issues.includes('wrong_glass') && !result.issues.includes('contaminated'))) {
+        barState.addDrinkAtSeat(guest.seatId, glass);
+        guest._doneWithCurrentRound = false;
+        bartender.carrying = null;
+        barState.carriedGlass = null;
+
+        guest.drinksServed.push(wantedKey);
+        guest.totalSpent += wantedDef.price;
+        hud.revenue += wantedDef.price;
+        guest.currentOrder = [wantedKey];
+        guest.fulfilledItems = [wantedKey];
+        guest.greeted = true;
+
+        guest.mood = Math.min(MOOD_MAX, guest.mood + 25);
+        guest.transitionTo(GUEST_STATE.ENJOYING);
+        hud.showMessage('Read their mind!', 1.5);
+        stats.anticipatedCorrect++;
+      } else {
+        guest.mood -= 15;
+        hud.showMessage('Not what they wanted!', 1.5);
+        stats.anticipatedWrong++;
+      }
+    });
+  }
+
+  giveCheckAtSeat(guest) {
+    const { bartender, barState, hud, stats, posTab } = this.ctx;
+    if (!bartender.carrying || !bartender.carrying.startsWith('CHECK_')) return;
+
+    bartender.startAction(0.3, 'Giving check...', () => {
+      const checkSeatId = parseInt(bartender.carrying.replace('CHECK_', ''), 10);
+      bartender.carrying = null;
+
+      if (checkSeatId !== guest.seatId) {
+        guest.mood = Math.max(0, guest.mood - 15);
+        hud.showMessage('Wrong check!', 1.5);
+        return;
+      }
+
+      const earlyCheck = guest.state !== GUEST_STATE.READY_TO_PAY;
+      if (earlyCheck) {
+        if (!this._barClosed) {
+          guest.mood = Math.max(0, guest.mood - 20);
+          hud.showMessage('Wants to stay longer...', 1.5);
+        } else {
+          hud.showMessage('Last call — check delivered', 1.5);
+        }
+      }
+
+      const tab = posTab.get(guest.seatId) || [];
+      const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
+      const servedTotal = guest.totalSpent;
+
+      if (tabTotal > servedTotal) {
+        guest.overcharged = true;
+        stats.billsOvercharged++;
+        if (!earlyCheck) hud.showMessage('Overcharged!', 2);
+      } else if (tabTotal < servedTotal) {
+        stats.billsUndercharged++;
+        if (!earlyCheck) hud.showMessage('Undercharged', 1.5);
+      } else {
+        stats.billsCorrect++;
+        if (!earlyCheck) hud.showMessage('Check delivered!', 1);
+      }
+
+      if (guest.state === GUEST_STATE.ENJOYING && !guest._doneWithCurrentRound) {
+        guest.hasCheck = true;
+      } else {
+        guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
+      }
+    });
+  }
+
+  pickupGlassAtSeat(guest) {
+    const { bartender, barState, hud } = this.ctx;
+    if (bartender.carrying && bartender.carrying !== 'DIRTY_GLASS') return;
+
+    const glasses = barState.drinksAtSeats.get(guest.seatId);
+    if (!glasses) return;
+
+    bartender.startAction(0.3, 'Clearing...', () => {
+      const remaining = glasses.filter(g =>
+        g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
+      );
+      if (remaining.length > 0) {
+        barState.drinksAtSeats.set(guest.seatId, remaining);
+      } else {
+        barState.drinksAtSeats.delete(guest.seatId);
+      }
+      bartender.carrying = 'DIRTY_GLASS';
+      hud.showMessage('Cleared glass', 0.8);
+    });
+  }
 }
