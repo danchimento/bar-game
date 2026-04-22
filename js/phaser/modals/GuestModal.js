@@ -557,6 +557,7 @@ export class GuestModal extends BaseModal {
         slideData = {
           side, index, x, startY, endY, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
+          action: 'serve',
           glassType: glass.glassType,
           fillPct: glass.totalFill,
           fillColor: getLiquidColor(glass.layers),
@@ -566,6 +567,7 @@ export class GuestModal extends BaseModal {
         slideData = {
           side, index, x, startY, endY, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
+          action: 'giveCheck',
           glassType: null, fillPct: 0, fillColor: 0,
           iconKey: 'icon_receipt',
         };
@@ -582,6 +584,7 @@ export class GuestModal extends BaseModal {
       slideData = {
         side, index, x: offsetX, startY, endY, currentY: startY,
         startTime: this.scene.time.now, duration: 300,
+        action: 'pickup',
         glassType: glass.glassType,
         fillPct: glass.totalFill,
         fillColor: getLiquidColor(glass.layers),
@@ -603,15 +606,10 @@ export class GuestModal extends BaseModal {
     if (!guest) return;
     const gm = this.scene.guestManager;
 
-    if (slide.side === 'bartender') {
-      const carry = this.scene.bartender.carrying;
-      if (carry && carry.startsWith('CHECK_')) {
-        gm.giveCheckAtSeat(guest);
-      } else {
-        gm.serveAtSeat(guest);
-      }
-    } else if (slide.side === 'customer') {
-      gm.pickupGlassAtSeat(guest);
+    switch (slide.action) {
+      case 'serve':     gm.serveAtSeat(guest); break;
+      case 'giveCheck': gm.giveCheckAtSeat(guest); break;
+      case 'pickup':    gm.pickupGlassAtSeat(guest); break;
     }
 
     this._rebuildItemZones();

@@ -375,46 +375,8 @@ export class GuestManager {
   }
 
   acknowledgeGuest(guest) {
-    const { bartender, hud, settings, walkThenAct } = this.ctx;
-    const seatX = guest.seat.x;
-    walkThenAct(seatX, () => {
-      bartender.startAction(ACTION_DURATIONS.GREET, 'Checking in...', () => {
-        guest.greeted = true;
-        guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
-
-        if (guest.state === GUEST_STATE.SEATED && guest.stateTimer > 0) {
-          guest.orderRevealTimer = 2.0;
-          hud.showMessage('Still deciding...', 1);
-          return;
-        }
-
-        const reason = guest.lookingReason || 'first_order';
-        switch (reason) {
-          case 'first_order':
-            guest.transitionTo(GUEST_STATE.READY_TO_ORDER);
-            guest.transitionTo(GUEST_STATE.ORDER_TAKEN);
-            if (this.ctx.notepad) {
-              this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
-            }
-            hud.showMessage(`Order: ${DRINKS[guest.currentDrink]?.name}`, 1.5);
-            break;
-          case 'another':
-            guest.currentOrder = [guest.currentDrink];
-            guest.fulfilledItems = [];
-            guest.orderRevealTimer = settings?.orderRevealTime ?? 4;
-            guest.transitionTo(GUEST_STATE.WANTS_ANOTHER);
-            if (this.ctx.notepad) {
-              this.ctx.notepad.addOrder(guest.id, guest.seatId, DRINKS[guest.currentDrink]?.name || guest.currentDrink);
-            }
-            hud.showMessage('Another one!', 1);
-            break;
-          case 'check':
-            guest.transitionTo(GUEST_STATE.READY_TO_PAY);
-            hud.showMessage('Wants the check', 1);
-            break;
-        }
-      });
-    });
+    const { walkThenAct } = this.ctx;
+    walkThenAct(guest.seat.x, () => this._doAcknowledge(guest, ACTION_DURATIONS.GREET));
   }
 
   askOrder(guest) {
@@ -429,203 +391,81 @@ export class GuestManager {
   }
 
   serveDrink(guest, orderIndex = 0) {
-    const { bartender, barState, hud, stats, notepad, walkThenAct } = this.ctx;
-    const seatX = guest.seat.x;
-    walkThenAct(seatX, () => {
-      if (!barState.carriedGlass) {
-        hud.showMessage('Not carrying a drink!', 1.5);
-        return;
-      }
-
-      const wantedKey = guest.currentOrder ? guest.currentOrder[orderIndex] : guest.currentDrink;
-      const wantedDef = DRINKS[wantedKey];
-      const glass = barState.carriedGlass;
-      const result = glass.validate(wantedKey);
-
-      bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
-        if (result.valid) {
-          barState.addDrinkAtSeat(guest.seatId, glass);
-          guest._doneWithCurrentRound = false;
-          bartender.carrying = null;
-          barState.carriedGlass = null;
-
-          stats.drinksServedCorrect++;
-          guest.drinksServed.push(wantedKey);
-          guest.totalSpent += wantedDef.price;
-          hud.revenue += wantedDef.price;
-          if (notepad) notepad.markFulfilled(guest.id);
-
-          if (guest.currentOrder && guest.currentOrder.length > 1) {
-            guest.fulfilledItems.push(wantedKey);
-            if (guest.fulfilledItems.length >= guest.currentOrder.length) {
-              guest.transitionTo(GUEST_STATE.ENJOYING);
-              hud.showMessage('Order complete!', 1);
-            } else {
-              hud.showMessage('Served! More items left', 1.5);
-            }
-          } else {
-            guest.transitionTo(GUEST_STATE.ENJOYING);
-            hud.showMessage('Served!', 1);
-          }
-        } else {
-          const issues = result.issues;
-          if (issues.includes('wrong_glass') || issues.includes('wrong_drink') || issues.includes('contaminated')) {
-            const msg = issues.includes('wrong_glass') ? 'Wrong glass!' :
-              issues.includes('wrong_drink') ? 'Wrong drink!' : 'Contaminated!';
-            guest.mood -= issues.includes('wrong_drink') || issues.includes('contaminated') ? 25 : 15;
-            stats.drinksRejected++;
-            hud.showMessage(msg, 1.5);
-          } else {
-            barState.addDrinkAtSeat(guest.seatId, glass);
-            guest._doneWithCurrentRound = false;
-            bartender.carrying = null;
-            barState.carriedGlass = null;
-
-            let moodPenalty = 0;
-            let msg = '';
-            if (issues.includes('underfilled')) { moodPenalty = 8; msg = 'Underfilled...'; }
-            else if (issues.includes('overfilled')) { moodPenalty = 5; msg = 'Overfilled!'; }
-            else if (issues.includes('missing_garnish')) { moodPenalty = 10; msg = 'Missing garnish!'; }
-            else if (issues.includes('missing_ice')) { moodPenalty = 8; msg = 'No ice?!'; }
-            guest.mood -= moodPenalty;
-            stats.drinksServedWithIssues++;
-
-            guest.drinksServed.push(wantedKey);
-            guest.totalSpent += wantedDef.price;
-            hud.revenue += wantedDef.price;
-            if (guest.currentOrder) {
-              guest.fulfilledItems.push(wantedKey);
-              if (guest.fulfilledItems.length >= guest.currentOrder.length) {
-                guest.transitionTo(GUEST_STATE.ENJOYING);
-              }
-            } else {
-              guest.transitionTo(GUEST_STATE.ENJOYING);
-            }
-            hud.showMessage(msg, 1.5);
-          }
-        }
-      });
-    });
+    const { walkThenAct } = this.ctx;
+    walkThenAct(guest.seat.x, () => this._doServe(guest, orderIndex));
   }
 
   serveAnticipated(guest) {
-    const { bartender, barState, hud, stats, walkThenAct } = this.ctx;
-    const seatX = guest.seat.x;
-    walkThenAct(seatX, () => {
-      if (!barState.carriedGlass || !barState.carriedGlass.primaryDrink) {
-        hud.showMessage('Not carrying a drink!', 1.5);
-        return;
-      }
-
-      const glass = barState.carriedGlass;
-      if (!guest.currentDrink) guest.chooseDrink();
-
-      const wantedKey = guest.currentDrink;
-      const wantedDef = DRINKS[wantedKey];
-      const result = glass.validate(wantedKey);
-
-      bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
-        if (result.valid || (!result.issues.includes('wrong_drink') &&
-            !result.issues.includes('wrong_glass') && !result.issues.includes('contaminated'))) {
-          barState.addDrinkAtSeat(guest.seatId, glass);
-          guest._doneWithCurrentRound = false;
-          bartender.carrying = null;
-          barState.carriedGlass = null;
-
-          guest.drinksServed.push(wantedKey);
-          guest.totalSpent += wantedDef.price;
-          hud.revenue += wantedDef.price;
-          guest.currentOrder = [wantedKey];
-          guest.fulfilledItems = [wantedKey];
-          guest.greeted = true;
-
-          guest.mood = Math.min(MOOD_MAX, guest.mood + 25);
-          guest.transitionTo(GUEST_STATE.ENJOYING);
-          hud.showMessage('Read their mind!', 1.5);
-          stats.anticipatedCorrect++;
-        } else {
-          guest.mood -= 15;
-          hud.showMessage('Not what they wanted!', 1.5);
-          stats.anticipatedWrong++;
-        }
-      });
-    });
+    const { walkThenAct } = this.ctx;
+    walkThenAct(guest.seat.x, () => this._doServeAnticipated(guest));
   }
 
   checkIn(guest) {
-    const { bartender, hud, walkThenAct } = this.ctx;
-    const seatX = guest.seat.x;
-    walkThenAct(seatX, () => {
-      bartender.startAction(ACTION_DURATIONS.CHECK_IN, 'Checking in...', () => {
-        guest.mood = Math.min(MOOD_MAX, guest.mood + 8);
-        guest.checkedIn = true;
-        hud.showMessage('Checked in!', 1);
-      });
-    });
+    const { walkThenAct } = this.ctx;
+    walkThenAct(guest.seat.x, () => this._doCheckIn(guest));
   }
 
   giveCheck(guest) {
-    const { bartender, hud, stats, posTab, walkThenAct } = this.ctx;
-    const seatX = guest.seat.x;
-    walkThenAct(seatX, () => {
-      if (!bartender.carrying || !bartender.carrying.startsWith('CHECK_')) return;
-      bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
-        const checkSeatId = parseInt(bartender.carrying.replace('CHECK_', ''), 10);
-        bartender.carrying = null;
-
-        // Wrong check — guest rejects it
-        if (checkSeatId !== guest.seatId) {
-          guest.mood = Math.max(0, guest.mood - 15);
-          hud.showMessage('Wrong check!', 1.5);
-          return;
-        }
-
-        // Early check penalty: guest didn't ask for it yet
-        const earlyCheck = guest.state !== GUEST_STATE.READY_TO_PAY;
-        if (earlyCheck) {
-          if (!this._barClosed) {
-            guest.mood = Math.max(0, guest.mood - 20);
-            hud.showMessage('Wants to stay longer...', 1.5);
-          } else {
-            hud.showMessage('Last call — check delivered', 1.5);
-          }
-        }
-
-        const tab = posTab.get(guest.seatId) || [];
-        const tabTotal = tab.reduce((sum, e) => sum + e.price, 0);
-        const servedTotal = guest.totalSpent;
-
-        if (tabTotal > servedTotal) {
-          guest.overcharged = true;
-          stats.billsOvercharged++;
-          if (!earlyCheck) hud.showMessage('Overcharged!', 2);
-        } else if (tabTotal < servedTotal) {
-          const lost = servedTotal - tabTotal;
-          hud.revenue -= lost;
-          guest.totalSpent = tabTotal;
-          stats.billsUndercharged++;
-          if (!earlyCheck) hud.showMessage('Check delivered', 1);
-        } else {
-          stats.billsCorrect++;
-          if (!earlyCheck) hud.showMessage('Check delivered', 1);
-        }
-
-        // If guest is still enjoying a drink, let them finish it first
-        if (guest.state === GUEST_STATE.ENJOYING) {
-          guest.hasCheck = true;
-        } else {
-          guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
-        }
-      });
-    });
+    const { walkThenAct } = this.ctx;
+    walkThenAct(guest.seat.x, () => this._doGiveCheck(guest));
   }
 
   // ─── IMMEDIATE ACTIONS (used by GuestModal, skip walkThenAct) ──
-  // The bartender is already at the seat when the modal is open.
 
   acknowledgeAtSeat(guest) {
+    this._doAcknowledge(guest, ACTION_DURATIONS.DELIVER);
+  }
+
+  checkInAtSeat(guest) {
+    this._doCheckIn(guest);
+  }
+
+  reassureAtSeat(guest) {
+    const { hud } = this.ctx;
+    guest.mood = Math.min(MOOD_MAX, guest.mood + 5);
+    hud.showMessage('Coming right up!', 1);
+  }
+
+  serveAtSeat(guest) {
+    const isAnticipated = guest.state === GUEST_STATE.SEATED ||
+                          guest.state === GUEST_STATE.LOOKING;
+    if (isAnticipated) {
+      this._doServeAnticipated(guest);
+    } else {
+      this._doServe(guest, guest.fulfilledItems?.length || 0);
+    }
+  }
+
+  giveCheckAtSeat(guest) {
+    this._doGiveCheck(guest);
+  }
+
+  pickupGlassAtSeat(guest) {
+    const { bartender, barState, hud } = this.ctx;
+    if (bartender.carrying && bartender.carrying !== 'DIRTY_GLASS') return;
+
+    const glasses = barState.drinksAtSeats.get(guest.seatId);
+    if (!glasses) return;
+
+    bartender.startAction(ACTION_DURATIONS.DELIVER, 'Clearing...', () => {
+      const remaining = glasses.filter(g =>
+        g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
+      );
+      if (remaining.length > 0) {
+        barState.drinksAtSeats.set(guest.seatId, remaining);
+      } else {
+        barState.drinksAtSeats.delete(guest.seatId);
+      }
+      bartender.carrying = 'DIRTY_GLASS';
+      hud.showMessage('Cleared glass', 0.8);
+    });
+  }
+
+  // ─── SHARED CORE LOGIC ───────────────────────────
+
+  _doAcknowledge(guest, duration) {
     const { bartender, hud, settings } = this.ctx;
-    bartender.startAction(0.3, 'Checking in...', () => {
+    bartender.startAction(duration, 'Checking in...', () => {
       guest.greeted = true;
       guest.mood = Math.min(MOOD_MAX, guest.mood + 10);
 
@@ -663,42 +503,19 @@ export class GuestManager {
     });
   }
 
-  checkInAtSeat(guest) {
-    const { bartender, hud } = this.ctx;
-    bartender.startAction(0.3, 'Checking in...', () => {
-      guest.mood = Math.min(MOOD_MAX, guest.mood + 8);
-      guest.checkedIn = true;
-      hud.showMessage('Checked in!', 1);
-    });
-  }
-
-  reassureAtSeat(guest) {
-    const { hud } = this.ctx;
-    guest.mood = Math.min(MOOD_MAX, guest.mood + 5);
-    hud.showMessage('Coming right up!', 1);
-  }
-
-  serveAtSeat(guest) {
+  _doServe(guest, orderIndex) {
     const { bartender, barState, hud, stats, notepad } = this.ctx;
     if (!barState.carriedGlass) {
       hud.showMessage('Not carrying a drink!', 1.5);
       return;
     }
 
-    const isAnticipated = guest.state === GUEST_STATE.SEATED ||
-                          guest.state === GUEST_STATE.LOOKING;
-
-    if (isAnticipated) {
-      this._serveAnticipatedAtSeat(guest);
-      return;
-    }
-
-    const wantedKey = guest.currentOrder ? guest.currentOrder[0] : guest.currentDrink;
+    const wantedKey = guest.currentOrder ? guest.currentOrder[orderIndex] : guest.currentDrink;
     const wantedDef = DRINKS[wantedKey];
     const glass = barState.carriedGlass;
     const result = glass.validate(wantedKey);
 
-    bartender.startAction(0.3, 'Serving...', () => {
+    bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
       if (result.valid) {
         barState.addDrinkAtSeat(guest.seatId, glass);
         guest._doneWithCurrentRound = false;
@@ -763,20 +580,21 @@ export class GuestManager {
     });
   }
 
-  _serveAnticipatedAtSeat(guest) {
+  _doServeAnticipated(guest) {
     const { bartender, barState, hud, stats } = this.ctx;
-    const glass = barState.carriedGlass;
-    if (!glass || !glass.primaryDrink) {
+    if (!barState.carriedGlass || !barState.carriedGlass.primaryDrink) {
       hud.showMessage('Not carrying a drink!', 1.5);
       return;
     }
 
+    const glass = barState.carriedGlass;
     if (!guest.currentDrink) guest.chooseDrink();
+
     const wantedKey = guest.currentDrink;
     const wantedDef = DRINKS[wantedKey];
     const result = glass.validate(wantedKey);
 
-    bartender.startAction(0.3, 'Serving...', () => {
+    bartender.startAction(ACTION_DURATIONS.DELIVER, 'Serving...', () => {
       if (result.valid || (!result.issues.includes('wrong_drink') &&
           !result.issues.includes('wrong_glass') && !result.issues.includes('contaminated'))) {
         barState.addDrinkAtSeat(guest.seatId, glass);
@@ -803,11 +621,20 @@ export class GuestManager {
     });
   }
 
-  giveCheckAtSeat(guest) {
-    const { bartender, barState, hud, stats, posTab } = this.ctx;
+  _doCheckIn(guest) {
+    const { bartender, hud } = this.ctx;
+    bartender.startAction(ACTION_DURATIONS.CHECK_IN, 'Checking in...', () => {
+      guest.mood = Math.min(MOOD_MAX, guest.mood + 8);
+      guest.checkedIn = true;
+      hud.showMessage('Checked in!', 1);
+    });
+  }
+
+  _doGiveCheck(guest) {
+    const { bartender, hud, stats, posTab } = this.ctx;
     if (!bartender.carrying || !bartender.carrying.startsWith('CHECK_')) return;
 
-    bartender.startAction(0.3, 'Giving check...', () => {
+    bartender.startAction(ACTION_DURATIONS.DELIVER, 'Giving check...', () => {
       const checkSeatId = parseInt(bartender.carrying.replace('CHECK_', ''), 10);
       bartender.carrying = null;
 
@@ -836,39 +663,21 @@ export class GuestManager {
         stats.billsOvercharged++;
         if (!earlyCheck) hud.showMessage('Overcharged!', 2);
       } else if (tabTotal < servedTotal) {
+        const lost = servedTotal - tabTotal;
+        hud.revenue -= lost;
+        guest.totalSpent = tabTotal;
         stats.billsUndercharged++;
-        if (!earlyCheck) hud.showMessage('Undercharged', 1.5);
+        if (!earlyCheck) hud.showMessage('Check delivered', 1);
       } else {
         stats.billsCorrect++;
-        if (!earlyCheck) hud.showMessage('Check delivered!', 1);
+        if (!earlyCheck) hud.showMessage('Check delivered', 1);
       }
 
-      if (guest.state === GUEST_STATE.ENJOYING && !guest._doneWithCurrentRound) {
+      if (guest.state === GUEST_STATE.ENJOYING) {
         guest.hasCheck = true;
       } else {
         guest.transitionTo(GUEST_STATE.REVIEWING_CHECK);
       }
-    });
-  }
-
-  pickupGlassAtSeat(guest) {
-    const { bartender, barState, hud } = this.ctx;
-    if (bartender.carrying && bartender.carrying !== 'DIRTY_GLASS') return;
-
-    const glasses = barState.drinksAtSeats.get(guest.seatId);
-    if (!glasses) return;
-
-    bartender.startAction(0.3, 'Clearing...', () => {
-      const remaining = glasses.filter(g =>
-        g.layers.reduce((s, l) => s + l.amount, 0) >= 0.01
-      );
-      if (remaining.length > 0) {
-        barState.drinksAtSeats.set(guest.seatId, remaining);
-      } else {
-        barState.drinksAtSeats.delete(guest.seatId);
-      }
-      bartender.carrying = 'DIRTY_GLASS';
-      hud.showMessage('Cleared glass', 0.8);
     });
   }
 }
