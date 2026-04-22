@@ -250,6 +250,12 @@ debug on usually beats 5 rounds of math.
 - Set `seats: N` in the level definition in `js/data/levels.js`
 - BarLayout distributes them evenly across the bar width
 
+### Git Workflow
+- **Always develop on `main`** — do not create feature branches unless explicitly asked
+- If a task creates a feature branch (e.g., from an external tool), merge it back to `main` and push before finishing
+- Commit frequently with descriptive messages
+- Push to `main` after each logical milestone so changes are immediately visible
+
 ## Development
 
 ```bash
