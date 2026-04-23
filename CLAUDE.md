@@ -18,6 +18,7 @@ UI controls must be ≥44px tap targets.
 - `docs/GUEST_LIFECYCLE.md` — Guest state machine
 - `docs/LEVELS.md` — Level design spec
 - `docs/UI_AND_VISUALS.md` — Visual design and layout spec
+- `docs/SPRITE_HANDOFF.md` — Sprite dimensions, scales, and integration checklist
 
 ## Architecture Rules
 
