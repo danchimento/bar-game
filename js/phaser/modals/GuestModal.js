@@ -1,5 +1,6 @@
 import { GUEST_STATE } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
+import { GUEST_SIT_SCREEN_H, GUEST_BAR_OVERLAP_PX } from '../../constants/layout.js';
 import { BaseModal } from './BaseModal.js';
 import { drawGlass, getLiquidColor } from '../utils/GlassRenderer.js';
 
@@ -146,24 +147,51 @@ function _pick(pool, guestId) {
   return pool[idx];
 }
 
-// ── Layout constants (local coords, centered at 0,0) ──
+// ── Layout derived from game spatial data ──
+// The guest sitting PNG is 144×120 (baked at 6× game scale).
+// SPRITE_ZOOM is the display multiplier applied via setScale().
+// All positions are derived from sprite geometry and bar overlap rules
+// so they stay correct if art or layout constants change.
+const SPRITE_ZOOM = 2.0;
+const PNG_W = 144;
+const PNG_H = GUEST_SIT_SCREEN_H; // 120 at 6×
+const DISPLAY_H = PNG_H * SPRITE_ZOOM;  // 240px on screen
+
+// Hands-on-bar position: GUEST_BAR_OVERLAP_PX is the Y from sprite top
+// where hands begin (at 6× scale). Scale it by SPRITE_ZOOM for modal.
+const HANDS_FROM_TOP = GUEST_BAR_OVERLAP_PX * SPRITE_ZOOM;    // 216px from sprite top
+const HANDS_FROM_BOTTOM = DISPLAY_H - HANDS_FROM_TOP;         // 24px from sprite bottom
+
+// Bar surface visual: full 3-tile depth would be 192px at this zoom — too
+// tall for the modal. We show enough to read as a counter (~50px).
+const BAR_DEPTH = 50;
+
 const PANEL_W = 490;
 const PANEL_H = 520;
-const BUBBLE_Y = -210;
-const BUBBLE_W = PANEL_W - 60;
 const BUBBLE_H = 60;
-const SPRITE_Y = -90;
-const BAR_LINE_Y = -10;
-const BAR_BAND_H = 48;
-const CUSTOMER_Y = 30;
-const BAR_FRONT_Y = 65;
-const BARTENDER_Y = 110;
-const BTN_ROW_Y = 200;
-const BTN_W = 215;
+const BUBBLE_W = PANEL_W - 60;
 const BTN_H = 50;
+const BTN_W = 215;
 const BTN_GAP = 10;
-const DRINK_SCALE = 2.5;
-const DRINK_SPACING = 60;
+
+// Vertical layout: anchor bar position, derive everything else.
+// Buttons near bottom, bar in the middle, sprite above bar with hands on it.
+const BTN_ROW_Y = PANEL_H / 2 - BTN_H - 20;
+const BARTENDER_Y = BTN_ROW_Y - 80;
+const BAR_FRONT_Y = BARTENDER_Y - 40;
+const CUSTOMER_Y = BAR_FRONT_Y - 30;
+const BAR_TOP_Y = CUSTOMER_Y - BAR_DEPTH / 2;
+const BAR_CENTER_Y = BAR_TOP_Y + BAR_DEPTH / 2;
+
+// Sprite positioned so hands land on bar top.
+// With origin (0.5, 0.5): sprite_center + DISPLAY_H/2 - HANDS_FROM_BOTTOM = BAR_TOP_Y
+const SPRITE_Y = BAR_TOP_Y - DISPLAY_H / 2 + HANDS_FROM_BOTTOM;
+const BUBBLE_Y = SPRITE_Y - DISPLAY_H / 2 - BUBBLE_H / 2 - 10;
+
+// Drink rendering: game uses ~1.8× scale on glass graphics.
+// At SPRITE_ZOOM=2 the drinks should be visible but small relative to guest.
+const DRINK_RENDER_SCALE = 1.8;
+const DRINK_SPACING = 40;
 
 export class GuestModal extends BaseModal {
   constructor(scene) {
@@ -239,12 +267,12 @@ export class GuestModal extends BaseModal {
                    guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
     const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
     const portrait = scene.add.image(0, SPRITE_Y, spriteKey)
-      .setScale(3.0).setOrigin(0.5, 0.5);
+      .setScale(SPRITE_ZOOM).setOrigin(0.5, 0.5);
     this._content.add(portrait);
 
     // ── Bar surface band (Phase 2 will render drinks here) ──
     this._content.add(
-      scene.add.rectangle(0, BAR_LINE_Y, PANEL_W - 40, BAR_BAND_H, 0x8B4513)
+      scene.add.rectangle(0, BAR_CENTER_Y, PANEL_W - 40, BAR_DEPTH, 0x8B4513)
         .setStrokeStyle(1, 0x5a3a20),
     );
 
@@ -467,7 +495,7 @@ export class GuestModal extends BaseModal {
         const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
         const fillPct = glass.totalFill;
         const color = getLiquidColor(glass.layers);
-        drawGlass(gfx, offsetX, CUSTOMER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+        drawGlass(gfx, offsetX, CUSTOMER_Y + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
       }
     }
 
@@ -485,7 +513,7 @@ export class GuestModal extends BaseModal {
         if (glass) {
           const fillPct = glass.totalFill;
           const color = getLiquidColor(glass.layers);
-          drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_SCALE);
+          drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
         }
       }
     }
@@ -496,7 +524,7 @@ export class GuestModal extends BaseModal {
       const vx = visual.currentX !== undefined ? visual.currentX : visual.endX;
       const vy = visual.currentY !== undefined ? visual.currentY : visual.endY;
       if (visual.glassType) {
-        drawGlass(gfx, vx, vy + 20, visual.glassType, visual.fillPct, visual.fillColor, DRINK_SCALE);
+        drawGlass(gfx, vx, vy + 20, visual.glassType, visual.fillPct, visual.fillColor, DRINK_RENDER_SCALE);
       } else if (visual.iconKey) {
         this._carryIcon.setTexture(visual.iconKey)
           .setPosition(vx, vy).setVisible(true);
@@ -652,11 +680,9 @@ export class GuestModal extends BaseModal {
     const hw = PANEL_W / 2;
     const hh = PANEL_H / 2;
 
-    // Sprite actual bounds (magenta) — 144×120 native at 3× = 432×360 displayed
-    const spriteScale = 3.0;
-    const spriteNativeW = 144, spriteNativeH = 120;
-    const spriteW = spriteNativeW * spriteScale;
-    const spriteH = spriteNativeH * spriteScale;
+    // Sprite actual bounds (magenta) — native 6× PNG at SPRITE_ZOOM
+    const spriteW = PNG_W * SPRITE_ZOOM;
+    const spriteH = DISPLAY_H;
     g.lineStyle(2, 0xff33cc, 0.9);
     g.strokeRect(-spriteW / 2, SPRITE_Y - spriteH / 2, spriteW, spriteH);
 
@@ -668,11 +694,16 @@ export class GuestModal extends BaseModal {
     g.lineStyle(1, 0xffff00, 0.7);
     g.strokeRect(-BUBBLE_W / 2, BUBBLE_Y - BUBBLE_H / 2, BUBBLE_W, BUBBLE_H);
 
+    // Hands-on-bar reference (green) — should align with bar top
+    const handsY = SPRITE_Y + spriteH / 2 - HANDS_FROM_BOTTOM;
+    g.lineStyle(2, 0x44ff44, 0.9);
+    g.lineBetween(-hw + 20, handsY, hw - 20, handsY);
+
     // Bar surface band top/bottom (orange)
-    const barTop = BAR_LINE_Y - BAR_BAND_H / 2;
-    const barBot = BAR_LINE_Y + BAR_BAND_H / 2;
+    const barTop = BAR_CENTER_Y - BAR_DEPTH / 2;
+    const barBot = BAR_CENTER_Y + BAR_DEPTH / 2;
     g.lineStyle(2, 0xffaa00, 0.8);
-    g.strokeRect(-(PANEL_W - 40) / 2, barTop, PANEL_W - 40, BAR_BAND_H);
+    g.strokeRect(-(PANEL_W - 40) / 2, barTop, PANEL_W - 40, BAR_DEPTH);
 
     // Customer side area (lime)
     g.lineStyle(1, 0xaaff00, 0.4);
@@ -727,6 +758,7 @@ export class GuestModal extends BaseModal {
       [-hw + 4, BUBBLE_Y, `bubble y=${BUBBLE_Y}`],
       [-hw + 4, SPRITE_Y - spriteH / 2, `sprite top=${Math.round(SPRITE_Y - spriteH / 2)}`],
       [-hw + 4, spriteBot, `sprite bot=${Math.round(spriteBot)}`],
+      [-hw + 4, handsY, `hands y=${Math.round(handsY)}`],
       [hw - 4, barTop, `bar top=${Math.round(barTop)}`],
       [hw - 4, barBot, `bar bot=${Math.round(barBot)}`],
       [hw - 4, CUSTOMER_Y, `cust y=${CUSTOMER_Y}`],

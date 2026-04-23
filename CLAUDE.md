@@ -132,6 +132,23 @@ Red flags that you're patching instead of fixing:
 - Use `_requestClose(eventName)` to close — never call `hide()` from within the modal
 - Animated modals (zoom) use LOCAL coords (0,0 = center); non-animated use SCREEN-ABSOLUTE coords
 
+#### Derive layout from game data — never hardcode positions
+Modal layout positions (sprite Y, bar Y, item zones) **must** be derived
+from the game's spatial constants (`GUEST_SIT_SCREEN_H`,
+`GUEST_BAR_OVERLAP_PX`, bar tile counts) and a declared zoom factor —
+never hardcoded as magic numbers. This ensures modals stay correct when
+art dimensions or layout rules change.
+
+**Pattern** (see `GuestModal.js` for the canonical example):
+1. Declare `SPRITE_ZOOM` — the display multiplier applied to the 6× PNG
+2. Compute all Y positions from sprite geometry + bar overlap rules
+3. Import constants from `js/constants/layout.js` — don't redefine them
+4. The anchor relationship is: guest hands Y === bar surface top Y
+
+If a position looks wrong, fix the derivation chain — don't adjust a
+constant by eye. A single screenshot with debug on will reveal whether
+the computed positions match the visual.
+
 #### Debug indicators (REQUIRED for all modals and UI components)
 Every modal and interactive UI **must** include a `_drawDebug()` method that
 renders diagnostic overlays when the debug toggle is active. This is not
