@@ -631,6 +631,14 @@ export class GuestModal extends BaseModal {
     const hw = PANEL_W / 2;
     const hh = PANEL_H / 2;
 
+    // Sprite actual bounds (magenta) — 144×120 native at 3× = 432×360 displayed
+    const spriteScale = 3.0;
+    const spriteNativeW = 144, spriteNativeH = 120;
+    const spriteW = spriteNativeW * spriteScale;
+    const spriteH = spriteNativeH * spriteScale;
+    g.lineStyle(2, 0xff33cc, 0.9);
+    g.strokeRect(-spriteW / 2, SPRITE_Y - spriteH / 2, spriteW, spriteH);
+
     // Panel bounds (cyan)
     g.lineStyle(2, 0x00ffff, 0.8);
     g.strokeRect(-hw, -hh, PANEL_W, PANEL_H);
@@ -639,15 +647,13 @@ export class GuestModal extends BaseModal {
     g.lineStyle(1, 0xffff00, 0.7);
     g.strokeRect(-BUBBLE_W / 2, BUBBLE_Y - BUBBLE_H / 2, BUBBLE_W, BUBBLE_H);
 
-    // Guest sprite area (magenta)
-    g.lineStyle(1, 0xff33cc, 0.6);
-    g.strokeRect(-60, SPRITE_Y - 50, 120, 100);
+    // Bar surface band top/bottom (orange)
+    const barTop = BAR_LINE_Y - BAR_BAND_H / 2;
+    const barBot = BAR_LINE_Y + BAR_BAND_H / 2;
+    g.lineStyle(2, 0xffaa00, 0.8);
+    g.strokeRect(-(PANEL_W - 40) / 2, barTop, PANEL_W - 40, BAR_BAND_H);
 
-    // Bar surface band (orange)
-    g.lineStyle(1, 0xffaa00, 0.6);
-    g.strokeRect(-(PANEL_W - 40) / 2, BAR_LINE_Y - BAR_BAND_H / 2, PANEL_W - 40, BAR_BAND_H);
-
-    // Customer side area (lime label)
+    // Customer side area (lime)
     g.lineStyle(1, 0xaaff00, 0.4);
     g.lineBetween(-hw + 20, CUSTOMER_Y, hw - 20, CUSTOMER_Y);
 
@@ -655,7 +661,7 @@ export class GuestModal extends BaseModal {
     g.lineStyle(1, 0xffaa00, 0.4);
     g.lineBetween(-hw + 20, BAR_FRONT_Y, hw - 20, BAR_FRONT_Y);
 
-    // Bartender side area (lime label)
+    // Bartender side area (lime)
     g.lineStyle(1, 0xaaff00, 0.4);
     g.lineBetween(-hw + 20, BARTENDER_Y, hw - 20, BARTENDER_Y);
 
@@ -677,7 +683,7 @@ export class GuestModal extends BaseModal {
     g.lineStyle(1, 0x44ff44, 0.8);
     g.strokeRect(greenX - BTN_W / 2, BTN_ROW_Y - BTN_H / 2, BTN_W, BTN_H);
 
-    // Slide animation path (magenta dashed)
+    // Slide animation path (magenta)
     if (this._activeSlide) {
       const s = this._activeSlide;
       g.lineStyle(2, 0xff33cc, 0.9);
@@ -686,26 +692,33 @@ export class GuestModal extends BaseModal {
       g.fillCircle(s.x, s.currentY, 4);
     }
 
-    // Labels
-    const style = { fontFamily: 'monospace', fontSize: '9px', color: '#00ffff' };
-    const labels = this._debugLabels;
-    if (!labels) {
-      this._debugLabels = [];
-      const pairs = [
-        [hw - 4, BUBBLE_Y, 'bubble'],
-        [hw - 4, SPRITE_Y, 'sprite'],
-        [hw - 4, BAR_LINE_Y, 'bar'],
-        [hw - 4, CUSTOMER_Y, 'cust'],
-        [hw - 4, BAR_FRONT_Y, 'front'],
-        [hw - 4, BARTENDER_Y, 'carry'],
-        [hw - 4, BTN_ROW_Y, 'btns'],
-      ];
-      for (const [lx, ly, txt] of pairs) {
-        const label = this.scene.add.text(lx, ly, txt, style)
-          .setOrigin(1, 0.5).setAlpha(0.7);
-        this._content.add(label);
-        this._debugLabels.push(label);
+    // Y-coordinate readouts (rebuild every frame for accuracy)
+    if (this._debugLabels) {
+      for (const lbl of this._debugLabels) {
+        lbl.destroy();
+        this._content.remove(lbl);
       }
+    }
+    this._debugLabels = [];
+    const style = { fontFamily: 'monospace', fontSize: '9px', color: '#00ffff' };
+    const spriteBot = SPRITE_Y + spriteH / 2;
+    const pairs = [
+      [-hw + 4, BUBBLE_Y, `bubble y=${BUBBLE_Y}`],
+      [-hw + 4, SPRITE_Y - spriteH / 2, `sprite top=${Math.round(SPRITE_Y - spriteH / 2)}`],
+      [-hw + 4, spriteBot, `sprite bot=${Math.round(spriteBot)}`],
+      [hw - 4, barTop, `bar top=${Math.round(barTop)}`],
+      [hw - 4, barBot, `bar bot=${Math.round(barBot)}`],
+      [hw - 4, CUSTOMER_Y, `cust y=${CUSTOMER_Y}`],
+      [hw - 4, BAR_FRONT_Y, `front y=${BAR_FRONT_Y}`],
+      [hw - 4, BARTENDER_Y, `carry y=${BARTENDER_Y}`],
+      [hw - 4, BTN_ROW_Y, `btns y=${BTN_ROW_Y}`],
+    ];
+    for (const [lx, ly, txt] of pairs) {
+      const isLeft = lx < 0;
+      const label = this.scene.add.text(lx, ly, txt, style)
+        .setOrigin(isLeft ? 0 : 1, 0.5).setAlpha(0.8);
+      this._content.add(label);
+      this._debugLabels.push(label);
     }
   }
 
