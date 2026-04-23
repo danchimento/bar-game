@@ -177,6 +177,7 @@ export class GuestModal extends BaseModal {
     this._debugGfx = null;
     this._itemZones = [];
     this._activeSlide = null;
+    this._settledSlide = null;
     this._lastState = null;
     this._lastHasCheck = null;
     this._lastGreeted = null;
@@ -195,6 +196,7 @@ export class GuestModal extends BaseModal {
     this._lastCarrying = null;
     this._lastDrinkCount = -1;
     this._activeSlide = null;
+    this._settledSlide = null;
 
     const originX = guest.seat?.x ?? guest.x;
     const originY = this.scene.barLayout.barSurfaceY + 5;
@@ -399,10 +401,18 @@ export class GuestModal extends BaseModal {
       const ease = 1 - Math.pow(1 - t, 3);
       this._activeSlide.currentY = this._activeSlide.startY +
         (this._activeSlide.endY - this._activeSlide.startY) * ease;
+      this._activeSlide.currentX = this._activeSlide.startX +
+        (this._activeSlide.endX - this._activeSlide.startX) * ease;
 
       if (t >= 1) {
         this._completeSlide();
       }
+    }
+
+    // Settled slide: glass visual held at destination until action completes
+    if (this._settledSlide && !bartender.busy) {
+      this._settledSlide = null;
+      this._rebuildItemZones();
     }
 
     this._drawBarItems();
@@ -415,7 +425,7 @@ export class GuestModal extends BaseModal {
     if (carrying !== this._lastCarrying || drinkCount !== this._lastDrinkCount) {
       this._lastCarrying = carrying;
       this._lastDrinkCount = drinkCount;
-      if (!this._activeSlide) this._rebuildItemZones();
+      if (!this._activeSlide && !this._settledSlide) this._rebuildItemZones();
     }
 
     const stateChanged = guest.state !== this._lastState;
@@ -445,12 +455,14 @@ export class GuestModal extends BaseModal {
     if (!guest) return;
     const { barState, bartender } = this.scene;
     const slide = this._activeSlide;
+    const settled = this._settledSlide;
+    const suppressed = slide || settled;
 
     // ── Customer side: drinks at this seat ──
     const glasses = barState.drinksAtSeats.get(guest.seatId);
     if (glasses && glasses.length > 0) {
       for (let i = 0; i < glasses.length; i++) {
-        if (slide && slide.side === 'customer' && slide.index === i) continue;
+        if (suppressed && suppressed.side === 'customer' && suppressed.index === i) continue;
         const glass = glasses[i];
         const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
         const fillPct = glass.totalFill;
@@ -459,9 +471,9 @@ export class GuestModal extends BaseModal {
       }
     }
 
-    // ── Bartender side: carried item ──
+    // ── Bartender side: carried item (suppressed during slide/settle) ──
     const carry = bartender.carrying;
-    if (carry && !(slide && slide.side === 'bartender')) {
+    if (carry && !(suppressed && suppressed.side === 'bartender')) {
       if (carry === 'DIRTY_GLASS') {
         this._carryIcon.setTexture('icon_dirty_glass')
           .setPosition(0, BARTENDER_Y).setVisible(true);
@@ -478,14 +490,16 @@ export class GuestModal extends BaseModal {
       }
     }
 
-    // ── Sliding item ──
-    if (slide) {
-      const y = slide.currentY;
-      if (slide.glassType) {
-        drawGlass(gfx, slide.x, y + 20, slide.glassType, slide.fillPct, slide.fillColor, DRINK_SCALE);
-      } else if (slide.iconKey) {
-        this._carryIcon.setTexture(slide.iconKey)
-          .setPosition(slide.x, y).setVisible(true);
+    // ── Animating or settled item (same snapshot visual throughout) ──
+    const visual = slide || settled;
+    if (visual) {
+      const vx = visual.currentX !== undefined ? visual.currentX : visual.endX;
+      const vy = visual.currentY !== undefined ? visual.currentY : visual.endY;
+      if (visual.glassType) {
+        drawGlass(gfx, vx, vy + 20, visual.glassType, visual.fillPct, visual.fillColor, DRINK_SCALE);
+      } else if (visual.iconKey) {
+        this._carryIcon.setTexture(visual.iconKey)
+          .setPosition(vx, vy).setVisible(true);
       }
     }
   }
@@ -502,7 +516,7 @@ export class GuestModal extends BaseModal {
 
   _rebuildItemZones() {
     this._clearItemZones();
-    if (this._activeSlide) return;
+    if (this._activeSlide || this._settledSlide) return;
 
     const guest = this._guest;
     if (!guest) return;
@@ -543,7 +557,7 @@ export class GuestModal extends BaseModal {
   // ── Slide animation ──
 
   _startSlide(side, index) {
-    if (this._activeSlide || this._closing) return;
+    if (this._activeSlide || this._settledSlide || this._closing) return;
     const { barState, bartender } = this.scene;
 
     let slideData = null;
@@ -552,15 +566,20 @@ export class GuestModal extends BaseModal {
       const carry = bartender.carrying;
       if (!carry) return;
 
+      const startX = 0;
       const startY = BARTENDER_Y;
-      const endY = CUSTOMER_Y;
-      const x = 0;
 
       if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
         const glass = barState.carriedGlass;
         if (!glass) return;
+        // Compute destination X: where this glass will sit among existing drinks
+        const existing = barState.drinksAtSeats.get(this._guest.seatId);
+        const count = existing ? existing.length : 0;
+        const endX = (count - count / 2) * DRINK_SPACING;
         slideData = {
-          side, index, x, startY, endY, currentY: startY,
+          side, index,
+          startX, startY, endX, endY: CUSTOMER_Y,
+          currentX: startX, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
           action: 'serve',
           glassType: glass.glassType,
@@ -570,7 +589,9 @@ export class GuestModal extends BaseModal {
         };
       } else if (carry.startsWith('CHECK_')) {
         slideData = {
-          side, index, x, startY, endY, currentY: startY,
+          side, index,
+          startX, startY, endX: 0, endY: CUSTOMER_Y,
+          currentX: startX, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
           action: 'giveCheck',
           glassType: null, fillPct: 0, fillColor: 0,
@@ -582,12 +603,11 @@ export class GuestModal extends BaseModal {
       if (!glasses || !glasses[index]) return;
       const glass = glasses[index];
 
-      const offsetX = (index - (glasses.length - 1) / 2) * DRINK_SPACING;
-      const startY = CUSTOMER_Y;
-      const endY = BARTENDER_Y;
-
+      const startX = (index - (glasses.length - 1) / 2) * DRINK_SPACING;
       slideData = {
-        side, index, x: offsetX, startY, endY, currentY: startY,
+        side, index,
+        startX, startY: CUSTOMER_Y, endX: 0, endY: BARTENDER_Y,
+        currentX: startX, currentY: CUSTOMER_Y,
         startTime: this.scene.time.now, duration: 300,
         action: 'pickup',
         glassType: glass.glassType,
@@ -607,6 +627,9 @@ export class GuestModal extends BaseModal {
     if (!slide) return;
     this._activeSlide = null;
 
+    // Hold the glass visual at its destination until the bartender action completes
+    this._settledSlide = slide;
+
     const guest = this._guest;
     if (!guest) return;
     const gm = this.scene.guestManager;
@@ -616,8 +639,6 @@ export class GuestModal extends BaseModal {
       case 'giveCheck': gm.giveCheckAtSeat(guest); break;
       case 'pickup':    gm.pickupGlassAtSeat(guest); break;
     }
-
-    this._rebuildItemZones();
   }
 
   _drawDebug() {
@@ -732,6 +753,7 @@ export class GuestModal extends BaseModal {
     this._debugGfx = null;
     this._debugLabels = null;
     this._activeSlide = null;
+    this._settledSlide = null;
     this._clearItemZones();
   }
 
