@@ -54,9 +54,8 @@ export class DrinkModal extends BaseModal {
     this._isBeerSplit = drinkModalState.type === 'beer';
 
     if (this._isBeerSplit) {
-      // Single wide panel for portrait
-      this._contentW = 490;
-      this._contentH = 420;
+      this._contentW = CANVAS_W;
+      this._contentH = CANVAS_H;
       super.show({
         origin: {
           x: drinkModalState.originX ?? CANVAS_W / 2,

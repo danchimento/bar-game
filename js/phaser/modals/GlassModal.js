@@ -1,3 +1,4 @@
+import { CANVAS_W, CANVAS_H } from '../../constants.js';
 import { GLASSES, DRINKS } from '../../data/menu.js';
 import { drawGlass } from '../utils/GlassRenderer.js';
 import { BaseModal } from './BaseModal.js';
@@ -22,9 +23,8 @@ export class GlassModal extends BaseModal {
     this._takeBtnLabel = null;
     this._glassGfx = null;
 
-    // Panel layout (used for zoom animation sizing)
-    this._contentW = 480;
-    this._contentH = 380;
+    this._contentW = CANVAS_W;
+    this._contentH = CANVAS_H;
   }
 
   show(availableDrinks, originX, originY, originW, originH) {
@@ -53,7 +53,7 @@ export class GlassModal extends BaseModal {
     this._content.add(panelBg);
 
     // ── Cabinet area (top ~280px) ──
-    const cabinetH = 280;
+    const cabinetH = panelH - 100;
     const cabinetTop = panelTop + 10;
     const cabinetCenterY = cabinetTop + cabinetH / 2;
     const pad = 14;

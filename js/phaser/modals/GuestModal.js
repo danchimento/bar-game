@@ -1,4 +1,4 @@
-import { GUEST_STATE } from '../../constants.js';
+import { GUEST_STATE, CANVAS_W, CANVAS_H } from '../../constants.js';
 import { GUEST_APPEARANCE_IDS } from '../../data/guestAppearances.js';
 import { GUEST_SIT_SCREEN_H, GUEST_BAR_OVERLAP_PX } from '../../constants/layout.js';
 import { BaseModal } from './BaseModal.js';
@@ -166,8 +166,8 @@ const HANDS_FROM_BOTTOM = DISPLAY_H - HANDS_FROM_TOP;         // 24px from sprit
 // tall for the modal. We show enough to read as a counter (~50px).
 const BAR_DEPTH = 50;
 
-const PANEL_W = 490;
-const PANEL_H = 520;
+const PANEL_W = CANVAS_W;
+const PANEL_H = CANVAS_H;
 const BUBBLE_H = 60;
 const BUBBLE_W = PANEL_W - 60;
 const BTN_H = 50;
