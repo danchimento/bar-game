@@ -22,14 +22,13 @@ export class GlassModal extends BaseModal {
     this._takeBtn = null;
     this._takeBtnLabel = null;
     this._glassGfx = null;
-
-    this._contentW = CANVAS_W;
-    this._contentH = CANVAS_H;
   }
 
   show(availableDrinks, originX, originY, originW, originH) {
     this._availableDrinks = availableDrinks || Object.keys(DRINKS);
     this._selectedGlass = null;
+    this._contentW = CANVAS_W;
+    this._contentH = CANVAS_H;
     super.show({
       origin: { x: originX, y: originY, w: originW, h: originH },
     });
@@ -39,8 +38,8 @@ export class GlassModal extends BaseModal {
     this._shelves = [];
     const scene = this.scene;
 
-    const panelW = this._contentW;  // 480
-    const panelH = this._contentH;  // 380
+    const panelW = this._contentW;
+    const panelH = this._contentH;
 
     // Local coordinates: (0,0) = center of content
     const panelLeft = -panelW / 2;
@@ -53,8 +52,8 @@ export class GlassModal extends BaseModal {
     this._content.add(panelBg);
 
     // ── Cabinet area (top ~280px) ──
-    const cabinetH = panelH - 100;
-    const cabinetTop = panelTop + 10;
+    const cabinetH = Math.min(panelH - 100, 400);
+    const cabinetTop = -cabinetH / 2 - 30;
     const cabinetCenterY = cabinetTop + cabinetH / 2;
     const pad = 14;
 
@@ -126,7 +125,7 @@ export class GlassModal extends BaseModal {
     const btnW = 225;
     const btnH = 50;
     const btnGap = 10;
-    const btnRowY = panelTop + panelH - 50; // center of buttons
+    const btnRowY = cabinetTop + cabinetH + 45;
 
     const stepBtnX = -(btnW + btnGap) / 2;
     const takeBtnX = (btnW + btnGap) / 2;

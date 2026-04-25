@@ -94,20 +94,25 @@ export class DrinkModal extends BaseModal {
    * All positions derived from art-pixel coords × ART_SCALE. No setScale(). */
   _buildBeerSplitPanel(items, modal) {
     const scene = this.scene;
-    const panelW = this._contentW;   // 490
-    const panelH = this._contentH;   // 420
-    const btnRowY = panelH / 2 - 50; // button row center
+    const panelW = this._contentW;
+    const panelH = this._contentH;
 
     // Art-pixel scale — must match scripts/generate-radial-icons.js SCALE.
-    // All positions below are artPixel × ART_SCALE. No runtime setScale().
     const ART_SCALE = 6;
     const FRAME_ART_W = 60;
-    const TAP_ART_XS = [15, 30, 45]; // tap mount X in art pixels
-    const CROSSBAR_ART_Y = 3;        // chrome crossbar row
-    const SPOUT_ART_Y = 12;          // bottom of tap cylinder
-    const FRAME_BOTTOM_ART_Y = 32;   // visual bottom (post feet)
+    const TAP_ART_XS = [15, 30, 45];
+    const CROSSBAR_ART_Y = 3;
+    const SPOUT_ART_Y = 12;
+    const FRAME_BOTTOM_ART_Y = 32;
+
+    // Content block: tap frame (192px) + glass zone (~60px) + gap + buttons (50px) ≈ 370px.
+    // Center this block vertically within the full-screen panel.
+    const contentH = FRAME_BOTTOM_ART_Y * ART_SCALE + 60 + 50 + 30;
+    const contentTop = -contentH / 2;
+    const btnRowY = contentTop + contentH - 25;
 
     this._glassDrawScale = 3.0;
+    this._beerBtnRowY = btnRowY;
 
     // ── Full-width panel background ──
     this._content.add(
@@ -116,8 +121,8 @@ export class DrinkModal extends BaseModal {
         .setInteractive(),
     );
 
-    // ── Tap frame (centered, native size 360×240, no setScale) ──
-    const frameTopY = -panelH / 2 + 40;
+    // ── Tap frame (centered within content block) ──
+    const frameTopY = contentTop;
     const frame = scene.add.image(0, frameTopY, 'tap_frame')
       .setOrigin(0.5, 0);
     this._content.add(frame);
@@ -184,7 +189,7 @@ export class DrinkModal extends BaseModal {
     }
 
     // ── Button row (bottom) ──
-    const btnW = (panelW - 30) / 2;  // ~230
+    const btnW = Math.min((panelW - 30) / 2, 230);
     const btnH = 50;
     const btnGap = 10;
 
@@ -395,6 +400,7 @@ export class DrinkModal extends BaseModal {
     this._takeBtnLabel = null;
     this._takeBtnEnabled = false;
     this._crossbarY = 0;
+    this._beerBtnRowY = 0;
     this._glassDrawScale = 2.0;
     this._debugGfx = null;
   }
@@ -433,10 +439,10 @@ export class DrinkModal extends BaseModal {
     g.strokeRect(this._glassRestX - gw / 2, this._glassY - gh, gw, gh);
 
     // Button bounds (red/green)
-    const btnW = (panelW - 30) / 2;
+    const btnW = Math.min((panelW - 30) / 2, 230);
     const btnH = 50;
     const btnGap = 10;
-    const btnRowY = panelH / 2 - 50;
+    const btnRowY = this._beerBtnRowY || 0;
     g.lineStyle(1, 0xff4444, 0.8);
     g.strokeRect(-btnW / 2 - btnGap / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
     g.lineStyle(1, 0x44ff44, 0.8);

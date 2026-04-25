@@ -166,30 +166,10 @@ const HANDS_FROM_BOTTOM = DISPLAY_H - HANDS_FROM_TOP;         // 24px from sprit
 // tall for the modal. We show enough to read as a counter (~50px).
 const BAR_DEPTH = 50;
 
-const PANEL_W = CANVAS_W;
-const PANEL_H = CANVAS_H;
 const BUBBLE_H = 60;
-const BUBBLE_W = PANEL_W - 60;
 const BTN_H = 50;
 const BTN_W = 215;
 const BTN_GAP = 10;
-
-// Vertical layout: anchor bar position, derive everything else.
-// Buttons near bottom, bar in the middle, sprite above bar with hands on it.
-const BTN_ROW_Y = PANEL_H / 2 - BTN_H - 20;
-const BARTENDER_Y = BTN_ROW_Y - 80;
-const BAR_FRONT_Y = BARTENDER_Y - 40;
-const CUSTOMER_Y = BAR_FRONT_Y - 30;
-const BAR_TOP_Y = CUSTOMER_Y - BAR_DEPTH / 2;
-const BAR_CENTER_Y = BAR_TOP_Y + BAR_DEPTH / 2;
-
-// Sprite positioned so hands land on bar top.
-// With origin (0.5, 0.5): sprite_center + DISPLAY_H/2 - HANDS_FROM_BOTTOM = BAR_TOP_Y
-const SPRITE_Y = BAR_TOP_Y - DISPLAY_H / 2 + HANDS_FROM_BOTTOM;
-const BUBBLE_Y = SPRITE_Y - DISPLAY_H / 2 - BUBBLE_H / 2 - 10;
-
-// Drink rendering: game uses ~1.8× scale on glass graphics.
-// At SPRITE_ZOOM=2 the drinks should be visible but small relative to guest.
 const DRINK_RENDER_SCALE = 1.8;
 const DRINK_SPACING = 40;
 
@@ -212,8 +192,18 @@ export class GuestModal extends BaseModal {
     this._lastCarrying = null;
     this._lastDrinkCount = -1;
 
-    this._contentW = PANEL_W;
-    this._contentH = PANEL_H;
+    // Layout positions — computed in _build() from runtime canvas dims
+    this._panelW = 0;
+    this._panelH = 0;
+    this._bubbleW = 0;
+    this._bubbleY = 0;
+    this._spriteY = 0;
+    this._customerY = 0;
+    this._barTopY = 0;
+    this._barCenterY = 0;
+    this._barFrontY = 0;
+    this._bartenderY = 0;
+    this._btnRowY = 0;
   }
 
   show(guest) {
@@ -225,6 +215,8 @@ export class GuestModal extends BaseModal {
     this._lastDrinkCount = -1;
     this._activeSlide = null;
     this._settledSlide = null;
+    this._contentW = CANVAS_W;
+    this._contentH = CANVAS_H;
 
     const originX = guest.seat?.x ?? guest.x;
     const originY = this.scene.barLayout.barSurfaceY + 5;
@@ -237,24 +229,52 @@ export class GuestModal extends BaseModal {
     const scene = this.scene;
     const guest = this._guest;
 
+    // ── Compute layout from runtime canvas dims ──
+    const pw = CANVAS_W;
+    const ph = CANVAS_H;
+    this._contentW = pw;
+    this._contentH = ph;
+    this._panelW = pw;
+    this._panelH = ph;
+
+    const bubbleW = pw - 60;
+    const btnRowY = ph / 2 - BTN_H - 20;
+    const bartenderY = btnRowY - 80;
+    const barFrontY = bartenderY - 40;
+    const customerY = barFrontY - 30;
+    const barTopY = customerY - BAR_DEPTH / 2;
+    const barCenterY = barTopY + BAR_DEPTH / 2;
+    const spriteY = barTopY - DISPLAY_H / 2 + HANDS_FROM_BOTTOM;
+    const bubbleY = spriteY - DISPLAY_H / 2 - BUBBLE_H / 2 - 10;
+
+    this._bubbleW = bubbleW;
+    this._bubbleY = bubbleY;
+    this._spriteY = spriteY;
+    this._customerY = customerY;
+    this._barTopY = barTopY;
+    this._barCenterY = barCenterY;
+    this._barFrontY = barFrontY;
+    this._bartenderY = bartenderY;
+    this._btnRowY = btnRowY;
+
     // ── Panel background ──
     this._content.add(
-      scene.add.rectangle(0, 0, PANEL_W, PANEL_H, 0x151525)
+      scene.add.rectangle(0, 0, pw, ph, 0x151525)
         .setStrokeStyle(2, 0x4a4a6a)
         .setInteractive(),
     );
 
     // ── Speech bubble ──
     this._content.add(
-      scene.add.rectangle(0, BUBBLE_Y, BUBBLE_W, BUBBLE_H, 0x2a2a3e)
+      scene.add.rectangle(0, bubbleY, bubbleW, BUBBLE_H, 0x2a2a3e)
         .setStrokeStyle(1, 0x5a5a7a),
     );
 
     const message = this._getMessage(guest);
     this._msgText = scene.add.text(
-      -BUBBLE_W / 2 + 14, BUBBLE_Y - BUBBLE_H / 2 + 12, message, {
+      -bubbleW / 2 + 14, bubbleY - BUBBLE_H / 2 + 12, message, {
         fontFamily: 'monospace', fontSize: '13px', color: '#ffd54f',
-        wordWrap: { width: BUBBLE_W - 28 },
+        wordWrap: { width: bubbleW - 28 },
       },
     );
     this._content.add(this._msgText);
@@ -266,19 +286,19 @@ export class GuestModal extends BaseModal {
                    guest.state !== GUEST_STATE.ARRIVING &&
                    guest.state !== GUEST_STATE.WAITING_FOR_SEAT;
     const spriteKey = seated ? `guest_sitting_${appearanceId}` : `guest_${appearanceId}`;
-    const portrait = scene.add.image(0, SPRITE_Y, spriteKey)
+    const portrait = scene.add.image(0, spriteY, spriteKey)
       .setScale(SPRITE_ZOOM).setOrigin(0.5, 0.5);
     this._content.add(portrait);
 
-    // ── Bar surface band (Phase 2 will render drinks here) ──
+    // ── Bar surface band ──
     this._content.add(
-      scene.add.rectangle(0, BAR_CENTER_Y, PANEL_W - 40, BAR_DEPTH, 0x8B4513)
+      scene.add.rectangle(0, barCenterY, pw - 40, BAR_DEPTH, 0x8B4513)
         .setStrokeStyle(1, 0x5a3a20),
     );
 
     // ── Bar front edge ──
     this._content.add(
-      scene.add.rectangle(0, BAR_FRONT_Y, PANEL_W - 40, 2, 0x5a3a20),
+      scene.add.rectangle(0, barFrontY, pw - 40, 2, 0x5a3a20),
     );
 
     // ── Bar items graphics (redrawn each frame) ──
@@ -303,7 +323,7 @@ export class GuestModal extends BaseModal {
     const scene = this.scene;
     const x = -(BTN_W / 2 + BTN_GAP / 2);
 
-    const bg = scene.add.rectangle(x, BTN_ROW_Y, BTN_W, BTN_H, 0x6a2a2a)
+    const bg = scene.add.rectangle(x, this._btnRowY, BTN_W, BTN_H, 0x6a2a2a)
       .setStrokeStyle(2, 0x8a4a4a)
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x8a3a3a));
@@ -315,7 +335,7 @@ export class GuestModal extends BaseModal {
     this._content.add(bg);
 
     this._content.add(
-      scene.add.text(x, BTN_ROW_Y, 'Walk Away', {
+      scene.add.text(x, this._btnRowY, 'Walk Away', {
         fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5),
     );
@@ -330,7 +350,7 @@ export class GuestModal extends BaseModal {
     const stroke = config.enabled ? 0x5a8a5a : 0x444444;
     const textColor = config.enabled ? '#ffffff' : '#666666';
 
-    const bg = scene.add.rectangle(x, BTN_ROW_Y, BTN_W, BTN_H, fill)
+    const bg = scene.add.rectangle(x, this._btnRowY, BTN_W, BTN_H, fill)
       .setStrokeStyle(2, stroke);
     this._greenBtn = bg;
 
@@ -345,7 +365,7 @@ export class GuestModal extends BaseModal {
     }
     this._content.add(bg);
 
-    this._greenLabel = scene.add.text(x, BTN_ROW_Y, config.label, {
+    this._greenLabel = scene.add.text(x, this._btnRowY, config.label, {
       fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: textColor,
     }).setOrigin(0.5);
     this._content.add(this._greenLabel);
@@ -495,7 +515,7 @@ export class GuestModal extends BaseModal {
         const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
         const fillPct = glass.totalFill;
         const color = getLiquidColor(glass.layers);
-        drawGlass(gfx, offsetX, CUSTOMER_Y + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
+        drawGlass(gfx, offsetX, this._customerY + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
       }
     }
 
@@ -504,16 +524,16 @@ export class GuestModal extends BaseModal {
     if (carry && !(suppressed && suppressed.side === 'bartender')) {
       if (carry === 'DIRTY_GLASS') {
         this._carryIcon.setTexture('icon_dirty_glass')
-          .setPosition(0, BARTENDER_Y).setVisible(true);
+          .setPosition(0, this._bartenderY).setVisible(true);
       } else if (carry.startsWith('CHECK_')) {
         this._carryIcon.setTexture('icon_receipt')
-          .setPosition(0, BARTENDER_Y).setVisible(true);
+          .setPosition(0, this._bartenderY).setVisible(true);
       } else if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
         const glass = barState.carriedGlass;
         if (glass) {
           const fillPct = glass.totalFill;
           const color = getLiquidColor(glass.layers);
-          drawGlass(gfx, 0, BARTENDER_Y + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
+          drawGlass(gfx, 0, this._bartenderY + 20, glass.glassType, fillPct, color, DRINK_RENDER_SCALE);
         }
       }
     }
@@ -561,7 +581,7 @@ export class GuestModal extends BaseModal {
         if (bartender.carrying && bartender.carrying !== 'DIRTY_GLASS') continue;
 
         const offsetX = (i - (glasses.length - 1) / 2) * DRINK_SPACING;
-        const zone = scene.add.rectangle(offsetX, CUSTOMER_Y, 50, 50, 0x44ff44, 0.08)
+        const zone = scene.add.rectangle(offsetX, this._customerY, 50, 50, 0x44ff44, 0.08)
           .setStrokeStyle(1, 0x44ff44, 0.3)
           .setInteractive({ useHandCursor: true });
         zone.on('pointerdown', () => this._startSlide('customer', i));
@@ -573,7 +593,7 @@ export class GuestModal extends BaseModal {
     // Bartender side: tappable carried item (slide up = serve/give)
     const carry = bartender.carrying;
     if (carry && !bartender.busy) {
-      const zone = scene.add.rectangle(0, BARTENDER_Y, 60, 50, 0x4488ff, 0.08)
+      const zone = scene.add.rectangle(0, this._bartenderY, 60, 50, 0x4488ff, 0.08)
         .setStrokeStyle(1, 0x4488ff, 0.3)
         .setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => this._startSlide('bartender', 0));
@@ -595,18 +615,17 @@ export class GuestModal extends BaseModal {
       if (!carry) return;
 
       const startX = 0;
-      const startY = BARTENDER_Y;
+      const startY = this._bartenderY;
 
       if (carry.startsWith('GLASS_') || carry.startsWith('DRINK_')) {
         const glass = barState.carriedGlass;
         if (!glass) return;
-        // Compute destination X: where this glass will sit among existing drinks
         const existing = barState.drinksAtSeats.get(this._guest.seatId);
         const count = existing ? existing.length : 0;
         const endX = (count - count / 2) * DRINK_SPACING;
         slideData = {
           side, index,
-          startX, startY, endX, endY: CUSTOMER_Y,
+          startX, startY, endX, endY: this._customerY,
           currentX: startX, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
           action: 'serve',
@@ -618,7 +637,7 @@ export class GuestModal extends BaseModal {
       } else if (carry.startsWith('CHECK_')) {
         slideData = {
           side, index,
-          startX, startY, endX: 0, endY: CUSTOMER_Y,
+          startX, startY, endX: 0, endY: this._customerY,
           currentX: startX, currentY: startY,
           startTime: this.scene.time.now, duration: 300,
           action: 'giveCheck',
@@ -634,8 +653,8 @@ export class GuestModal extends BaseModal {
       const startX = (index - (glasses.length - 1) / 2) * DRINK_SPACING;
       slideData = {
         side, index,
-        startX, startY: CUSTOMER_Y, endX: 0, endY: BARTENDER_Y,
-        currentX: startX, currentY: CUSTOMER_Y,
+        startX, startY: this._customerY, endX: 0, endY: this._bartenderY,
+        currentX: startX, currentY: this._customerY,
         startTime: this.scene.time.now, duration: 300,
         action: 'pickup',
         glassType: glass.glassType,
@@ -677,45 +696,45 @@ export class GuestModal extends BaseModal {
     const g = this._debugGfx;
     g.clear();
 
-    const hw = PANEL_W / 2;
-    const hh = PANEL_H / 2;
+    const hw = this._panelW / 2;
+    const hh = this._panelH / 2;
 
-    // Sprite actual bounds (magenta) — native 6× PNG at SPRITE_ZOOM
+    // Sprite actual bounds (magenta)
     const spriteW = PNG_W * SPRITE_ZOOM;
     const spriteH = DISPLAY_H;
     g.lineStyle(2, 0xff33cc, 0.9);
-    g.strokeRect(-spriteW / 2, SPRITE_Y - spriteH / 2, spriteW, spriteH);
+    g.strokeRect(-spriteW / 2, this._spriteY - spriteH / 2, spriteW, spriteH);
 
     // Panel bounds (cyan)
     g.lineStyle(2, 0x00ffff, 0.8);
-    g.strokeRect(-hw, -hh, PANEL_W, PANEL_H);
+    g.strokeRect(-hw, -hh, this._panelW, this._panelH);
 
     // Speech bubble bounds (yellow)
     g.lineStyle(1, 0xffff00, 0.7);
-    g.strokeRect(-BUBBLE_W / 2, BUBBLE_Y - BUBBLE_H / 2, BUBBLE_W, BUBBLE_H);
+    g.strokeRect(-this._bubbleW / 2, this._bubbleY - BUBBLE_H / 2, this._bubbleW, BUBBLE_H);
 
-    // Hands-on-bar reference (green) — should align with bar top
-    const handsY = SPRITE_Y + spriteH / 2 - HANDS_FROM_BOTTOM;
+    // Hands-on-bar reference (green)
+    const handsY = this._spriteY + spriteH / 2 - HANDS_FROM_BOTTOM;
     g.lineStyle(2, 0x44ff44, 0.9);
     g.lineBetween(-hw + 20, handsY, hw - 20, handsY);
 
-    // Bar surface band top/bottom (orange)
-    const barTop = BAR_CENTER_Y - BAR_DEPTH / 2;
-    const barBot = BAR_CENTER_Y + BAR_DEPTH / 2;
+    // Bar surface band (orange)
+    const barTop = this._barCenterY - BAR_DEPTH / 2;
+    const barBot = this._barCenterY + BAR_DEPTH / 2;
     g.lineStyle(2, 0xffaa00, 0.8);
-    g.strokeRect(-(PANEL_W - 40) / 2, barTop, PANEL_W - 40, BAR_DEPTH);
+    g.strokeRect(-(this._panelW - 40) / 2, barTop, this._panelW - 40, BAR_DEPTH);
 
     // Customer side area (lime)
     g.lineStyle(1, 0xaaff00, 0.4);
-    g.lineBetween(-hw + 20, CUSTOMER_Y, hw - 20, CUSTOMER_Y);
+    g.lineBetween(-hw + 20, this._customerY, hw - 20, this._customerY);
 
     // Bar front edge (orange)
     g.lineStyle(1, 0xffaa00, 0.4);
-    g.lineBetween(-hw + 20, BAR_FRONT_Y, hw - 20, BAR_FRONT_Y);
+    g.lineBetween(-hw + 20, this._barFrontY, hw - 20, this._barFrontY);
 
     // Bartender side area (lime)
     g.lineStyle(1, 0xaaff00, 0.4);
-    g.lineBetween(-hw + 20, BARTENDER_Y, hw - 20, BARTENDER_Y);
+    g.lineBetween(-hw + 20, this._bartenderY, hw - 20, this._bartenderY);
 
     // Interactive zones (yellow)
     g.lineStyle(1, 0xffff00, 0.7);
@@ -728,12 +747,12 @@ export class GuestModal extends BaseModal {
     // Red button bounds
     const redX = -(BTN_W / 2 + BTN_GAP / 2);
     g.lineStyle(1, 0xff4444, 0.8);
-    g.strokeRect(redX - BTN_W / 2, BTN_ROW_Y - BTN_H / 2, BTN_W, BTN_H);
+    g.strokeRect(redX - BTN_W / 2, this._btnRowY - BTN_H / 2, BTN_W, BTN_H);
 
     // Green button bounds
     const greenX = BTN_W / 2 + BTN_GAP / 2;
     g.lineStyle(1, 0x44ff44, 0.8);
-    g.strokeRect(greenX - BTN_W / 2, BTN_ROW_Y - BTN_H / 2, BTN_W, BTN_H);
+    g.strokeRect(greenX - BTN_W / 2, this._btnRowY - BTN_H / 2, BTN_W, BTN_H);
 
     // Slide animation path (magenta)
     if (this._activeSlide) {
@@ -744,7 +763,7 @@ export class GuestModal extends BaseModal {
       g.fillCircle(s.x, s.currentY, 4);
     }
 
-    // Y-coordinate readouts (rebuild every frame for accuracy)
+    // Y-coordinate readouts
     if (this._debugLabels) {
       for (const lbl of this._debugLabels) {
         lbl.destroy();
@@ -753,18 +772,18 @@ export class GuestModal extends BaseModal {
     }
     this._debugLabels = [];
     const style = { fontFamily: 'monospace', fontSize: '9px', color: '#00ffff' };
-    const spriteBot = SPRITE_Y + spriteH / 2;
+    const spriteBot = this._spriteY + spriteH / 2;
     const pairs = [
-      [-hw + 4, BUBBLE_Y, `bubble y=${BUBBLE_Y}`],
-      [-hw + 4, SPRITE_Y - spriteH / 2, `sprite top=${Math.round(SPRITE_Y - spriteH / 2)}`],
+      [-hw + 4, this._bubbleY, `bubble y=${this._bubbleY}`],
+      [-hw + 4, this._spriteY - spriteH / 2, `sprite top=${Math.round(this._spriteY - spriteH / 2)}`],
       [-hw + 4, spriteBot, `sprite bot=${Math.round(spriteBot)}`],
       [-hw + 4, handsY, `hands y=${Math.round(handsY)}`],
       [hw - 4, barTop, `bar top=${Math.round(barTop)}`],
       [hw - 4, barBot, `bar bot=${Math.round(barBot)}`],
-      [hw - 4, CUSTOMER_Y, `cust y=${CUSTOMER_Y}`],
-      [hw - 4, BAR_FRONT_Y, `front y=${BAR_FRONT_Y}`],
-      [hw - 4, BARTENDER_Y, `carry y=${BARTENDER_Y}`],
-      [hw - 4, BTN_ROW_Y, `btns y=${BTN_ROW_Y}`],
+      [hw - 4, this._customerY, `cust y=${this._customerY}`],
+      [hw - 4, this._barFrontY, `front y=${this._barFrontY}`],
+      [hw - 4, this._bartenderY, `carry y=${this._bartenderY}`],
+      [hw - 4, this._btnRowY, `btns y=${this._btnRowY}`],
     ];
     for (const [lx, ly, txt] of pairs) {
       const isLeft = lx < 0;
