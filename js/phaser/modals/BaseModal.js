@@ -48,6 +48,14 @@ export class BaseModal {
     // Subclass sets these for zoom animation sizing
     this._contentW = 0;
     this._contentH = 0;
+
+    // Button state (owned by BaseModal)
+    this._btnRowY = 0;
+    this._btnW = 0;
+    this._btnH = 50;
+    this._rightBtn = null;
+    this._rightBtnLabel = null;
+    this._rightBtnEnabled = false;
   }
 
   /**
@@ -141,10 +149,99 @@ export class BaseModal {
     }
   }
 
+  // ─── BUTTON SYSTEM ──────────────────────────────
+
+  /**
+   * Build the standard bottom button pair.
+   * Called by _buildModal() after _build(). Reads _getButtonConfig().
+   */
+  _buildButtons() {
+    const config = this._getButtonConfig();
+    if (!config) return;
+
+    const scene = this.scene;
+    const pw = this._contentW;
+    const ph = this._contentH;
+    this._btnW = pw / 2;
+    this._btnRowY = ph / 2 - this._btnH / 2;
+
+    const leftX = -this._btnW / 2;
+    const rightX = this._btnW / 2;
+
+    // Left button (red, always calls _requestClose)
+    const left = scene.add.rectangle(leftX, this._btnRowY, this._btnW, this._btnH, 0x6a2a2a)
+      .setInteractive({ useHandCursor: true });
+    left.on('pointerover', () => left.setFillStyle(0x8a3a3a));
+    left.on('pointerout', () => left.setFillStyle(0x6a2a2a));
+    left.on('pointerdown', () => {
+      if (this._closing) return;
+      this._requestClose();
+    });
+    this._content.add(left);
+    this._content.add(
+      scene.add.text(leftX, this._btnRowY, config.left.label, {
+        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+      }).setOrigin(0.5),
+    );
+
+    // Right button (starts enabled or disabled per config)
+    this._rightBtn = scene.add.rectangle(rightX, this._btnRowY, this._btnW, this._btnH, 0x2a2a2a);
+    this._content.add(this._rightBtn);
+    this._rightBtnLabel = scene.add.text(rightX, this._btnRowY, config.right.label, {
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
+    }).setOrigin(0.5);
+    this._content.add(this._rightBtnLabel);
+    this._rightBtnEnabled = false;
+
+    if (config.right.enabled) {
+      this._enableRightButton(config.right.onTap);
+    }
+  }
+
+  _enableRightButton(onTap) {
+    if (!this._rightBtn) return;
+    this._rightBtn.setFillStyle(0x3a6a3a);
+    this._rightBtn.setInteractive({ useHandCursor: true });
+    this._rightBtn.removeAllListeners();
+    this._rightBtn.on('pointerover', () => this._rightBtn.setFillStyle(0x4a8a4a));
+    this._rightBtn.on('pointerout', () => this._rightBtn.setFillStyle(0x3a6a3a));
+    this._rightBtn.on('pointerdown', () => {
+      if (this._closing) return;
+      if (onTap) onTap();
+    });
+    this._rightBtnLabel.setColor('#ffffff');
+    this._rightBtnEnabled = true;
+  }
+
+  _disableRightButton() {
+    if (!this._rightBtn) return;
+    this._rightBtn.setFillStyle(0x2a2a2a);
+    this._rightBtn.disableInteractive();
+    this._rightBtn.removeAllListeners();
+    this._rightBtnLabel.setColor('#666666');
+    this._rightBtnEnabled = false;
+  }
+
+  _updateRightButton(config) {
+    if (!this._rightBtn) return;
+    if (this._rightBtnLabel) this._rightBtnLabel.setText(config.label);
+    if (config.enabled) {
+      this._enableRightButton(config.onTap);
+    } else {
+      this._disableRightButton();
+    }
+  }
+
   // ─── SUBCLASS HOOKS ─────────────────────────────
 
   /** Build UI into this._content. */
   _build() {}
+
+  /**
+   * Return button config, or null for no buttons.
+   * @returns {{ left: { label: string }, right: { label: string, enabled: boolean, onTap?: Function } } | null}
+   */
+  _getButtonConfig() { return null; }
 
   /** Per-frame logic after animation step. */
   _onUpdate(dt) {}
@@ -181,7 +278,14 @@ export class BaseModal {
     );
     this.container.add(this._content);
 
+    // Pre-compute button layout so _build() can reference _btnRowY
+    if (this._contentW > 0 && this._contentH > 0) {
+      this._btnW = this._contentW / 2;
+      this._btnRowY = this._contentH / 2 - this._btnH / 2;
+    }
+
     this._build();
+    this._buildButtons();
   }
 
   _applyProgress(p) {
@@ -209,6 +313,9 @@ export class BaseModal {
     this.container.removeAll(true);
     this._content = null;
     this._dimOverlay = null;
+    this._rightBtn = null;
+    this._rightBtnLabel = null;
+    this._rightBtnEnabled = false;
     this._animating = false;
     this._closing = false;
   }

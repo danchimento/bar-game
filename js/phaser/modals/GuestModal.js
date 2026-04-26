@@ -167,9 +167,6 @@ const HANDS_FROM_BOTTOM = DISPLAY_H - HANDS_FROM_TOP;         // 24px from sprit
 const BAR_DEPTH = 50;
 
 const BUBBLE_H = 60;
-const BTN_H = 50;
-const BTN_W = 215;
-const BTN_GAP = 10;
 const DRINK_RENDER_SCALE = 1.8;
 const DRINK_SPACING = 40;
 
@@ -178,8 +175,6 @@ export class GuestModal extends BaseModal {
     super(scene, { closeEvent: 'guest-modal-close', dimAlpha: 0.65 });
     this._guest = null;
     this._msgText = null;
-    this._greenBtn = null;
-    this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
     this._debugGfx = null;
@@ -203,7 +198,6 @@ export class GuestModal extends BaseModal {
     this._barCenterY = 0;
     this._barFrontY = 0;
     this._bartenderY = 0;
-    this._btnRowY = 0;
   }
 
   show(guest) {
@@ -232,19 +226,12 @@ export class GuestModal extends BaseModal {
     // ── Compute layout from runtime canvas dims ──
     const pw = CANVAS_W;
     const ph = CANVAS_H;
-    this._contentW = pw;
-    this._contentH = ph;
     this._panelW = pw;
     this._panelH = ph;
 
-    // Buttons pinned to bottom edge, full width (50% each)
-    const btnRowY = ph / 2 - BTN_H / 2;
-    const btnW = pw / 2;
-
-    // Content area = everything above the buttons.
-    // Center the guest scene vertically in that area.
+    // Content area = everything above the button row (computed by BaseModal).
     const contentAreaTop = -ph / 2;
-    const contentAreaBot = btnRowY - BTN_H / 2;
+    const contentAreaBot = this._btnRowY - this._btnH / 2;
     const contentCenterY = (contentAreaTop + contentAreaBot) / 2;
 
     // Anchor: bar center sits slightly below content center
@@ -265,8 +252,6 @@ export class GuestModal extends BaseModal {
     this._barCenterY = barCenterY;
     this._barFrontY = barFrontY;
     this._bartenderY = bartenderY;
-    this._btnRowY = btnRowY;
-    this._btnW = btnW;
 
     // ── Panel background (no border) ──
     this._content.add(
@@ -321,79 +306,21 @@ export class GuestModal extends BaseModal {
     this._drawBarItems();
     this._rebuildItemZones();
 
-    // ── Button row ──
-    this._buildRedButton();
-    this._buildGreenButton();
-
     this._debugGfx = scene.add.graphics();
     this._content.add(this._debugGfx);
   }
 
-  _buildRedButton() {
-    const scene = this.scene;
-    const w = this._btnW;
-    const x = -w / 2;
-
-    const bg = scene.add.rectangle(x, this._btnRowY, w, BTN_H, 0x6a2a2a)
-      .setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x8a3a3a));
-    bg.on('pointerout', () => bg.setFillStyle(0x6a2a2a));
-    bg.on('pointerdown', () => {
-      if (this._closing) return;
-      this._requestClose();
-    });
-    this._content.add(bg);
-
-    this._content.add(
-      scene.add.text(x, this._btnRowY, 'Walk Away', {
-        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
-      }).setOrigin(0.5),
-    );
+  _getButtonConfig() {
+    const guest = this._guest;
+    const right = this._getRightButtonConfig(guest);
+    return {
+      left: { label: 'Walk Away' },
+      right: { label: right.label, enabled: right.enabled, onTap: right.onTap },
+    };
   }
 
-  _buildGreenButton() {
-    const scene = this.scene;
-    const w = this._btnW;
-    const x = w / 2;
-    const config = this._getGreenConfig(this._guest);
-
-    const fill = config.enabled ? 0x3a6a3a : 0x2a2a2a;
-    const textColor = config.enabled ? '#ffffff' : '#666666';
-
-    const bg = scene.add.rectangle(x, this._btnRowY, w, BTN_H, fill);
-    this._greenBtn = bg;
-
-    if (config.enabled) {
-      bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => bg.setFillStyle(0x4a8a4a));
-      bg.on('pointerout', () => bg.setFillStyle(0x3a6a3a));
-      bg.on('pointerdown', () => {
-        if (this._closing) return;
-        if (config.action) config.action();
-      });
-    }
-    this._content.add(bg);
-
-    this._greenLabel = scene.add.text(x, this._btnRowY, config.label, {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: textColor,
-    }).setOrigin(0.5);
-    this._content.add(this._greenLabel);
-  }
-
-  _rebuildGreenButton() {
-    if (this._greenBtn) {
-      this._greenBtn.destroy();
-      this._content.remove(this._greenBtn);
-    }
-    if (this._greenLabel) {
-      this._greenLabel.destroy();
-      this._content.remove(this._greenLabel);
-    }
-    this._buildGreenButton();
-  }
-
-  _getGreenConfig(guest) {
-    if (!guest) return { label: '...', enabled: false, action: null };
+  _getRightButtonConfig(guest) {
+    if (!guest) return { label: '...', enabled: false, onTap: null };
 
     switch (guest.state) {
       case GUEST_STATE.SEATED:
@@ -401,7 +328,7 @@ export class GuestModal extends BaseModal {
         return {
           label: guest.greeted ? "How's it going?" : 'Hey there!',
           enabled: true,
-          action: () => {
+          onTap: () => {
             this.scene.guestManager.acknowledgeAtSeat(this._guest);
             this._requestClose();
           },
@@ -410,7 +337,7 @@ export class GuestModal extends BaseModal {
         return {
           label: 'Got it!',
           enabled: true,
-          action: () => {
+          onTap: () => {
             this.scene.guestManager.acknowledgeAtSeat(this._guest);
             this._requestClose();
           },
@@ -419,7 +346,7 @@ export class GuestModal extends BaseModal {
         return {
           label: 'Coming right up!',
           enabled: true,
-          action: () => {
+          onTap: () => {
             this.scene.guestManager.reassureAtSeat(this._guest);
           },
         };
@@ -427,7 +354,7 @@ export class GuestModal extends BaseModal {
         return {
           label: "How's it going?",
           enabled: true,
-          action: () => {
+          onTap: () => {
             this.scene.guestManager.checkInAtSeat(this._guest);
             this._requestClose();
           },
@@ -436,13 +363,13 @@ export class GuestModal extends BaseModal {
         return {
           label: 'One more!',
           enabled: true,
-          action: () => {
+          onTap: () => {
             this.scene.guestManager.acknowledgeAtSeat(this._guest);
             this._requestClose();
           },
         };
       default:
-        return { label: '...', enabled: false, action: null };
+        return { label: '...', enabled: false, onTap: null };
     }
   }
 
@@ -499,7 +426,7 @@ export class GuestModal extends BaseModal {
       this._msgText.setText(this._getMessage(guest));
     }
 
-    this._rebuildGreenButton();
+    this._updateRightButton(this._getRightButtonConfig(guest));
   }
 
   _drawBarItems() {
@@ -753,14 +680,13 @@ export class GuestModal extends BaseModal {
       g.strokeRect(zx, zy, zone.width, zone.height);
     }
 
-    // Red button bounds
+    // Button bounds (from BaseModal)
     const bw = this._btnW;
+    const bh = this._btnH;
     g.lineStyle(1, 0xff4444, 0.8);
-    g.strokeRect(-bw, this._btnRowY - BTN_H / 2, bw, BTN_H);
-
-    // Green button bounds
+    g.strokeRect(-bw, this._btnRowY - bh / 2, bw, bh);
     g.lineStyle(1, 0x44ff44, 0.8);
-    g.strokeRect(0, this._btnRowY - BTN_H / 2, bw, BTN_H);
+    g.strokeRect(0, this._btnRowY - bh / 2, bw, bh);
 
     // Slide animation path (magenta)
     if (this._activeSlide) {
@@ -805,8 +731,6 @@ export class GuestModal extends BaseModal {
   _onTeardown() {
     this._guest = null;
     this._msgText = null;
-    this._greenBtn = null;
-    this._greenLabel = null;
     this._barGfx = null;
     this._carryIcon = null;
     this._debugGfx = null;

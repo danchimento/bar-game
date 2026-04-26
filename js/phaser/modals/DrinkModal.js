@@ -71,6 +71,14 @@ export class DrinkModal extends BaseModal {
     }
   }
 
+  _getButtonConfig() {
+    if (!this._isBeerSplit) return null;
+    return {
+      left: { label: 'Step Away' },
+      right: { label: 'Take Beer', enabled: false, onTap: null },
+    };
+  }
+
   _build() {
     this.drinkButtons = [];
     this._handles = [];
@@ -105,21 +113,14 @@ export class DrinkModal extends BaseModal {
     const SPOUT_ART_Y = 12;
     const FRAME_BOTTOM_ART_Y = 32;
 
-    // Buttons pinned to bottom edge, full width (50% each)
-    const btnH = 50;
-    const btnRowY = panelH / 2 - btnH / 2;
-    const btnW = panelW / 2;
-
-    // Content area above buttons — center tap frame in it
+    // Content area above buttons (computed by BaseModal) — center tap frame in it
     const contentAreaTop = -panelH / 2;
-    const contentAreaBot = btnRowY - btnH / 2;
+    const contentAreaBot = this._btnRowY - this._btnH / 2;
     const tapFrameH = FRAME_BOTTOM_ART_Y * ART_SCALE;
     const contentCenterY = (contentAreaTop + contentAreaBot) / 2;
     const frameTopY = contentCenterY - tapFrameH / 2;
 
     this._glassDrawScale = 3.0;
-    this._beerBtnRowY = btnRowY;
-    this._beerBtnW = btnW;
 
     // ── Full-width panel background (no border) ──
     this._content.add(
@@ -192,28 +193,6 @@ export class DrinkModal extends BaseModal {
         this._handles.push(null);
       }
     }
-
-    // ── Buttons pinned to bottom edge, full width (50% each) ──
-    // Left: "Step Away" (red, always active)
-    const stepBtn = scene.add.rectangle(-btnW / 2, btnRowY, btnW, btnH, 0x6a2a2a)
-      .setInteractive({ useHandCursor: true });
-    stepBtn.on('pointerdown', () => {
-      if (this._closing) return;
-      this._requestClose();
-    });
-    this._content.add(stepBtn);
-    this._content.add(scene.add.text(-btnW / 2, btnRowY, 'Step Away', {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ff9999',
-    }).setOrigin(0.5));
-
-    // Right: "Take Beer" (green, disabled until poured)
-    this._takeBtn = scene.add.rectangle(btnW / 2, btnRowY, btnW, btnH, 0x2a2a2a);
-    this._content.add(this._takeBtn);
-    this._takeBtnLabel = scene.add.text(btnW / 2, btnRowY, 'Take Beer', {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
-    }).setOrigin(0.5);
-    this._content.add(this._takeBtnLabel);
-    this._takeBtnEnabled = false;
 
     // ── Local graphics (inside content for proper transform) ──
     this._localPourGfx = scene.add.graphics();
@@ -295,18 +274,11 @@ export class DrinkModal extends BaseModal {
     if (this._isBeerSplit) this._drawDebug();
 
     // Update "Take Beer" button state (beer mode only)
-    if (this._isBeerSplit && this._takeBtn) {
+    if (this._isBeerSplit && this._rightBtn) {
       const glass = this.scene.barState?.carriedGlass;
       const hasFill = glass && glass.totalFill > 0;
-      if (hasFill && !this._takeBtnEnabled) {
-        this._takeBtnEnabled = true;
-        this._takeBtn.setFillStyle(0x3a6a3a);
-        this._takeBtn.setInteractive({ useHandCursor: true });
-        this._takeBtn.on('pointerdown', () => {
-          if (this._closing) return;
-          this._requestClose();
-        });
-        this._takeBtnLabel.setColor('#ffffff');
+      if (hasFill && !this._rightBtnEnabled) {
+        this._enableRightButton(() => this._requestClose());
       }
     }
   }
@@ -395,12 +367,7 @@ export class DrinkModal extends BaseModal {
     this._localGlassGfx = null;
     this._localPourGfx = null;
     this._localOverflowGfx = null;
-    this._takeBtn = null;
-    this._takeBtnLabel = null;
-    this._takeBtnEnabled = false;
     this._crossbarY = 0;
-    this._beerBtnRowY = 0;
-    this._beerBtnW = 0;
     this._glassDrawScale = 2.0;
     this._debugGfx = null;
   }
@@ -438,9 +405,9 @@ export class DrinkModal extends BaseModal {
     g.lineStyle(1, 0xaaff00, 0.4);
     g.strokeRect(this._glassRestX - gw / 2, this._glassY - gh, gw, gh);
 
-    // Button bounds (full-width 50% each)
-    const bw = this._beerBtnW || panelW / 2;
-    const bry = this._beerBtnRowY || 0;
+    // Button bounds (from BaseModal)
+    const bw = this._btnW || panelW / 2;
+    const bry = this._btnRowY || 0;
     g.lineStyle(1, 0xff4444, 0.8);
     g.strokeRect(-bw, bry - 25, bw, 50);
     g.lineStyle(1, 0x44ff44, 0.8);

@@ -19,8 +19,6 @@ export class GlassModal extends BaseModal {
     this._availableDrinks = [];
     this._shelves = [];
     this._selectedGlass = null;
-    this._takeBtn = null;
-    this._takeBtnLabel = null;
     this._glassGfx = null;
   }
 
@@ -120,40 +118,6 @@ export class GlassModal extends BaseModal {
       this._shelves.push(shelfData);
     }
 
-    // ── Buttons pinned to bottom edge, full width (50% each) ──
-    const btnW = panelW / 2;
-    const btnH = 50;
-    const btnRowY = panelH / 2 - btnH / 2;
-    this._btnRowY = btnRowY;
-    this._btnW = btnW;
-
-    const stepBtnX = -btnW / 2;
-    const takeBtnX = btnW / 2;
-
-    // "Step Away" — red, always active
-    const stepBtn = scene.add.rectangle(stepBtnX, btnRowY, btnW, btnH, 0x6a2a2a)
-      .setInteractive({ useHandCursor: true });
-    stepBtn.on('pointerover', () => stepBtn.setFillStyle(0x7a3a3a));
-    stepBtn.on('pointerout', () => stepBtn.setFillStyle(0x6a2a2a));
-    stepBtn.on('pointerdown', () => {
-      if (this._closing) return;
-      this._requestClose();
-    });
-    this._content.add(stepBtn);
-    this._content.add(
-      scene.add.text(stepBtnX, btnRowY, 'Step Away', {
-        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#cc8888',
-      }).setOrigin(0.5),
-    );
-
-    // "Take Glass" — green when enabled, grey when disabled
-    this._takeBtn = scene.add.rectangle(takeBtnX, btnRowY, btnW, btnH, 0x2a2a2a);
-    this._content.add(this._takeBtn);
-    this._takeBtnLabel = scene.add.text(takeBtnX, btnRowY, 'Take Glass', {
-      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
-    }).setOrigin(0.5);
-    this._content.add(this._takeBtnLabel);
-
     // Glass graphics — added last inside content so it renders on top
     this._glassGfx = scene.add.graphics();
     this._content.add(this._glassGfx);
@@ -172,10 +136,15 @@ export class GlassModal extends BaseModal {
   _onTeardown() {
     this._shelves = [];
     this._selectedGlass = null;
-    this._takeBtn = null;
-    this._takeBtnLabel = null;
     this._glassGfx = null;
     this._debugGfx = null;
+  }
+
+  _getButtonConfig() {
+    return {
+      left: { label: 'Step Away' },
+      right: { label: 'Take Glass', enabled: false, onTap: null },
+    };
   }
 
   _drawDebug() {
@@ -231,24 +200,12 @@ export class GlassModal extends BaseModal {
   }
 
   _updateButtons() {
-    if (!this._takeBtn) return;
-
     if (this._selectedGlass) {
-      this._takeBtn.setFillStyle(0x3a6a3a);
-      this._takeBtn.setInteractive({ useHandCursor: true });
-      this._takeBtn.removeAllListeners();
-      this._takeBtn.on('pointerover', () => this._takeBtn.setFillStyle(0x4a7a4a));
-      this._takeBtn.on('pointerout', () => this._takeBtn.setFillStyle(0x3a6a3a));
-      this._takeBtn.on('pointerdown', () => {
-        if (this._closing) return;
+      this._enableRightButton(() => {
         this._requestClose('glass-selected', this._selectedGlass.glassKey);
       });
-      this._takeBtnLabel.setColor('#ffffff');
     } else {
-      this._takeBtn.setFillStyle(0x2a2a2a);
-      this._takeBtn.disableInteractive();
-      this._takeBtn.removeAllListeners();
-      this._takeBtnLabel.setColor('#666666');
+      this._disableRightButton();
     }
   }
 
