@@ -237,14 +237,24 @@ export class GuestModal extends BaseModal {
     this._panelW = pw;
     this._panelH = ph;
 
-    const bubbleW = pw - 60;
-    const btnRowY = ph / 2 - BTN_H - 20;
-    const bartenderY = btnRowY - 80;
-    const barFrontY = bartenderY - 40;
-    const customerY = barFrontY - 30;
-    const barTopY = customerY - BAR_DEPTH / 2;
-    const barCenterY = barTopY + BAR_DEPTH / 2;
+    // Buttons pinned to bottom edge, full width (50% each)
+    const btnRowY = ph / 2 - BTN_H / 2;
+    const btnW = pw / 2;
+
+    // Content area = everything above the buttons.
+    // Center the guest scene vertically in that area.
+    const contentAreaTop = -ph / 2;
+    const contentAreaBot = btnRowY - BTN_H / 2;
+    const contentCenterY = (contentAreaTop + contentAreaBot) / 2;
+
+    // Anchor: bar center sits slightly below content center
+    const barCenterY = contentCenterY + 60;
+    const barTopY = barCenterY - BAR_DEPTH / 2;
+    const barFrontY = barCenterY + BAR_DEPTH / 2;
+    const customerY = barTopY - 5;
+    const bartenderY = barFrontY + 60;
     const spriteY = barTopY - DISPLAY_H / 2 + HANDS_FROM_BOTTOM;
+    const bubbleW = pw - 60;
     const bubbleY = spriteY - DISPLAY_H / 2 - BUBBLE_H / 2 - 10;
 
     this._bubbleW = bubbleW;
@@ -256,11 +266,11 @@ export class GuestModal extends BaseModal {
     this._barFrontY = barFrontY;
     this._bartenderY = bartenderY;
     this._btnRowY = btnRowY;
+    this._btnW = btnW;
 
-    // ── Panel background ──
+    // ── Panel background (no border) ──
     this._content.add(
       scene.add.rectangle(0, 0, pw, ph, 0x151525)
-        .setStrokeStyle(2, 0x4a4a6a)
         .setInteractive(),
     );
 
@@ -321,10 +331,10 @@ export class GuestModal extends BaseModal {
 
   _buildRedButton() {
     const scene = this.scene;
-    const x = -(BTN_W / 2 + BTN_GAP / 2);
+    const w = this._btnW;
+    const x = -w / 2;
 
-    const bg = scene.add.rectangle(x, this._btnRowY, BTN_W, BTN_H, 0x6a2a2a)
-      .setStrokeStyle(2, 0x8a4a4a)
+    const bg = scene.add.rectangle(x, this._btnRowY, w, BTN_H, 0x6a2a2a)
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x8a3a3a));
     bg.on('pointerout', () => bg.setFillStyle(0x6a2a2a));
@@ -343,15 +353,14 @@ export class GuestModal extends BaseModal {
 
   _buildGreenButton() {
     const scene = this.scene;
-    const x = BTN_W / 2 + BTN_GAP / 2;
+    const w = this._btnW;
+    const x = w / 2;
     const config = this._getGreenConfig(this._guest);
 
     const fill = config.enabled ? 0x3a6a3a : 0x2a2a2a;
-    const stroke = config.enabled ? 0x5a8a5a : 0x444444;
     const textColor = config.enabled ? '#ffffff' : '#666666';
 
-    const bg = scene.add.rectangle(x, this._btnRowY, BTN_W, BTN_H, fill)
-      .setStrokeStyle(2, stroke);
+    const bg = scene.add.rectangle(x, this._btnRowY, w, BTN_H, fill);
     this._greenBtn = bg;
 
     if (config.enabled) {
@@ -745,14 +754,13 @@ export class GuestModal extends BaseModal {
     }
 
     // Red button bounds
-    const redX = -(BTN_W / 2 + BTN_GAP / 2);
+    const bw = this._btnW;
     g.lineStyle(1, 0xff4444, 0.8);
-    g.strokeRect(redX - BTN_W / 2, this._btnRowY - BTN_H / 2, BTN_W, BTN_H);
+    g.strokeRect(-bw, this._btnRowY - BTN_H / 2, bw, BTN_H);
 
     // Green button bounds
-    const greenX = BTN_W / 2 + BTN_GAP / 2;
     g.lineStyle(1, 0x44ff44, 0.8);
-    g.strokeRect(greenX - BTN_W / 2, this._btnRowY - BTN_H / 2, BTN_W, BTN_H);
+    g.strokeRect(0, this._btnRowY - BTN_H / 2, bw, BTN_H);
 
     // Slide animation path (magenta)
     if (this._activeSlide) {

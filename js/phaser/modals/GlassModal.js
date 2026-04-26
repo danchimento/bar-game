@@ -45,10 +45,9 @@ export class GlassModal extends BaseModal {
     const panelLeft = -panelW / 2;
     const panelTop = -panelH / 2;
 
-    // ── Full-width panel background (wood) ──
+    // ── Full-width panel background (no border) ──
     const panelBg = scene.add.rectangle(0, 0, panelW, panelH, 0x2a1a0e)
-      .setStrokeStyle(4, 0x5a3a20)
-      .setInteractive(); // blocks clicks reaching dim
+      .setInteractive();
     this._content.add(panelBg);
 
     // ── Cabinet area (top ~280px) ──
@@ -121,18 +120,18 @@ export class GlassModal extends BaseModal {
       this._shelves.push(shelfData);
     }
 
-    // ── Button row (bottom ~80px) ──
-    const btnW = 225;
+    // ── Buttons pinned to bottom edge, full width (50% each) ──
+    const btnW = panelW / 2;
     const btnH = 50;
-    const btnGap = 10;
-    const btnRowY = cabinetTop + cabinetH + 45;
+    const btnRowY = panelH / 2 - btnH / 2;
+    this._btnRowY = btnRowY;
+    this._btnW = btnW;
 
-    const stepBtnX = -(btnW + btnGap) / 2;
-    const takeBtnX = (btnW + btnGap) / 2;
+    const stepBtnX = -btnW / 2;
+    const takeBtnX = btnW / 2;
 
     // "Step Away" — red, always active
     const stepBtn = scene.add.rectangle(stepBtnX, btnRowY, btnW, btnH, 0x6a2a2a)
-      .setStrokeStyle(1, 0x8a4a4a)
       .setInteractive({ useHandCursor: true });
     stepBtn.on('pointerover', () => stepBtn.setFillStyle(0x7a3a3a));
     stepBtn.on('pointerout', () => stepBtn.setFillStyle(0x6a2a2a));
@@ -148,8 +147,7 @@ export class GlassModal extends BaseModal {
     );
 
     // "Take Glass" — green when enabled, grey when disabled
-    this._takeBtn = scene.add.rectangle(takeBtnX, btnRowY, btnW, btnH, 0x2a2a2a)
-      .setStrokeStyle(1, 0x444444);
+    this._takeBtn = scene.add.rectangle(takeBtnX, btnRowY, btnW, btnH, 0x2a2a2a);
     this._content.add(this._takeBtn);
     this._takeBtnLabel = scene.add.text(takeBtnX, btnRowY, 'Take Glass', {
       fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#666666',
@@ -204,13 +202,13 @@ export class GlassModal extends BaseModal {
       }
     }
 
-    // Button bounds (green/red outlines)
-    const btnW = 225, btnH = 50, btnGap = 10;
-    const btnRowY = -panelH / 2 + panelH - 50;
+    // Button bounds (full-width 50% each)
+    const bw = this._btnW || panelW / 2;
+    const bry = this._btnRowY || panelH / 2 - 25;
     g.lineStyle(1, 0xff4444, 0.8);
-    g.strokeRect(-(btnW + btnGap) / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.strokeRect(-bw, bry - 25, bw, 50);
     g.lineStyle(1, 0x44ff44, 0.8);
-    g.strokeRect((btnW + btnGap) / 2 - btnW / 2, btnRowY - btnH / 2, btnW, btnH);
+    g.strokeRect(0, bry - 25, bw, 50);
 
     // Shelf Y lines
     g.lineStyle(1, 0xffaa00, 0.5);
@@ -235,13 +233,8 @@ export class GlassModal extends BaseModal {
   _updateButtons() {
     if (!this._takeBtn) return;
 
-    const btnW = 225;
-    const btnGap = 10;
-    const takeBtnX = (btnW + btnGap) / 2;
-
     if (this._selectedGlass) {
       this._takeBtn.setFillStyle(0x3a6a3a);
-      this._takeBtn.setStrokeStyle(1, 0x5a8a5a);
       this._takeBtn.setInteractive({ useHandCursor: true });
       this._takeBtn.removeAllListeners();
       this._takeBtn.on('pointerover', () => this._takeBtn.setFillStyle(0x4a7a4a));
@@ -253,7 +246,6 @@ export class GlassModal extends BaseModal {
       this._takeBtnLabel.setColor('#ffffff');
     } else {
       this._takeBtn.setFillStyle(0x2a2a2a);
-      this._takeBtn.setStrokeStyle(1, 0x444444);
       this._takeBtn.disableInteractive();
       this._takeBtn.removeAllListeners();
       this._takeBtnLabel.setColor('#666666');
