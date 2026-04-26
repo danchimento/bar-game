@@ -1,4 +1,4 @@
-import { CANVAS_W, CANVAS_H } from '../../constants.js';
+import { CANVAS_W, CANVAS_H, SAFE_BOTTOM } from '../../constants.js';
 
 /**
  * BaseModal — shared lifecycle for all game modals.
@@ -163,7 +163,7 @@ export class BaseModal {
     const pw = this._contentW;
     const ph = this._contentH;
     this._btnW = pw / 2;
-    this._btnRowY = ph / 2 - this._btnH / 2;
+    this._btnRowY = ph / 2 - this._btnH / 2 - SAFE_BOTTOM;
 
     const leftX = -this._btnW / 2;
     const rightX = this._btnW / 2;
@@ -281,7 +281,7 @@ export class BaseModal {
     // Pre-compute button layout so _build() can reference _btnRowY
     if (this._contentW > 0 && this._contentH > 0) {
       this._btnW = this._contentW / 2;
-      this._btnRowY = this._contentH / 2 - this._btnH / 2;
+      this._btnRowY = this._contentH / 2 - this._btnH / 2 - SAFE_BOTTOM;
     }
 
     this._build();

@@ -6,6 +6,7 @@
 // letterboxing and zero cropping.
 export let CANVAS_H = 576;
 export let CANVAS_W = 960; // default 16:9, overwritten by initCanvas()
+export let SAFE_BOTTOM = 0; // safe area inset in game coords
 
 /**
  * Call once before creating the Phaser.Game.
@@ -23,6 +24,18 @@ export function initCanvas(mode = 'landscape') {
     CANVAS_H = 576;                           // fixed height (36 tiles)
     CANVAS_W = Math.round(CANVAS_H * aspect); // width adapts to device
   }
+
+  // Compute safe area bottom inset in game coordinates.
+  // With viewport-fit=cover the canvas extends behind the home indicator.
+  const el = document.createElement('div');
+  el.style.position = 'fixed';
+  el.style.bottom = '0';
+  el.style.height = 'env(safe-area-inset-bottom, 0px)';
+  document.body.appendChild(el);
+  const safeCSS = el.getBoundingClientRect().height;
+  document.body.removeChild(el);
+  const scale = Math.min(vw, vh) / CANVAS_W;
+  SAFE_BOTTOM = Math.ceil(safeCSS / scale);
 
   // Recompute width-dependent layout
   BAR_LEFT = (CANVAS_W - BAR_MAX_W) / 2;
